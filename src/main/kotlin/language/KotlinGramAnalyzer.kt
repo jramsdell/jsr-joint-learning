@@ -65,7 +65,7 @@ data class CorpusStatContainer(
 
 /**
  * Class: LanguageStatContainer
- * Desc: Represents language stats for a query or document.
+ * Desc: Represents language stats for a lucene or document.
  *       Contains a LanguageStat for each type of -gram.
  * @see LanguageStat
  * @see GramStatType
@@ -78,8 +78,8 @@ data class LanguageStatContainer(
 
     /**
      * Func: getLikelihood
-     * Desc: Gets Dirichlet smoothed log likelihood given a query
-     * @param queryStat: Represents -gram model of a query, and of associated corpus.
+     * Desc: Gets Dirichlet smoothed log likelihood given a lucene
+     * @param queryStat: Represents -gram model of a lucene, and of associated corpus.
      * @param alpha: Used for smoothing
      */
     private fun getLikelihood(queryStat: CorpusStat, alpha: Double): Double {
@@ -106,7 +106,7 @@ data class LanguageStatContainer(
 
     /**
      * Func: getLikelihoodGivenQuery
-     * Desc: Calculates likelihood for each type of -gram statistic given a query.
+     * Desc: Calculates likelihood for each type of -gram statistic given a lucene.
      * @see getLikelihood
      */
     fun getLikelihoodGivenQuery(query: CorpusStatContainer, alpha: Double = 1.0): LikelihoodContainer =
@@ -173,7 +173,7 @@ class KotlinGramAnalyzer(val indexSearcher: IndexSearcher) {
 
     /**
      * Func: getCorpusStatContainer
-     * Desc: Given a query, returns -gram model statistics for query, and also returns
+     * Desc: Given a lucene, returns -gram model statistics for lucene, and also returns
      *      the collection statistics for each -gram.
      */
     fun getCorpusStatContainer(text: String): CorpusStatContainer =
@@ -295,7 +295,7 @@ class KotlinGramAnalyzer(val indexSearcher: IndexSearcher) {
 
     /**
      * Func: getQueryLikelihood
-     * Desc: Wrapper function around LanguageStatsContainer to run query likelihood and return just that
+     * Desc: Wrapper function around LanguageStatsContainer to run lucene likelihood and return just that
      *       scores.
      */
     fun getQueryLikelihood(langStat: LanguageStatContainer, corpStat: CorpusStatContainer, alpha: Double)

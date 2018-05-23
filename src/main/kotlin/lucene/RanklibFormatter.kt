@@ -6,7 +6,7 @@ import java.io.File
 import java.util.*
 import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
-import query.QueryRetriever
+import lucene.QueryRetriever
 import utils.PID
 import utils.getIndexSearcher
 import utils.pmap
@@ -17,7 +17,7 @@ import kotlin.concurrent.withLock
  * Class: ParagraphContainer
  * Description: Represents a scored paragraph (from TopDocs).
  * @param pid: Paragraph Id (obtained from Lucene index)
- * @param qid: Query ID (index of query that yielded the TopDocs)
+ * @param qid: Query ID (index of lucene that yielded the TopDocs)
  * @param isRelevant: whether or not this is a relevant paragraph (obtained from qrels)
  * @param features: Scores (from scoring functions) add added to this array for use in reweighting and rescoring
  * @param docId: Document id that this paragraph belongs to
@@ -43,8 +43,8 @@ data class ParagraphContainer(val pid: String, val qid: Int,
 
 /**
  * Class: QueryContainer
- * Description: One is created for each of the query strings in the query .cbor file.
- *              Stores corresponding query string and TopDocs (obtained from BM25)
+ * Description: One is created for each of the lucene strings in the lucene .cbor file.
+ *              Stores corresponding lucene string and TopDocs (obtained from BM25)
  */
 data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>) {
 }
@@ -64,21 +64,21 @@ data class Feature(val score: Double, val weight: Double) {
 private fun sanitizeDouble(d: Double): Double { return if (d.isInfinite() || d.isNaN()) 0.0 else d }
 
 /**
- * Enum: query.NormType
+ * Enum: lucene.NormType
  * Description: Determines if the the values of an added feature should be normalized
  */
 enum class NormType {
     NONE,           // No normalization should be used
-    SUM,            // Value is divided by total sum of all values in query
-    ZSCORE,         // Zscore is calculated for all values in query
+    SUM,            // Value is divided by total sum of all values in lucene
+    ZSCORE,         // Zscore is calculated for all values in lucene
     LINEAR          // Value is normalized to: (value - min) / (max - min)
 }
 
 /**
- * Class: query.KotlinRanklibFormatter
+ * Class: lucene.KotlinRanklibFormatter
  * Description: Used to apply scoring functions to queries (from .cbor file) and print results as features.
  *              The results file is compatible with RankLib.
- * @param queries: List of query string/Topdocs (obtained by QueryRetriever)
+ * @param queries: List of lucene string/Topdocs (obtained by QueryRetriever)
  * @param qrelLoc: Location of the .qrels file (if none is given, then paragraphs won't be marked as relevant)
  * @param indexSearcher: An IndexSearcher for the Lucene index directory we will be querying.
  */
@@ -95,7 +95,7 @@ class KotlinRanklibFormatter(queryLocation: String,
     val queryRetriever = QueryRetriever(indexSearcher)
     val queries = queryRetriever.getSectionQueries(queryLocation)
 
-    // If a qrel filepath was given, reads file and creates a set of query/paragraph pairs for relevancies
+    // If a qrel filepath was given, reads file and creates a set of lucene/paragraph pairs for relevancies
     private val relevancies =
             if (qrelLoc == "") null
             else
@@ -105,7 +105,7 @@ class KotlinRanklibFormatter(queryLocation: String,
                     .map { it.split(" ").let { it[0] to it[2] } }
                     .toSet()
 
-    // Maps queries into query containers (stores paragraph and feature information)
+    // Maps queries into lucene containers (stores paragraph and feature information)
     private val queryContainers =
         queries.mapIndexed {index,  (query, tops) ->
             val containers = tops.scoreDocs.map { sc ->
@@ -157,7 +157,7 @@ class KotlinRanklibFormatter(queryLocation: String,
 
     /**
      * Function: normalizeResults
-     * Description: Normalizes a list of doubles according to the query.NormType
+     * Description: Normalizes a list of doubles according to the lucene.NormType
      * @see NormType
      */
     private fun normalizeResults(values: List<Double>, normType: NormType): List<Double> {
@@ -171,26 +171,26 @@ class KotlinRanklibFormatter(queryLocation: String,
 
     /**
      * Function: addFeature
-     * Description: Accepts a functions that take a string (query string) and TopDocs (from BM25 query)
+     * Description: Accepts a functions that take a string (lucene string) and TopDocs (from BM25 lucene)
      *              The function must return a list of Doubles in the same order as the documents they score
      *              The values are stored as a feature for later reranking or for creating a RankLib file.
      *
      * Note: The function, f, is mapped onto all of the queries in parallel. Make sure it is thread-safe.
      *
      * @param f: Function (or method reference) that scores each document in TopDocs and returns it as a list of doubles
-     * @param normType: query.NormType determines the type of normalization (if any) to apply to the new document scores.
+     * @param normType: lucene.NormType determines the type of normalization (if any) to apply to the new document scores.
      * @param weight: The final list of doubles is multiplies by this weight
      */
     fun addFeature(f: (String, TopDocs, IndexSearcher) -> List<Double>, weight:Double = 1.0,
                    normType: NormType = NormType.NONE) {
 
-        val bar = ProgressBar("query.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
+        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
         val lock = ReentrantLock()
 
         queryContainers
             .pmap { (query, tops, paragraphs) ->
-                    // Using scoring function, score each of the paragraphs in our query result
+                    // Using scoring function, score each of the paragraphs in our lucene result
                     val featureResult: List<Double> =
                             f(query, tops, indexSearcher).run { normalizeResults(this, normType) }
 
@@ -210,7 +210,7 @@ class KotlinRanklibFormatter(queryLocation: String,
 
     /**
      * Function: addBM25
-     * Description: Adds results of the BM25 query as a feature. Since the scores are already contained in the TopDocs,
+     * Description: Adds results of the BM25 lucene as a feature. Since the scores are already contained in the TopDocs,
      *              this simply extracts them as a list of doubles.
      * @see addFeature
      */
@@ -248,7 +248,7 @@ class KotlinRanklibFormatter(queryLocation: String,
 
     /**
      * Function: writeQueriesToFile
-     * Desciption: Uses query formatter to write current queries to trec-car compatible file
+     * Desciption: Uses lucene formatter to write current queries to trec-car compatible file
      * @param outName: Name of the file to write the results to.
      */
     fun writeQueriesToFile(outName: String) {

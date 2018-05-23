@@ -22,10 +22,10 @@ import kotlin.math.ln
  */
 fun featAddStringDistanceFunction(query: String, tops: TopDocs, indexSearcher: IndexSearcher,
                                   dist: StringDistance): List<Double> {
-//        val tokens = retrieveSequence(query)
+//        val tokens = retrieveSequence(lucene)
     val tokens = AnalyzerFunctions.createTokenList(query, useFiltering = true)
 
-    // Map this over the score docs, taking the average similarity between query tokens and entities
+    // Map this over the score docs, taking the average similarity between lucene tokens and entities
     return tops.scoreDocs
         .map { scoreDoc ->
             //            val doc = formatter.indexSearcher.doc(scoreDoc.doc)
@@ -41,14 +41,14 @@ fun featAddStringDistanceFunction(query: String, tops: TopDocs, indexSearcher: I
 
 /**
  * Func: featSplitSim
- * Desc: Given a feature that scores according to query and TopDocs, reweights score based
+ * Desc: Given a feature that scores according to lucene and TopDocs, reweights score based
  *       on section.
  */
 fun featSplitSim(query: String, tops: TopDocs, indexSearcher: IndexSearcher,
                  func: (String, TopDocs, IndexSearcher) -> List<Double>,
                  secWeights: List<Double> = listOf(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)): List<Double> {
 
-    // Splits query into sections and turns into filtered token list
+    // Splits lucene into sections and turns into filtered token list
     val sections = query.split("/")
         .map { section -> AnalyzerFunctions
             .createTokenList(section, useFiltering = true)
@@ -69,7 +69,7 @@ fun featSplitSim(query: String, tops: TopDocs, indexSearcher: IndexSearcher,
 
 /**
  * Func: featSectionComponent
- * Desc: Reweights BM25 score of sections in query and returns a score that is a sum of these reweighted scores.
+ * Desc: Reweights BM25 score of sections in lucene and returns a score that is a sum of these reweighted scores.
  */
 fun featSectionComponent(query: String, tops: TopDocs, indexSearcher: IndexSearcher): List<Double> {
     // Parse into sections and turn into a list of boolean queries
@@ -96,7 +96,7 @@ fun featSectionComponent(query: String, tops: TopDocs, indexSearcher: IndexSearc
 /**
  * Func: featStringSimilarityComponent
  * Desc: Combines Jaccard Similarity, JaroWinkler Similarity, NormalizedLevenshstein, and SorensenDice coefficient
- *       by taking a weighted combined of these scores. The scores evaluate the similarity of the query's terms to
+ *       by taking a weighted combined of these scores. The scores evaluate the similarity of the lucene's terms to
  *       that of the spotlight entities in each of the documents.
  */
 fun featStringSimilarityComponent(query: String, tops: TopDocs, indexSearcher: IndexSearcher): List<Double> {
@@ -104,7 +104,7 @@ fun featStringSimilarityComponent(query: String, tops: TopDocs, indexSearcher: I
     val sims = listOf<StringDistance>(Jaccard(), JaroWinkler(), NormalizedLevenshtein(), SorensenDice())
     val simTrials = weights.zip(sims)
 
-    // Apply list of string similarity functions to query and documents get results
+    // Apply list of string similarity functions to lucene and documents get results
     val simResults = simTrials.map { (weight, sim) ->
         featAddStringDistanceFunction(query, tops, indexSearcher, sim)
             .map { score -> score * weight }
@@ -127,7 +127,7 @@ fun featSDM(query: String, tops: TopDocs, indexSearcher: IndexSearcher,
             gramAnalyzer: KotlinGramAnalyzer, alpha: Double,
             gramType: GramStatType? = null): List<Double> {
 
-    // Parse query and retrieve a language model for it
+    // Parse lucene and retrieve a language model for it
     val tokens = AnalyzerFunctions.createTokenList(query, useFiltering = true)
     val cleanQuery = tokens.toList().joinToString(" ")
     val queryCorpus = gramAnalyzer.getCorpusStatContainer(cleanQuery)

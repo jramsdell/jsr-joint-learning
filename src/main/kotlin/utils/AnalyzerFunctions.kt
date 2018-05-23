@@ -20,7 +20,7 @@ private fun buildStopWords(): CharArraySet {
 
 /**
  * Static Class: AnalyzerFunctions
- * Desc: Contains a collection of tokenizing / query building functions used by other scripts.
+ * Desc: Contains a collection of tokenizing / lucene building functions used by other scripts.
  */
 object AnalyzerFunctions {
     private val standardAnalyzer = StandardAnalyzer()
@@ -31,9 +31,9 @@ object AnalyzerFunctions {
 
     /**
      * Class: createTokenSequence
-     * Description: Given a query string, tokenizes it and returns a list of String tokens
+     * Description: Given a lucene string, tokenizes it and returns a list of String tokens
      * @param analyzerType: Type of analyzer (english or standard)
-     * @param useFiltering: If true, filter out numbers, enwiki: and other noise from query
+     * @param useFiltering: If true, filter out numbers, enwiki: and other noise from lucene
      * @return Sequence<String>
      * @see AnalyzerType
      */
@@ -66,7 +66,7 @@ object AnalyzerFunctions {
 
     /**
      * Class: createQuery
-     * Description: Given a query string, will create a boolean query by breaking it into tokens.
+     * Description: Given a lucene string, will create a boolean lucene by breaking it into tokens.
      * @return BooleanQuery: (tokens joined with OR clauses)
      */
     fun createQuery(query: String,

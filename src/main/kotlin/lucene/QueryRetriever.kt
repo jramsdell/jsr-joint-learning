@@ -1,18 +1,14 @@
 @file:JvmName("KotQueryRetriever")
-package query
+package lucene
 
 import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import org.apache.lucene.analysis.standard.StandardAnalyzer
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
-import org.apache.lucene.index.Term
 import org.apache.lucene.search.*
 import utils.getIndexSearcher
 import java.io.BufferedWriter
 import java.io.File
-import java.io.StringReader
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.coroutines.experimental.buildSequence
 import utils.AnalyzerFunctions
 import utils.PID
 import utils.pmap
@@ -20,7 +16,7 @@ import utils.pmap
 /**
  * Class: QueryRetriever
  * Description: Used to make queries (using BM25) and to parse the results of queries.
- *              Takes an IndexSearcher (or path to an index) for the Lucene index it will query with.
+ *              Takes an IndexSearcher (or path to an index) for the Lucene index it will lucene with.
  */
 class QueryRetriever(val indexSearcher: IndexSearcher) {
     constructor(indexPath: String) : this(getIndexSearcher(indexPath))
@@ -31,7 +27,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher) {
     /**
      * Function: createQueryString
      * Description: Returns string to be used in querying.
-     * @param sectionPath: If non-empty, collapses sections into a single query string
+     * @param sectionPath: If non-empty, collapses sections into a single lucene string
      */
     fun createQueryString(page: Data.Page, sectionPath: List<Data.Section>): String =
             page.pageName + sectionPath.joinToString { section -> " " + section.heading  }
@@ -39,8 +35,8 @@ class QueryRetriever(val indexSearcher: IndexSearcher) {
 
     /**
      * Function: getPageQueries
-     * Description: Given a query location (.cbor file), queries Lucene index with page names.
-     * @return List of pairs (query string and the Top 100 documents obtained by doing the query)
+     * Description: Given a lucene location (.cbor file), queries Lucene index with page names.
+     * @return List of pairs (lucene string and the Top 100 documents obtained by doing the lucene)
      */
     fun getPageQueries(queryLocation: String): List<Pair<String, TopDocs>> =
             DeserializeData.iterableAnnotations(File(queryLocation).inputStream())
@@ -56,8 +52,8 @@ class QueryRetriever(val indexSearcher: IndexSearcher) {
 
     /**
      * Function: getSectionQueries
-     * Description: Given a query location (.cbor file), queries Lucene index with page name and section names.
-     * @return List of pairs (query string and the Top 100 documents obtained by doing the query)
+     * Description: Given a lucene location (.cbor file), queries Lucene index with page name and section names.
+     * @return List of pairs (lucene string and the Top 100 documents obtained by doing the lucene)
      */
     fun getSectionQueries(queryLocation: String): List<Pair<String, TopDocs>> {
         val seen = ConcurrentHashMap<String, String>()
@@ -84,7 +80,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher) {
 
     /**
      * Function: writeRankingsToFile
-     * Description: Writes formatted query results to a file (for use with trec_eval)
+     * Description: Writes formatted lucene results to a file (for use with trec_eval)
      */
     private fun writeRankingsToFile(tops: TopDocs, queryId: String, writer: BufferedWriter, queryNumber: Int) {
         (0 until tops.scoreDocs.size).forEach { index ->
@@ -100,7 +96,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher) {
 
     /**
      * Function: writeQueriesToFile
-     * Description: For each pair of query name and top 100 documents, write the results to a file.
+     * Description: For each pair of lucene name and top 100 documents, write the results to a file.
      * @see writeRankingsToFile
      */
     fun writeQueriesToFile(queries: List<Pair<String, TopDocs>>, out: String = "results.txt") {
