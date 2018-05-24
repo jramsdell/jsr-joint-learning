@@ -70,58 +70,8 @@ fun <A, B: Number>Map<A, B>.normalize(): Map<A, Double> {
 }
 
 
-fun Iterable<Double>.smooth2()  =
-    windowed(2, 1, false)
-        .map { window -> window.average() }
-//        .map { window -> abs(window[0] * window[1])  }
-        .run {
-            val total = sum()
-            map { averagedValue -> averagedValue / total }
-        }
 
-fun Iterable<Double>.smooth5()  =
-        windowed(3, 1, false)
-            .map { window -> abs(window[0] * window[1] * window[2]) / (window[0] + window[1] + window[2])    }
-            .run {
-                val total = sum()
-                map { averagedValue -> averagedValue / total }
-            }
 
-fun Iterable<Double>.smooth6()  =
-        windowed(2, 1, false)
-            .map { window -> abs(window[0] * window[1]) / (window[0] + window[1])    }
-            .run {
-                val total = sum()
-                map { averagedValue -> averagedValue / total }
-            }
-
-fun Iterable<Double>.smooth3(): List<Double> {
-    val items = toList()
-    val product = items.flatMap { first ->
-        items.map { second ->
-            (first * second) / (first + second)
-        } }
-        .chunked(items.size)
-        .map { chunk -> chunk.average() }
-//        .shuffled(sharedRand)
-////        .mapIndexed { index, chunk -> 0.5 * chunk + 0.5 * items[index] }
-//        .mapIndexed { index, chunk -> chunk     }
-        .mapIndexed { index, chunk -> 0.5 * chunk * items[index] + items[index] * 0.5    }
-
-    return product
-//    val total = product.sum()
-//    return product.map { it / total }
-}
-
-fun Iterable<Double>.smooth(): List<Double>  {
-    val items = toList()
-    val mean = items.average()
-    val variantMap = items.map {abs(it - mean)}
-    val total = variantMap.sum()
-//    return variantMap.map {value -> value / total}
-    return items.smooth2()
-
-}
 
 fun Iterable<Double>.normalize(): List<Double> {
     val items = toList()

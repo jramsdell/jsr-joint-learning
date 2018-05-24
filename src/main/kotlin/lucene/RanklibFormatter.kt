@@ -7,11 +7,18 @@ import java.util.*
 import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
 import lucene.QueryRetriever
-import utils.PID
-import utils.getIndexSearcher
-import utils.pmap
+import org.apache.lucene.search.BooleanQuery
+import utils.*
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+
+data class QueryData(
+        val queryString: String,
+        val queryTokens: List<String>,
+        val queryBoolean: BooleanQuery,
+        val queryBooleanTokens: List<BooleanQuery>,
+        val indexSearcher: IndexSearcher,
+        val tops: TopDocs)
 
 /**
  * Class: ParagraphContainer
@@ -46,8 +53,8 @@ data class ParagraphContainer(val pid: String, val qid: Int,
  * Description: One is created for each of the lucene strings in the lucene .cbor file.
  *              Stores corresponding lucene string and TopDocs (obtained from BM25)
  */
-data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>) {
-}
+data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>)
+//    val queryData: QueryData) {
 
 
 /**
@@ -119,7 +126,9 @@ class KotlinRanklibFormatter(queryLocation: String,
                         features = arrayListOf())
             }
             QueryContainer(query = query, tops = tops, paragraphs = containers)
+//            queryData = createQueryData(query, tops))
         }.toList()
+
 
 
     /**
@@ -169,6 +178,15 @@ class KotlinRanklibFormatter(queryLocation: String,
         }
     }
 
+//    private fun createQueryData(query: String, tops: TopDocs): QueryData {
+//        val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
+//        val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
+//        val tokens = AnalyzerFunctions.createTokenList(query)
+//        val data = QueryData(queryString = query, tops = tops, queryBoolean = booleanQuery,
+//                queryBooleanTokens = booleanQueryTokens, queryTokens = tokens, indexSearcher = indexSearcher)
+//        return data
+//    }
+
     /**
      * Function: addFeature
      * Description: Accepts a functions that take a string (lucene string) and TopDocs (from BM25 lucene)
@@ -187,6 +205,7 @@ class KotlinRanklibFormatter(queryLocation: String,
         val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
         val lock = ReentrantLock()
+        val curSim = indexSearcher.getSimilarity(true)
 
         queryContainers
             .pmap { (query, tops, paragraphs) ->
@@ -201,7 +220,32 @@ class KotlinRanklibFormatter(queryLocation: String,
                                    paragraph.features += Feature(score, weight)
                 }}
         bar.stop()
+        indexSearcher.setSimilarity(curSim)
     }
+
+//    fun addFeature2(f: (QueryData) -> List<Double>, weight:Double = 1.0,
+//                   normType: NormType = NormType.NONE) {
+//
+//        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
+//        bar.start()
+//        val lock = ReentrantLock()
+//        val curSim = indexSearcher.getSimilarity(true)
+//
+//        queryContainers
+//            .pmap { (_, _, paragraphs, queryData) ->
+//                // Using scoring function, score each of the paragraphs in our lucene result
+//                val featureResult: List<Double> =
+//                        f(queryData).run { normalizeResults(this, normType) }
+//
+//                lock.withLock { bar.step() }
+//                featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
+//            .forEach { results ->
+//                results.forEach { (score, paragraph) ->
+//                    paragraph.features += Feature(score, weight)
+//                }}
+//        bar.stop()
+//        indexSearcher.setSimilarity(curSim)
+//    }
 
 
     private fun bm25(query: String, tops:TopDocs, indexSearcher: IndexSearcher): List<Double> {

@@ -119,10 +119,10 @@ data class LanguageStatContainer(
 
 
 /**
- * Class: KotlinGramAnalyzer
+ * Class: GramAnalyzer
  * Desc: Given a corpus indexed with -grams, calculates language model statistics.
  */
-class KotlinGramAnalyzer(val indexSearcher: IndexSearcher) {
+class GramAnalyzer(val indexSearcher: IndexSearcher) {
     constructor(indexLoc: String) : this(getIndexSearcher(indexLoc))
     val analyzer = EnglishAnalyzer()
 

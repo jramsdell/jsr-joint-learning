@@ -7,6 +7,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
 import org.apache.lucene.document.TextField
+import org.apache.lucene.index.IndexWriter
 import utils.AnalyzerFunctions
 import utils.getIndexWriter
 import java.io.BufferedInputStream
@@ -22,19 +23,19 @@ import utils.forEachParallel
 
 
 /**
- * Class: KotlinGram
+ * Class: GramIndexer
  * Desc: This class is responsible for extracting unigrams, bigrams, and windowed bigrams from the corpus.
  */
-class KotlinGram(filename: String) {
-    val indexWriter = getIndexWriter(filename)
+class GramIndexer(val indexWriter: IndexWriter) {
+//    val indexWriter = getIndexWriter(filename)
 
     /**
      * Function: doIndex
      * Desc: Given the content of a paragraph, indexes unigrams, bigrams, and windowed bigrams.
      */
-    private fun doIndex(parText: String) {
-        val tokens = AnalyzerFunctions.createTokenList(parText, ANALYZER_ENGLISH)
-        val doc = Document()
+    fun index(doc: Document, parText: String) {
+        val tokens = AnalyzerFunctions.createTokenList(parText, ANALYZER_ENGLISH_STOPPED)
+//        val doc = Document()
         val unigrams = ArrayList<String>()
         val bigrams = ArrayList<String>()
         val bigramWindows = ArrayList<String>()
@@ -52,7 +53,7 @@ class KotlinGram(filename: String) {
         doc.add(TextField("unigram", unigrams.joinToString(separator = " "), Field.Store.YES))
         doc.add(TextField("bigrams", bigrams.joinToString(separator = " "), Field.Store.YES))
         doc.add(TextField("bigram_windows", bigrams.joinToString(separator = " "), Field.Store.YES))
-        indexWriter.addDocument(doc)
+//        indexWriter.addDocument(doc)
 
     }
 
@@ -80,30 +81,30 @@ class KotlinGram(filename: String) {
     }
 
 
-    /**
-     * Class: indexGrams
-     * Desc: Given a paragraph corpus, creates an index of grams, bigrams, and windowed bigrams.
-     *       Only 30% of the available corpus is used (to save space).
-     */
-    fun indexGrams(filename: String) {
-        val f = File(filename).inputStream().buffered(16 * 1024)
-        val counter = AtomicInteger()
-
-        iterWrapper(f)
-            .forEachParallel { par ->
-
-                // This is just to keep track of how many pages we've parsed
-                counter.incrementAndGet().let {
-                    if (it % 100000 == 0) {
-                        println(it)
-                        indexWriter.commit()
-                    }
-                }
-
-                // Extract all of the anchors/entities and add them to database
-                doIndex(par)
-            }
-
-        indexWriter.close()
-    }
+//    /**
+//     * Class: indexGrams
+//     * Desc: Given a paragraph corpus, creates an index of grams, bigrams, and windowed bigrams.
+//     *       Only 30% of the available corpus is used (to save space).
+//     */
+//    fun indexGrams(filename: String) {
+//        val f = File(filename).inputStream().buffered(16 * 1024)
+//        val counter = AtomicInteger()
+//
+//        iterWrapper(f)
+//            .forEachParallel { par ->
+//
+//                // This is just to keep track of how many pages we've parsed
+//                counter.incrementAndGet().let {
+//                    if (it % 100000 == 0) {
+//                        println(it)
+//                        indexWriter.commit()
+//                    }
+//                }
+//
+//                // Extract all of the anchors/entities and add them to database
+//                doIndex(par)
+//            }
+//
+//        indexWriter.close()
+//    }
 }

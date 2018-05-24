@@ -1,21 +1,44 @@
 buildscript {
-    ext.kotlin_version = '1.2.10'
+    ext.kotlin_version = '1.2.41'
 
     repositories {
         mavenCentral()
+        jcenter()
+
+        maven { url "https://jitpack.io" }
+        maven {
+            url "http://dl.bintray.com/kyonifer/maven"
+            jcenter()
+        }
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.4'
     }
 }
 
 group 'jsr-joint-learning'
 version '1.0-SNAPSHOT'
 
+apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'kotlin'
 
 sourceCompatibility = 1.8
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'jsr-joint-learning',
+                'Implementation-Version': version,
+                'Main-Class': 'MainKt'
+    }
+}
+
+shadowJar {
+    baseName = 'program'
+    classifier = null
+    version = null
+}
 
 task rollJar(type: Jar) {
     manifest {
@@ -24,7 +47,9 @@ task rollJar(type: Jar) {
                 'Main-Class': 'MainKt'
     }
     baseName = project.name + '-target'
-    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
     with jar
 }
 
@@ -79,10 +104,7 @@ dependencies {
 
     //Misc
     compile "net.sourceforge.argparse4j:argparse4j:0.8.1"
-
-
-
-
+    compile "org.codehaus.plexus:plexus-archiver:2.2"
 }
 
 compileKotlin {
