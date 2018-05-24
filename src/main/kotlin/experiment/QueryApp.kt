@@ -1,7 +1,13 @@
 package experiment
 
+import features.document.TFIDF
+import features.document.featAddLuceneSimilarity
 import features.document.featSDM
 import features.document.featSplitSim
+import features.entity.featEntityCategory
+//import features.entity.featEntityCategory
+import features.entity.featEntityStringSim
+import features.entity.featQueryEntityToDocEntity
 import language.GramAnalyzer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
@@ -52,6 +58,8 @@ class QueryApp(val resources: HashMap<String, Any>) {
         formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
         formatter.addFeature({ query, tops, indexSearcher -> featSDM(query, tops, indexSearcher, hGram, 4.0) },
                 normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+        formatter.addFeature2(::featQueryEntityToDocEntity,
+                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 2.0)
     }
 
 
@@ -59,6 +67,27 @@ class QueryApp(val resources: HashMap<String, Any>) {
         formatter.addBM25(normType = NormType.ZSCORE)
     }
 
+    fun queryTFIDF(weights: List<Double>? = null) {
+        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
+//        formatter.addFeature2({ queryData -> featAddLuceneSimilarity(queryData, TFIDF)},
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+//        formatter.addFeature2(::featEntityStringSim,
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+        formatter.addFeature2(::featQueryEntityToDocEntity,
+                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+
+    }
+
+
+    fun queryEntity(weights: List<Double>? = null) {
+        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
+//        formatter.addFeature2({ queryData -> featAddLuceneSimilarity(queryData, TFIDF)},
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+//        formatter.addFeature2(::featEntityStringSim,
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+        formatter.addFeature2(::featEntityCategory,
+                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+    }
 
 
     // This part is used to auto-generate required arguments / help for the arg parser.
@@ -115,8 +144,14 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         }
 
                         method("query", "sectionSDM") { querySDMSection() }
-                        method("query", "sdm") { querySDM() }
+                        method("query", "sdm") { querySDM(weights = listOf(0.11506359501201444, 0.6050693368783704, 0.2798670681096152
+                            )) }
+                        method("train", "tfidf") { queryTFIDF() }
+                        method("query", "tfidf") { queryTFIDF(weights = listOf(0.683615, 0.3163842)) }
                         method("train", "sdm") { querySDM() }
+
+                        method("query", "entity") { queryEntity() }
+                        method("train", "entity") { queryEntity() }
 
                         method("train", "do_bm25") {
                             doBM25()

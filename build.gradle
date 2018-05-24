@@ -102,9 +102,17 @@ dependencies {
     // String functions
     compile "info.debatty:java-string-similarity:1.1.0"
 
+    // Json
+    compile "com.jsoniter:jsoniter:0.9.19"
+
     //Misc
     compile "net.sourceforge.argparse4j:argparse4j:0.8.1"
     compile "org.codehaus.plexus:plexus-archiver:2.2"
+    compile "com.github.jkcclemens:khttp:0.1.0"
+
+    // Database
+    compile "org.mapdb:mapdb:3.0.5"
+
 }
 
 compileKotlin {

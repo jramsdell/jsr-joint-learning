@@ -1,5 +1,7 @@
 package experiment
 
+import com.jsoniter.JsonIterator
+import khttp.post
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import java.io.File
@@ -8,6 +10,8 @@ import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
 import lucene.QueryRetriever
 import org.apache.lucene.search.BooleanQuery
+import org.json.JSONArray
+import org.json.JSONObject
 import utils.*
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -18,6 +22,7 @@ data class QueryData(
         val queryBoolean: BooleanQuery,
         val queryBooleanTokens: List<BooleanQuery>,
         val indexSearcher: IndexSearcher,
+        val entities: List<Pair<String, Double>>,
         val tops: TopDocs)
 
 /**
@@ -43,7 +48,8 @@ data class ParagraphContainer(val pid: String, val qid: Int,
     override fun toString(): String =
             "${if (isRelevant) 1 else 0} qid:$qid " +
                     (1..features.size).zip(features)
-                    .joinToString(separator = " ") { (id,feat) -> "$id:$feat" }
+                    .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
+                    " #docid=$pid"
 
 }
 
@@ -53,8 +59,8 @@ data class ParagraphContainer(val pid: String, val qid: Int,
  * Description: One is created for each of the lucene strings in the lucene .cbor file.
  *              Stores corresponding lucene string and TopDocs (obtained from BM25)
  */
-data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>)
-//    val queryData: QueryData) {
+data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
+    val queryData: QueryData)
 
 
 /**
@@ -114,19 +120,21 @@ class KotlinRanklibFormatter(queryLocation: String,
 
     // Maps queries into lucene containers (stores paragraph and feature information)
     private val queryContainers =
-        queries.mapIndexed {index,  (query, tops) ->
+//        queries.withIndex().map {index,  (query, tops) ->
+            queries.withIndex().pmap {index ->
+                val (query, tops) = index.value
             val containers = tops.scoreDocs.map { sc ->
                 val pid = indexSearcher.doc(sc.doc).get(PID)
 
                 ParagraphContainer(
                         pid = pid,
-                        qid = index + 1,
+                        qid = index.index + 1,
                         isRelevant = relevancies?.run { contains(Pair(query, pid)) } ?: false,
                         docId = sc.doc,
                         features = arrayListOf())
             }
-            QueryContainer(query = query, tops = tops, paragraphs = containers)
-//            queryData = createQueryData(query, tops))
+            QueryContainer(query = query, tops = tops, paragraphs = containers,
+            queryData = createQueryData(query, tops))
         }.toList()
 
 
@@ -178,14 +186,15 @@ class KotlinRanklibFormatter(queryLocation: String,
         }
     }
 
-//    private fun createQueryData(query: String, tops: TopDocs): QueryData {
-//        val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
-//        val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
-//        val tokens = AnalyzerFunctions.createTokenList(query)
-//        val data = QueryData(queryString = query, tops = tops, queryBoolean = booleanQuery,
-//                queryBooleanTokens = booleanQueryTokens, queryTokens = tokens, indexSearcher = indexSearcher)
-//        return data
-//    }
+    private fun createQueryData(query: String, tops: TopDocs): QueryData {
+        val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
+        val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
+        val tokens = AnalyzerFunctions.createTokenList(query)
+        val data = QueryData(queryString = query, tops = tops, queryBoolean = booleanQuery,
+                queryBooleanTokens = booleanQueryTokens, queryTokens = tokens, indexSearcher = indexSearcher,
+                entities = retrieveTagMeEntities(query))
+        return data
+    }
 
     /**
      * Function: addFeature
@@ -208,7 +217,7 @@ class KotlinRanklibFormatter(queryLocation: String,
         val curSim = indexSearcher.getSimilarity(true)
 
         queryContainers
-            .pmap { (query, tops, paragraphs) ->
+            .pmap { (query, tops, paragraphs, _) ->
                     // Using scoring function, score each of the paragraphs in our lucene result
                     val featureResult: List<Double> =
                             f(query, tops, indexSearcher).run { normalizeResults(this, normType) }
@@ -223,29 +232,29 @@ class KotlinRanklibFormatter(queryLocation: String,
         indexSearcher.setSimilarity(curSim)
     }
 
-//    fun addFeature2(f: (QueryData) -> List<Double>, weight:Double = 1.0,
-//                   normType: NormType = NormType.NONE) {
-//
-//        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
-//        bar.start()
-//        val lock = ReentrantLock()
-//        val curSim = indexSearcher.getSimilarity(true)
-//
-//        queryContainers
-//            .pmap { (_, _, paragraphs, queryData) ->
-//                // Using scoring function, score each of the paragraphs in our lucene result
-//                val featureResult: List<Double> =
-//                        f(queryData).run { normalizeResults(this, normType) }
-//
-//                lock.withLock { bar.step() }
-//                featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
-//            .forEach { results ->
-//                results.forEach { (score, paragraph) ->
-//                    paragraph.features += Feature(score, weight)
-//                }}
-//        bar.stop()
-//        indexSearcher.setSimilarity(curSim)
-//    }
+    fun addFeature2(f: (QueryData) -> List<Double>, weight:Double = 1.0,
+                   normType: NormType = NormType.NONE) {
+
+        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
+        bar.start()
+        val lock = ReentrantLock()
+        val curSim = indexSearcher.getSimilarity(true)
+
+        queryContainers
+            .pmap { (_, _, paragraphs, queryData) ->
+                // Using scoring function, score each of the paragraphs in our lucene result
+                val featureResult: List<Double> =
+                        f(queryData).run { normalizeResults(this, normType) }
+
+                lock.withLock { bar.step() }
+                featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
+            .forEach { results ->
+                results.forEach { (score, paragraph) ->
+                    paragraph.features += Feature(score, weight)
+                }}
+        bar.stop()
+        indexSearcher.setSimilarity(curSim)
+    }
 
 
     private fun bm25(query: String, tops:TopDocs, indexSearcher: IndexSearcher): List<Double> {
@@ -299,3 +308,37 @@ class KotlinRanklibFormatter(queryLocation: String,
         queryRetriever.writeQueriesToFile(queries, outName)
     }
 }
+
+private fun retrieveTagMeEntities(content: String): List<Pair<String, Double>> {
+    return emptyList()
+}
+
+fun retrieveTagMeEntities2(content: String): List<Pair<String, Double>> {
+    val tok = "7fa2ade3-fce7-4f4a-b994-6f6fefc7e665-843339462"
+    val url = "https://tagme.d4science.org/tagme/tag"
+    val p = post(url, data = mapOf(
+            "gcube-token" to tok,
+            "text" to content
+    ))
+    val results = JsonIterator.deserialize(p.content).get("annotations")
+//    val results = p.jsonObject.getJSONArray("annotations")
+    return  results
+//        .mapNotNull { result -> (result as JSONObject).run {
+//            if (getDouble("rho") <= 0.2) null
+//            else getString("title").replace(" ", "_") to getDouble("rho")
+//        } }
+        .map { result -> result.get("title").toString().replace(" ", "_") to result.get("rho").toDouble()}
+        .filter { (_, rho) -> rho > 0.2 }
+//        .mapNotNull { result -> result.run {
+//            if (get("rho").toDouble() <= 0.2) null
+//            else get("title").toString().replace(" ", "_") to get("rho").toDouble()
+//        } }
+//        .filter { result -> (result as JSONObject).getDouble("rho") > 0.2 }
+//        .map { result -> (result as JSONObject) .getString("title")
+//            .replace(" ", "_")}
+}
+
+//fun main(args: Array<String>) {
+//    retrieveTagMeEntities("Computer science is a thing that people who like computers do.")
+//        .apply(::println)
+//}

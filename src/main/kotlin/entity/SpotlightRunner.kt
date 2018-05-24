@@ -1,13 +1,11 @@
 @file:JvmName("KotSpotlightRunner")
-package lucene
+package entity
 
 import org.apache.commons.io.FileUtils
 import org.codehaus.plexus.archiver.tar.TarGZipUnArchiver
 import org.codehaus.plexus.logging.console.ConsoleLoggerManager
-import org.codehaus.plexus.util.FileUtils.mkdir
 import java.io.File
 import java.net.URL
-import java.nio.file.Files.exists
 
 
 /**

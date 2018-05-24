@@ -1,7 +1,7 @@
 package lucene
 
-import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
+import entity.SpotlightEntityLinker
 import language.GramIndexer
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
@@ -17,7 +17,7 @@ import kotlin.coroutines.experimental.buildIterator
 
 class LuceneIndexer(val indexLoc: String, val corpusLoc: String, val serverLocation: String) {
     val indexWriter = getIndexWriter(indexLoc)
-    val linker = EntityLinker(serverLocation)
+    val linker = SpotlightEntityLinker(serverLocation)
     val gramIndexer = GramIndexer(indexWriter)
 
     private fun iterWrapper(f: BufferedInputStream): Iterable<Pair<String, String>> {

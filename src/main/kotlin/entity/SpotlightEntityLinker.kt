@@ -1,5 +1,5 @@
 @file:JvmName("KotEntityLinker")
-package lucene
+package entity
 
 import org.jsoup.Jsoup
 import java.io.IOException
@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom
  * Description: Queries spotlight server with string and retrieve list of linked entities.
  * @return List of linked entities (strings). Empty if no entities were linked or if errors were encountered.
  */
-class EntityLinker(serverLocation: String) {
+class SpotlightEntityLinker(serverLocation: String) {
     val url = "http://localhost:9310/jsr-spotlight/annotate"        // Hardcoded url to local server
 
 
