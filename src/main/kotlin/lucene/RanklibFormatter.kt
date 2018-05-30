@@ -22,7 +22,9 @@ data class QueryData(
         val queryBoolean: BooleanQuery,
         val queryBooleanTokens: List<BooleanQuery>,
         val indexSearcher: IndexSearcher,
-        val entities: List<Pair<String, Double>>,
+        val queryEntities: List<Pair<String, Double>>,
+        val documentEntities: List<List<String>>,
+        val candidateEntities: List<Pair<String, ArrayList<Double>>>,
         val tops: TopDocs)
 
 /**
@@ -190,9 +192,24 @@ class KotlinRanklibFormatter(queryLocation: String,
         val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
         val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
         val tokens = AnalyzerFunctions.createTokenList(query)
+
+        // Prefetch document entities
+        val documentEntities = tops.scoreDocs.map { scoreDoc ->
+            indexSearcher.doc(scoreDoc.doc).getValues("spotlight").toList()
+        }
+
+        val candidateEntities = documentEntities
+            .flatten()
+            .toSet()
+            .toList()
+            .sorted()
+            .map { it to ArrayList<Double>() }
+
         val data = QueryData(queryString = query, tops = tops, queryBoolean = booleanQuery,
                 queryBooleanTokens = booleanQueryTokens, queryTokens = tokens, indexSearcher = indexSearcher,
-                entities = retrieveTagMeEntities(query))
+                queryEntities = retrieveTagMeEntities(query),
+                documentEntities = documentEntities,
+                candidateEntities = candidateEntities)
         return data
     }
 

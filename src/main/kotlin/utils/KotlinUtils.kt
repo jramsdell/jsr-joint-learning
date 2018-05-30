@@ -12,6 +12,7 @@ import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.store.FSDirectory
+import java.io.IOException
 
 //import org.apache.lucene.analysis.en.EnglishAnalyzer
 //import org.apache.lucene.analysis.standard.StandardAnalyzer
@@ -26,6 +27,7 @@ import org.apache.lucene.store.FSDirectory
 import java.lang.Math.abs
 import java.nio.file.Paths
 import java.util.*
+import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.log2
 import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
@@ -115,11 +117,18 @@ fun getIndexWriter(indexLocation: String): IndexWriter {
     val indexPath = Paths.get(indexLocation)
     val indexDir = FSDirectory.open(indexPath)
     val conf = IndexWriterConfig(StandardAnalyzer())
-        .apply { openMode = IndexWriterConfig.OpenMode.CREATE }
+        .apply { openMode = IndexWriterConfig.OpenMode.CREATE_OR_APPEND }
     return IndexWriter(indexDir, conf)
 }
 
-
+inline fun<A> doIORequest(retryAttempts: Int = 5, retryDelay: Long = 100, requestFunction: () -> A): A? {
+    (0 until retryAttempts).forEach {
+        try {
+            return requestFunction()
+        } catch (e: IOException) { Thread.sleep(ThreadLocalRandom.current().nextLong(retryDelay)) }
+    }
+    return null
+}
 
 
 // I don't know why the hell they don't have an identity function..

@@ -1,14 +1,14 @@
 package experiment
 
+import entity.EntityDatabase
 import features.document.TFIDF
 import features.document.featAddLuceneSimilarity
 import features.document.featSDM
 import features.document.featSplitSim
-import features.entity.featEntityCategory
+import features.entity.*
 //import features.entity.featEntityCategory
-import features.entity.featEntityStringSim
-import features.entity.featQueryEntityToDocEntity
 import language.GramAnalyzer
+import lucene.TagMeSDMIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
@@ -73,9 +73,8 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
 //        formatter.addFeature2(::featEntityStringSim,
 //                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-        formatter.addFeature2(::featQueryEntityToDocEntity,
-                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-
+//        formatter.addFeature2(::featQueryEntityToDocEntity,
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
     }
 
 
@@ -85,8 +84,28 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
 //        formatter.addFeature2(::featEntityStringSim,
 //                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-        formatter.addFeature2(::featEntityCategory,
+//        val entityDatabase = EntityDatabase("entity_index/")
+//
+//        formatter.addFeature2({ queryData -> featRdf(queryData, entityDatabase)},
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+        formatter.addFeature2(::featEntitySurface,
                 normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+
+    }
+
+    fun doDb() {
+        val ed = EntityDatabase("index")
+        ed.createEntityDatabase(indexer)
+    }
+
+    fun doEntitySDMDB() {
+        val ed = TagMeSDMIndexer("index")
+        ed.doTagMeIndexing()
+    }
+
+    fun doEntityDebug() {
+        val ed = TagMeSDMIndexer("index")
+        ed.debugDocuments()
     }
 
 
@@ -141,6 +160,18 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //                        method("train", "hier_ascent") { trainAscentMethods() }
                         method("query", "do_bm25") {
                             doBM25()
+                        }
+
+                        method("query", "do_db") {
+                            doDb()
+                        }
+
+                        method("query", "index_entity_sdm") {
+                            doEntitySDMDB()
+                        }
+
+                        method("query", "debug_entity_sdm") {
+                            doEntityDebug()
                         }
 
                         method("query", "sectionSDM") { querySDMSection() }

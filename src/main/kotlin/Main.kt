@@ -1,4 +1,5 @@
 import experiment.LuceneIndexerApp
+import experiment.ProximityIndexerApp
 import experiment.QueryApp
 import lucene.LuceneIndexer
 import net.sourceforge.argparse4j.ArgumentParsers
@@ -13,6 +14,7 @@ fun buildParser(): ArgumentParser {
     val mainParser: ArgumentParser = ArgumentParsers.newFor("program").build()
     val subparsers: Subparsers = mainParser.addSubparsers()
 
+    ProximityIndexerApp.addExperiments(subparsers)
     LuceneIndexerApp.addExperiments(subparsers)
     QueryApp.addExperiments(subparsers)
 

@@ -3,10 +3,8 @@ package lucene
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import entity.SpotlightEntityLinker
 import language.GramIndexer
-import org.apache.lucene.document.Document
-import org.apache.lucene.document.Field
-import org.apache.lucene.document.StringField
-import org.apache.lucene.document.TextField
+import org.apache.lucene.document.*
+import org.apache.lucene.index.IndexableFieldType
 import utils.*
 import java.io.BufferedInputStream
 import java.io.File
@@ -18,7 +16,7 @@ import kotlin.coroutines.experimental.buildIterator
 class LuceneIndexer(val indexLoc: String, val corpusLoc: String, val serverLocation: String) {
     val indexWriter = getIndexWriter(indexLoc)
     val linker = SpotlightEntityLinker(serverLocation)
-    val gramIndexer = GramIndexer(indexWriter)
+    val gramIndexer = GramIndexer()
 
     private fun iterWrapper(f: BufferedInputStream): Iterable<Pair<String, String>> {
         val iter = DeserializeData.iterParagraphs(f)
@@ -45,6 +43,7 @@ class LuceneIndexer(val indexLoc: String, val corpusLoc: String, val serverLocat
             .forEach { entity: String ->
                 doc.add(StringField("spotlight", entity, Field.Store.YES))
             }
+//        doc.add(DoubleDocValuesField("confidence", 1.0))
 
         // Add bigrams
         gramIndexer.index(doc, paraText)
