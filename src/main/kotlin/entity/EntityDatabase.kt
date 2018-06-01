@@ -6,9 +6,12 @@ import me.tongfei.progressbar.ProgressBarStyle
 import org.apache.lucene.document.*
 import org.apache.lucene.index.MultiFields
 import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.TopDocs
 import utils.*
 import utils.lucene.getIndexSearcher
 import utils.lucene.getIndexWriter
+import utils.lucene.getOrDefault
+import utils.lucene.getValuesOrDefault
 import utils.misc.identity
 import utils.stats.normalize
 import java.net.URISyntaxException
@@ -17,6 +20,7 @@ import java.util.stream.StreamSupport
 import kotlin.coroutines.experimental.buildSequence
 
 data class EntityData(
+        val name: String,
         val abstract: String?,
         val rdf: Set<String>,
         val tfidf: Double,
@@ -24,6 +28,7 @@ data class EntityData(
         val boostedLinkProbability: Double,
         val queryScope: Double,
         val id: Int,
+        val docId: Int,
         val mutualDependency: Double,
         val unigram: Map<String, Double>,
         val bigrams: Map<String, Double>,
@@ -36,22 +41,24 @@ data class EntityData(
 
         private fun splitAndCount(doc: Document, field: String) =
             doc.get(field)
-                .split(" ")
-                .groupingBy(::identity)
-                .eachCount()
-                .normalize()
+                ?.split(" ")
+                ?.groupingBy(::identity)
+                ?.eachCount()
+                ?.normalize() ?: emptyMap()
 
 
-        fun createEntityData(doc: Document) = doc.run {
+        fun createEntityData(doc: Document, docId: Int) = doc.run {
             EntityData(
-                    abstract = get("abstract"),
+                    name = get("name"),
+                    abstract = get("abstract") ?: "",
                     rdf = getValues("rdf").toSet(),
-                    tfidf = get("tfidf").toDouble(),
-                    clarity = get("clarity").toDouble(),
-                    boostedLinkProbability = get("boosted_link_probability").toDouble(),
-                    queryScope = get("query_score").toDouble(),
-                    id = get("id").toInt(),
-                    mutualDependency = get("mutual_dependency").toDouble(),
+                    tfidf = get("tfidf")?.toDouble() ?: 0.0,
+                    clarity = get("clarity")?.toDouble() ?: 0.0,
+                    boostedLinkProbability = get("boosted_link_probability")?.toDouble() ?: 0.0,
+                    queryScope = get("query_score")?.toDouble() ?: 0.0,
+                    id = get("id")?.toInt() ?: 0,
+                    docId = docId,
+                    mutualDependency = get("mutual_dependency")?.toDouble() ?: 0.0,
                     unigram = splitAndCount(doc, "unigram"),
                     bigrams = splitAndCount(doc, "bigrams"),
                     bigram_windows = splitAndCount(doc, "bigram_windows")
@@ -67,12 +74,12 @@ class EntityDatabase(dbLoc: String = "") {
 
 
     fun getEntity(entity: String) =
-            getEntityDocId(entity)?.let { docId ->
-                val doc = searcher.doc(docId)
-                val abstract = doc.get("abstract")
-                val rdf = doc.getValues("rdf")
-                EntityData.createEntityData(doc)
-            }
+            getEntityDocId(entity)?.let(::getEntityByID)
+
+    fun getEntityByID(id: Int): EntityData {
+            val doc = searcher.doc(id)
+            return EntityData.createEntityData(doc, id)
+    }
 
     fun getEntityDocId(entity: String) =
         searcher.search(AnalyzerFunctions.createQuery(entity, field = "name"), 1)
@@ -81,16 +88,18 @@ class EntityDatabase(dbLoc: String = "") {
             ?.doc
 
 
-    fun doSearch(query: String) {
-        val booleanQuery = AnalyzerFunctions.createQuery(query, field = "abstract")
-        searcher.search(booleanQuery, 10)
-            .scoreDocs
-            .forEach { scoreDoc ->
-                val doc = searcher.doc(scoreDoc.doc)
-                println(scoreDoc.score)
-                println(doc.get("name"))
-            }
+    fun doSearch(query: String, nDocs: Int): TopDocs {
+        val booleanQuery = AnalyzerFunctions.createQuery(query, field = "abstract", useFiltering = true)
+        return searcher.search(booleanQuery, nDocs)
     }
+
+    fun getEntityDocuments(query: String, nDocs: Int): List<Document> {
+        val booleanQuery = AnalyzerFunctions.createQuery(query, field = "abstract", useFiltering = true)
+        return searcher.search(booleanQuery, nDocs)
+            .scoreDocs
+            .map { scoreDoc -> searcher.doc(scoreDoc.doc) }
+    }
+
 
     private fun addSurfaceForm(entity: String, doc: Document) {
         val surface = EntityStats.doSurfaceFormQuery(entity) ?: return
@@ -108,15 +117,6 @@ class EntityDatabase(dbLoc: String = "") {
         val abstract = KotlinSparql.extractSingleAbstract(entity) ?: ""
         doc.add(TextField("abstract", abstract, Field.Store.YES))
         gramIndexer.index(doc, abstract)
-
-//        // Now do entity linking
-//        try {
-//            val result = doIORequest { EntityStats.doTagMeQuery(abstract) } ?: return
-//            result.forEach { (linkedEntity, rho) ->
-//                doc.add(StringField("abstract_entities", linkedEntity, Field.Store.YES))
-//                doc.add(StringField("abstract_rhos", rho.toString(), Field.Store.NO))
-//            }
-//        } catch (e: JSONException) { return }
     }
 
 
@@ -159,38 +159,6 @@ class EntityDatabase(dbLoc: String = "") {
                 bar.stepBy(1000)
             }
         }
-//        termSeq.chunked(1000).forEach { chunk ->
-//            chunk.forEachParallel { entity ->
-//                val doc = Document()
-//                doc.add(TextField("name", entity, Field.Store.YES))
-//                val rdf = KotlinSparql.extractTypes(entity)
-//                rdf.forEach { r ->
-//                    doc.add(StringField("rdf", r, Field.Store.YES))
-//                }
-//
-//                // Now add surface form and abstracts
-//                try {
-//                    addSurfaceForm(entity, doc)
-//                } catch (e: URISyntaxException) {}
-//                addAndLinkAbstract(entity, doc, gramIndexer)
-//                writer.addDocument(doc)
-//            }
-//            writer.commit()
-//            bar.stepBy(1000)
-//        }
-
-//        termSeq.forEach{ entity ->
-//            val doc = Document()
-//            doc.add(TextField("name", entity, Field.Store.YES))
-//            val abstract = KotlinSparql.extractSingleAbstract(entity) ?: ""
-//            val rdf = KotlinSparql.extractTypes(entity)
-//            gramIndexer.index(doc, abstract)
-//            rdf.forEach { r ->
-//                doc.add(StringField("rdf", r, Field.Store.NO))
-//            }
-//            doc.add(TextField("abstract", abstract, Field.Store.YES))
-//            bar.step()
-//        }
         bar.stop()
         writer.close()
     }

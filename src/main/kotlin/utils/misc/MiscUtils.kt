@@ -31,3 +31,5 @@ fun <K,V>MutableMap<K,V>.removeAll(f: (key:K,value:V) -> Boolean) {
             remove(key)
         }
 }
+
+fun<A> filledArray(nSize: Int, fillValue: A ) = ArrayList<A>(nSize).apply { fill(fillValue) }

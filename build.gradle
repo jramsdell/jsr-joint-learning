@@ -35,7 +35,15 @@ jar {
 }
 
 apply plugin:'application'
-mainClassName = "experiment.ScratchpadKt"
+//mainClassName = "experiment.ScratchpadKt"
+mainClassName = "MainKt"
+
+run {
+    if (project.hasProperty("appArgs")) {
+        args Eval.me(appArgs)
+    }
+}
+
 
 shadowJar {
     baseName = 'program2'

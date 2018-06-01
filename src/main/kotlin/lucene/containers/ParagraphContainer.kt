@@ -1,5 +1,7 @@
 package lucene.containers
 
+import org.apache.lucene.document.Document
+
 /**
  * Class: ParagraphContainer
  * Description: Represents a scored paragraph (from TopDocs).
@@ -10,13 +12,23 @@ package lucene.containers
  * @param docId: Document id that this paragraph belongs to
  * @param score: Used when rescoring and reweighting the features
  */
-data class ParagraphContainer(val pid: String, val qid: Int,
-                              val isRelevant: Boolean, val features: ArrayList<FeatureContainer>,
-                              val docId: Int, var score:Double = 0.0) {
+data class ParagraphContainer(val pid: String,
+                              val qid: Int,
+                              val isRelevant: Boolean,
+                              val features: ArrayList<FeatureContainer>,
+                              val queryFeatures: ArrayList<FeatureContainer> = ArrayList(),
+                              val entityFeatures: ArrayList<FeatureContainer> = ArrayList(),
+                              val sharedFeatures: ArrayList<FeatureContainer> = ArrayList(),
+                              val docId: Int,
+                              val doc: Document,
+                              var score:Double = 0.0) {
 
     // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
     fun rescoreParagraph() {
-        score = features.sumByDouble(FeatureContainer::getAdjustedScore)
+        score = queryFeatures.sumByDouble(FeatureContainer::getAdjustedScore) +
+                entityFeatures.sumByDouble(FeatureContainer::getAdjustedScore) +
+                sharedFeatures.sumByDouble(FeatureContainer::getAdjustedScore)
+
     }
 
     // Convenience override: prints RankLib compatible lines

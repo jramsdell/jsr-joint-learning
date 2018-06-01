@@ -23,10 +23,12 @@ class QueryApp(val resources: HashMap<String, Any>) {
     val indexPath: String by resources
     val qrelPath: String by resources
     val queryPath: String by resources
+    val entityIndex: String by resources
+    val entityQrel: String by resources
 
     val out: String by resources
 
-    val formatter = KotlinRanklibFormatter(queryPath, qrelPath, indexPath)
+    val formatter = KotlinRanklibFormatter(queryPath, indexPath, qrelPath, entityIndex, entityQrel)
     val indexer = getIndexSearcher(indexPath)
 
 
@@ -56,8 +58,8 @@ class QueryApp(val resources: HashMap<String, Any>) {
         formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
         formatter.addFeature({ query, tops, indexSearcher -> featSDM(query, tops, indexSearcher, hGram, 4.0) },
                 normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-        formatter.addFeature2(::featQueryEntityToDocEntity,
-                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 2.0)
+//        formatter.addFeature2(::featQueryEntityToDocEntity,
+//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 2.0)
     }
 
 
@@ -197,6 +199,16 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
                     resource("qrelPath") {
                         help = "Location to qrel file. Not required for querying/creating runfiles. (default: '')"
+                        default = ""
+                    }
+
+                    resource("entityIndex") {
+                        help = "Location to entity Lucene index."
+                        default = ""
+                    }
+
+                    resource("entityQrel") {
+                        help = "Location to entity qrel file."
                         default = ""
                     }
 

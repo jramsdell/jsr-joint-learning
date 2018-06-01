@@ -8,4 +8,5 @@ import org.apache.lucene.search.TopDocs
  *              Stores corresponding lucene string and TopDocs (obtained from BM25)
  */
 data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
-                          val queryData: QueryData)
+                          val queryData: QueryData,
+                          val entities: List<EntityContainer>)

@@ -1,23 +1,24 @@
 package experiment
 
 import com.jsoniter.JsonIterator
+import entity.EntityDatabase
+import features.shared.SharedFeature
 import khttp.post
 import lucene.*
-import lucene.containers.FeatureContainer
-import lucene.containers.ParagraphContainer
-import lucene.containers.QueryContainer
-import lucene.containers.QueryData
+import lucene.containers.*
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import java.io.File
-import java.util.*
 import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
 import utils.*
 import utils.lucene.getIndexSearcher
 import utils.misc.CONTENT
-import utils.misc.PID
+import utils.misc.filledArray
+import utils.parallel.forEachParallel
 import utils.parallel.pmap
+import utils.stats.normalize
+import java.lang.Double.sum
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -33,55 +34,93 @@ enum class NormType {
     LINEAR          // Value is normalized to: (value - min) / (max - min)
 }
 
+enum class FeatureType {
+    PARAGRAPH,
+    ENTITY,
+    SHARED
+}
+
 /**
  * Class: lucene.KotlinRanklibFormatter
  * Description: Used to apply scoring functions to queries (from .cbor file) and print results as features.
  *              The results file is compatible with RankLib.
  * @param queries: List of lucene string/Topdocs (obtained by QueryRetriever)
- * @param qrelLoc: Location of the .qrels file (if none is given, then paragraphs won't be marked as relevant)
+ * @param paragraphQrelLoc: Location of the .qrels file (if none is given, then paragraphs won't be marked as relevant)
  * @param indexSearcher: An IndexSearcher for the Lucene index directory we will be querying.
  */
-class KotlinRanklibFormatter(queryLocation: String,
-                             qrelLoc: String, val indexSearcher: IndexSearcher) {
+class KotlinRanklibFormatter(paragraphQueryLoc: String,
+                             paragraphIndexLoc: String,
+                             paragraphQrelLoc: String,
+                             entityIndexLoc: String,
+                             entityQrelLoc: String = "",
+                             proximityIndexLoc: String = "",
+                             entityQueryLoc: String = ""
+                             ) {
 
     /**
      * @param indexLoc: A string pointing to location of index (used to create IndexSearcher if none is given)
      */
-    constructor(queryLocation: String, qrelLoc: String, indexLoc: String) :
-            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
+//    constructor(queryLocation: String, qrelLoc: String, indexLoc: String) :
+//            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
 
 
-    val queryRetriever = QueryRetriever(indexSearcher)
-    val queries = queryRetriever.getSectionQueries(queryLocation)
+    val paragraphSearcher = getIndexSearcher(paragraphIndexLoc)
+    val entitySearcher: IndexSearcher = getIndexSearcher(entityIndexLoc)
+    val proximitySearcher: IndexSearcher =
+            if (proximityIndexLoc == "") paragraphSearcher
+            else getIndexSearcher(proximityIndexLoc)
+    val entityDb = EntityDatabase(entityIndexLoc)
 
-    // If a qrel filepath was given, reads file and creates a set of lucene/paragraph pairs for relevancies
-    private val relevancies =
-            if (qrelLoc == "") null
-            else
-                File(qrelLoc)
-                    .bufferedReader()
-                    .readLines()
-                    .map { it.split(" ").let { it[0] to it[2] } }
-                    .toSet()
+    val queryRetriever = QueryRetriever(paragraphSearcher)
+    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc)
+    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc)
+    val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc )
 
-    // Maps queries into lucene containers (stores paragraph and feature information)
+
     private val queryContainers =
-//        queries.withIndex().map {index,  (query, tops) ->
-            queries.withIndex().pmap {index ->
-                val (query, tops) = index.value
-            val containers = tops.scoreDocs.map { sc ->
-                val pid = indexSearcher.doc(sc.doc).get(PID)
+        queries.withIndex().pmap { indexedQuery ->
+            val index = indexedQuery.index
+            val (query, tops) = indexedQuery.value
+            val paragraphContainers = paragraphRetriever.paragraphContainers[index]
+            val entityContainers = entityRetriever.entityContainers.get(index)
 
-                ParagraphContainer(
-                        pid = pid,
-                        qid = index.index + 1,
-                        isRelevant = relevancies?.run { contains(Pair(query, pid)) } ?: false,
-                        docId = sc.doc,
-                        features = arrayListOf())
-            }
-            QueryContainer(query = query, tops = tops, paragraphs = containers,
-            queryData = createQueryData(query, tops))
-        }.toList()
+            QueryContainer(
+                    query = query,
+                    tops = tops,
+                    paragraphs = paragraphContainers,
+                    entities = entityContainers,
+                    queryData = createQueryData(query, tops, paragraphContainers, entityContainers)
+            )
+        }
+
+//    // If a qrel filepath was given, reads file and creates a set of lucene/paragraph pairs for relevancies
+//    private val relevancies =
+//            if (qrelLoc == "") null
+//            else
+//                File(qrelLoc)
+//                    .bufferedReader()
+//                    .readLines()
+//                    .map { it.split(" ").let { it[0] to it[2] } }
+//                    .toSet()
+//
+//    // Maps queries into lucene containers (stores paragraph and feature information)
+//    private val queryContainers =
+////        queries.withIndex().map {index,  (query, tops) ->
+//            queries.withIndex().pmap {index ->
+//                val (query, tops) = index.value
+//            val containers = tops.scoreDocs.map { sc ->
+//                val pid = indexSearcher.doc(sc.doc).get(PID)
+//
+//                ParagraphContainer(
+//                        pid = pid,
+//                        qid = index.index + 1,
+//                        isRelevant = relevancies?.run { contains(Pair(query, pid)) } ?: false,
+//                        docId = sc.doc,
+//                        features = arrayListOf())
+//            }
+//            QueryContainer(query = query, tops = tops, paragraphs = containers,
+//            queryData = createQueryData(query, tops))
+//        }.toList()
 
 
 
@@ -132,28 +171,55 @@ class KotlinRanklibFormatter(queryLocation: String,
         }
     }
 
-    private fun createQueryData(query: String, tops: TopDocs): QueryData {
+    private fun createQueryData(query: String, tops: TopDocs,
+                                paragraphContainers: List<ParagraphContainer>,
+                                entityContainers: List<EntityContainer>): QueryData {
         val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
         val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
         val tokens = AnalyzerFunctions.createTokenList(query)
 
-        // Prefetch document entities
-        val documentEntities = tops.scoreDocs.map { scoreDoc ->
-            indexSearcher.doc(scoreDoc.doc).getValues("spotlight").toList()
+        val paragraphDocuments = paragraphContainers.map { it.doc }
+        val entityDocuments = entityContainers.map { it.doc }
+
+        val entityNameMap = entityContainers
+            .mapIndexed { index, entityContainer -> entityContainer.name to index  }
+            .toMap()
+
+        val entityToParMap = HashMap<Int, HashMap<Int, Double>>()
+        val parToEntityMap = HashMap<Int, HashMap<Int, Double>>()
+
+
+        paragraphContainers.forEachIndexed { paragraphIndex, paragraphContainer ->
+            val entityIndices = paragraphContainer.doc.getValues("spotlight")
+                .toList()
+                .mapNotNull { entity -> entityNameMap[entity]  }
+
+            val paragraphEntry = parToEntityMap.computeIfAbsent(paragraphIndex, { HashMap() })
+            entityIndices.forEach { entityIndex ->
+                val entityEntry = entityToParMap.computeIfAbsent(entityIndex, { HashMap() })
+                entityEntry.merge(paragraphIndex, 1.0, ::sum)
+                paragraphEntry.merge(entityIndex, 1.0, ::sum)
+            }
         }
 
-        val candidateEntities = documentEntities
-            .flatten()
-            .toSet()
-            .toList()
-            .sorted()
-            .map { it to ArrayList<Double>() }
 
-        val data = QueryData(queryString = query, tops = tops, queryBoolean = booleanQuery,
-                queryBooleanTokens = booleanQueryTokens, queryTokens = tokens, indexSearcher = indexSearcher,
+        val data = QueryData(
+                queryString = query,
+                tops = tops,
+                queryBoolean = booleanQuery,
+                queryBooleanTokens = booleanQueryTokens,
+                queryTokens = tokens,
+                paragraphSearcher = paragraphSearcher,
+                entitySearcher = entitySearcher,
+                proximitySearcher = proximitySearcher,
                 queryEntities = retrieveTagMeEntities(query),
-                documentEntities = documentEntities,
-                candidateEntities = candidateEntities)
+                paragraphDocuments = paragraphDocuments,
+                entityDocuments = entityDocuments,
+                entityToParagraph = entityToParMap.mapValues { it.value.normalize() },
+                paragraphToEntity = parToEntityMap.mapValues { it.value.normalize() },
+                entityContainers = entityContainers,
+                paragraphContainers = paragraphContainers,
+                entityDb = entityDb)
         return data
     }
 
@@ -175,13 +241,13 @@ class KotlinRanklibFormatter(queryLocation: String,
         val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
         val lock = ReentrantLock()
-        val curSim = indexSearcher.getSimilarity(true)
+        val curSim = paragraphSearcher.getSimilarity(true)
 
         queryContainers
             .pmap { (query, tops, paragraphs, _) ->
                     // Using scoring function, score each of the paragraphs in our lucene result
                     val featureResult: List<Double> =
-                            f(query, tops, indexSearcher).run { normalizeResults(this, normType) }
+                            f(query, tops, paragraphSearcher).run { normalizeResults(this, normType) }
 
                     lock.withLock { bar.step() }
                     featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
@@ -190,7 +256,7 @@ class KotlinRanklibFormatter(queryLocation: String,
                                    paragraph.features += FeatureContainer(score, weight)
                 }}
         bar.stop()
-        indexSearcher.setSimilarity(curSim)
+        paragraphSearcher.setSimilarity(curSim)
     }
 
     fun addFeature2(f: (QueryData) -> List<Double>, weight:Double = 1.0,
@@ -199,7 +265,7 @@ class KotlinRanklibFormatter(queryLocation: String,
         val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
         val lock = ReentrantLock()
-        val curSim = indexSearcher.getSimilarity(true)
+        val curSim = paragraphSearcher.getSimilarity(true)
 
         queryContainers
             .pmap { (_, _, paragraphs, queryData) ->
@@ -214,8 +280,104 @@ class KotlinRanklibFormatter(queryLocation: String,
                     paragraph.features += FeatureContainer(score, weight)
                 }}
         bar.stop()
-        indexSearcher.setSimilarity(curSim)
+        paragraphSearcher.setSimilarity(curSim)
     }
+
+    fun addFeature3(f: (QueryData, SharedFeature) -> Unit, featType: FeatureType, weight:Double = 1.0,
+                    normType: NormType = NormType.NONE) {
+
+        val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
+        bar.start()
+        val lock = ReentrantLock()
+        val curSim = paragraphSearcher.getSimilarity(true)
+
+        queryContainers.forEachParallel { qc ->
+
+            // Apply feature and update counter
+            val sf = SharedFeature( paragraphScores = filledArray(qc.paragraphs.size, 0.0),
+                    entityScores = filledArray(qc.entities.size, 0.0) )
+            f(qc.queryData, sf)
+            lock.withLock { bar.step() }
+
+            // Update containers with scores
+            when (featType) {
+                FeatureType.PARAGRAPH -> scoreEntitiesWithParagraphs(qc, sf)
+                FeatureType.ENTITY -> scoreParagraphsWithEntities(qc, sf)
+                else -> Unit
+            }
+
+            addBothScores(qc, sf, weight, normType)
+        }
+        bar.stop()
+        paragraphSearcher.setSimilarity(curSim)
+    }
+
+    private fun scoreParagraphsWithEntities(qc: QueryContainer, sf: SharedFeature) {
+        val entityToPar = qc.queryData.entityToParagraph
+        sf.entityScores.forEachIndexed { index, score ->
+            entityToPar[index]?.let { paragraphDistribution ->
+                paragraphDistribution.forEach { (parIndex, parProb) ->
+                    sf.paragraphScores[parIndex] += score * parProb
+                }
+            }
+        }
+    }
+
+    private fun scoreEntitiesWithParagraphs(qc: QueryContainer, sf: SharedFeature) {
+        val parToEntity = qc.queryData.paragraphToEntity
+        sf.paragraphScores.forEachIndexed { index, score ->
+            parToEntity[index]?.let { entityDistribution ->
+                entityDistribution.forEach { (entityIndex, entityProb) ->
+                    sf.paragraphScores[entityIndex] += score * entityProb
+                }
+            }
+        }
+    }
+
+    private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType) {
+        qc.entities
+            .zip(sf.entityScores.run { normalizeResults(this, normType) })
+            .forEach { (entity, score) ->
+                entity.queryFeatures += FeatureContainer(score, weight)}
+
+        qc.paragraphs
+            .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
+            .forEach { (paragraph, score) ->
+                paragraph.queryFeatures += FeatureContainer(score, weight)}
+    }
+
+
+
+
+
+
+//    fun addSharedFeature(f: (QueryData, SharedFeature) -> Unit, weight:Double = 1.0,
+//                         normType: NormType = NormType.NONE) {
+//
+//        val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
+//        bar.start()
+//        val lock = ReentrantLock()
+//        val curSim = indexSearcher.getSimilarity(true)
+//
+//        queryContainers
+//            .pmap { qc ->
+//                // Using scoring function, score each of the paragraphs in our lucene result
+//                val sf = SharedFeature(
+//                        paragraphs = filledArray(qc.paragraphs.size, 0.0),
+//                        entities = filledArray(qc.entities.size, 0.0)
+//                )
+//
+//                f(qc.queryData, sf)
+//
+//                lock.withLock { bar.step() }
+//                featureResult.zip(qc.entities) } // associate the scores with their corresponding paragraphs
+//            .forEach { results ->
+//                results.forEach { (score, entity) ->
+//                    entity.features += FeatureContainer(score, weight)
+//                }}
+//        bar.stop()
+//        indexSearcher.setSimilarity(curSim)
+//    }
 
 
     private fun bm25(query: String, tops:TopDocs, indexSearcher: IndexSearcher): List<Double> {
@@ -269,6 +431,7 @@ class KotlinRanklibFormatter(queryLocation: String,
         queryRetriever.writeQueriesToFile(queries, outName)
     }
 }
+
 
 private fun retrieveTagMeEntities(content: String): List<Pair<String, Double>> {
     return emptyList()

@@ -39,5 +39,6 @@ fun main(args: Array<String>) {
 //    val indexer =
 //            LuceneIndexer(indexLoc = indexLoc, corpusLoc = corpusLoc, serverLocation = serverLoc)
 //    indexer.index()
+    System.exit(0)
 }
 

@@ -1,7 +1,12 @@
 package language.containers
 
+import language.GramAnalyzer
 import language.GramStatType
+import language.GramStatType.*
+import org.apache.lucene.document.Document
+import utils.misc.identity
 import utils.stats.defaultWhenNotFinite
+import utils.stats.normalize
 import java.lang.Math.log
 
 /**
@@ -56,4 +61,23 @@ data class LanguageStatContainer(
                     bigramLikelihood = getLikelihood(query.bigramStat, alpha),
                     bigramWindowLikelihood = getLikelihood(query.bigramWindowStat, alpha)
             )
+
+    companion object {
+        fun createLanguageStatContainer(doc: Document) = doc.run {
+            LanguageStatContainer(
+                    unigramStat = getLanguageStat(doc.get(TYPE_UNIGRAM.indexField), TYPE_UNIGRAM),
+                    bigramStat = getLanguageStat(doc.get(TYPE_BIGRAM.indexField), TYPE_BIGRAM),
+                    bigramWindowStat = getLanguageStat(doc.get(TYPE_BIGRAM_WINDOW.indexField), TYPE_BIGRAM_WINDOW)
+            )
+        }
+
+        private fun getLanguageStat(grams: String, type: GramStatType): LanguageStat {
+            val counts = grams
+                .split(" ")
+                .groupingBy(::identity)
+                .eachCount()
+
+            return LanguageStat(counts, counts.normalize(), type)
+        }
+    }
 }

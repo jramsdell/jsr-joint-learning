@@ -18,7 +18,11 @@ import utils.misc.identity
  * Enum: GramStatType
  * Desc: Used to indicate what type of gram that this language statistic represents.
  */
-enum class GramStatType  { TYPE_UNIGRAM, TYPE_BIGRAM, TYPE_BIGRAM_WINDOW }
+enum class GramStatType(val indexField: String)  {
+    TYPE_UNIGRAM("unigram"),
+    TYPE_BIGRAM("bigrams"),
+    TYPE_BIGRAM_WINDOW("bigram_windows")
+}
 
 
 /**
@@ -84,21 +88,6 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
     }
 
 
-    /**
-     * Func: createLanguageStats
-     * Desc: Creates a language model for given -gram type (does not include collection statistics).
-     */
-    private fun createLanguageStats(counts: Map<String, Int>, type: GramStatType): LanguageStat {
-        val totalCount = counts.values
-            .sum()
-            .toDouble()
-
-        val freqs = counts
-            .mapValues { (gram, count) -> count / totalCount }
-            .toMap()
-
-        return LanguageStat(counts, freqs, type)
-    }
 
 
     /**
@@ -180,6 +169,25 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
         val biLike = queryLikelihoodContainer.bigramLikelihood
         val windLike = queryLikelihoodContainer.bigramWindowLikelihood
         return Triple(uniLike, biLike, windLike)
+    }
+
+    companion object {
+        /**
+         * Func: createLanguageStats
+         * Desc: Creates a language model for given -gram type (does not include collection statistics).
+         */
+        fun createLanguageStats(counts: Map<String, Int>, type: GramStatType): LanguageStat {
+            val totalCount = counts.values
+                .sum()
+                .toDouble()
+
+            val freqs = counts
+                .mapValues { (gram, count) -> count / totalCount }
+                .toMap()
+
+            return LanguageStat(counts, freqs, type)
+        }
+
     }
 }
 
