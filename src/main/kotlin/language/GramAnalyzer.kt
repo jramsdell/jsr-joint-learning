@@ -1,121 +1,24 @@
 @file:JvmName("KotGramAnalyzer")
 package language
 
+import language.containers.CorpusStat
+import language.containers.CorpusStatContainer
+import language.containers.LanguageStat
+import language.containers.LanguageStatContainer
 import org.apache.lucene.analysis.en.EnglishAnalyzer
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
-import utils.defaultWhenNotFinite
-import utils.getIndexSearcher
-import java.io.StringReader
-import java.lang.Math.log
-import kotlin.coroutines.experimental.buildSequence
+import utils.lucene.getIndexSearcher
 import utils.AnalyzerFunctions.AnalyzerType.*
-import utils.identity
+import utils.misc.identity
+
 
 /**
  * Enum: GramStatType
  * Desc: Used to indicate what type of gram that this language statistic represents.
  */
 enum class GramStatType  { TYPE_UNIGRAM, TYPE_BIGRAM, TYPE_BIGRAM_WINDOW }
-
-
-/**
- * Class: LanguageStat
- * Desc: Abstraction of a -gram statistic for a document or collection.
- * @param docTermCounts: Number of times each -gram appears.
- * @param docTermFreqs: Relative frequency of each -gram.
- * @param type: The type of -gram (unigram, bigram, or windowed bigram)
- */
-data class LanguageStat(val docTermCounts: Map<String, Int>,
-                        val docTermFreqs: Map<String, Double>,
-                        val type: GramStatType)
-
-
-/**
- * Class: LikelihoodContainer
- * Desc: Contains (log) likelihood values for each type of gram
- * @see LanguageStatContainer
- */
-data class LikelihoodContainer(val unigramLikelihood: Double,
-                               val bigramLikelihood: Double,
-                               val bigramWindowLikelihood: Double)
-
-/**
- * Class: CorpusStat
- * Desc: Represents a -gram model for a collection
- */
-data class CorpusStat(val corpusFrequency: Map<String, Double>, val corpusDoc: LanguageStat) {
-    val type: GramStatType
-        get() = corpusDoc.type
-}
-
-
-/**
- * Class: CorpusStatContainer
- * Desc: Convenience container for each type of -gram model for collection.
- */
-data class CorpusStatContainer(
-        val unigramStat: CorpusStat,
-        val bigramStat: CorpusStat,
-        val bigramWindowStat: CorpusStat
-)
-
-
-/**
- * Class: LanguageStatContainer
- * Desc: Represents language stats for a lucene or document.
- *       Contains a LanguageStat for each type of -gram.
- * @see LanguageStat
- * @see GramStatType
- */
-data class LanguageStatContainer(
-        val unigramStat: LanguageStat,
-        val bigramStat: LanguageStat,
-        val bigramWindowStat: LanguageStat) {
-
-
-    /**
-     * Func: getLikelihood
-     * Desc: Gets Dirichlet smoothed log likelihood given a lucene
-     * @param queryStat: Represents -gram model of a lucene, and of associated corpus.
-     * @param alpha: Used for smoothing
-     */
-    private fun getLikelihood(queryStat: CorpusStat, alpha: Double): Double {
-        val stat = when(queryStat.type) {
-            GramStatType.TYPE_UNIGRAM -> unigramStat
-            GramStatType.TYPE_BIGRAM -> bigramStat
-            GramStatType.TYPE_BIGRAM_WINDOW -> bigramWindowStat
-        }
-
-        val docLength = stat.docTermCounts.values.sum().toDouble()
-
-        val likelihood =
-                queryStat.corpusFrequency
-                    .map { (term, freq) ->
-//                        val pred = docSmooth * (stat.docTermFreqs[term] ?: 0.0) + corpusSmooth * freq
-                        val smoothCounts = (stat.docTermCounts[term] ?: 0) + freq * alpha
-//                        println("$term : $freq : ${queryStat.type}")
-                        log(smoothCounts / (docLength + alpha)).defaultWhenNotFinite(0.0)
-                    }
-                    .sum()
-
-        return likelihood
-    }
-
-    /**
-     * Func: getLikelihoodGivenQuery
-     * Desc: Calculates likelihood for each type of -gram statistic given a lucene.
-     * @see getLikelihood
-     */
-    fun getLikelihoodGivenQuery(query: CorpusStatContainer, alpha: Double = 1.0): LikelihoodContainer =
-            LikelihoodContainer(
-                    unigramLikelihood = getLikelihood(query.unigramStat, alpha),
-                    bigramLikelihood = getLikelihood(query.bigramStat, alpha),
-                    bigramWindowLikelihood = getLikelihood(query.bigramWindowStat, alpha)
-            )
-}
 
 
 /**
@@ -142,34 +45,6 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
                 bigramWindowStat = getStats(text, GramStatType.TYPE_BIGRAM_WINDOW)
         )
 
-    /**
-     * Func: extractNounsVerbs
-     * Desc: Using Kevin's NLP, extract nouns and verbs
-     */
-//    private fun extractNounsVerbs(text: String): Pair<String, String> {
-//        val nlDoc = NL_Processor.convertToNL_Document(text)
-//        val nouns = nlDoc.allNounsInPara.joinToString(" ")
-//        val verbs = nlDoc.allVerbsInPara.joinToString(" ")
-//        return nouns to verbs
-//    }
-
-//    /**
-//     * Func: getNatCorpusStatContainers
-//     * Desc: Using Kevin's NLP, extract nouns and verbs and build corpus language models from them.
-//     */
-//    fun getNatCorpusStatContainers(text: String): Pair<CorpusStatContainer, CorpusStatContainer> {
-//        val (nouns, verbs) = extractNounsVerbs(text)
-//        return getCorpusStatContainer(nouns) to getCorpusStatContainer(verbs)
-//    }
-//
-//    /**
-//     * Func: getNatLanguageStatContainers
-//     * Desc: Using Kevin's NLP, extract nouns and verbs and build document language models from them.
-//     */
-//    fun getNatLanguageStatContainers(text: String): Pair<LanguageStatContainer, LanguageStatContainer> {
-//        val (nouns, verbs) = extractNounsVerbs(text)
-//        return getLanguageStatContainer(nouns) to getLanguageStatContainer(verbs)
-//    }
 
     /**
      * Func: getCorpusStatContainer

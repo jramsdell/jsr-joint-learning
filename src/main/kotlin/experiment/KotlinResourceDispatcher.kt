@@ -2,7 +2,7 @@ package experiment
 
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
-import utils.identity
+import utils.misc.identity
 
 /**
  * All of the following is used to construct a DSL that makes my life easier when it comes to adding stuff

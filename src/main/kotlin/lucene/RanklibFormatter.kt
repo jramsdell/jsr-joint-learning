@@ -2,81 +2,25 @@ package experiment
 
 import com.jsoniter.JsonIterator
 import khttp.post
+import lucene.*
+import lucene.containers.FeatureContainer
+import lucene.containers.ParagraphContainer
+import lucene.containers.QueryContainer
+import lucene.containers.QueryData
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import java.io.File
 import java.util.*
 import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
-import lucene.QueryRetriever
-import org.apache.lucene.search.BooleanQuery
-import org.json.JSONArray
-import org.json.JSONObject
 import utils.*
+import utils.lucene.getIndexSearcher
+import utils.misc.CONTENT
+import utils.misc.PID
+import utils.parallel.pmap
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-data class QueryData(
-        val queryString: String,
-        val queryTokens: List<String>,
-        val queryBoolean: BooleanQuery,
-        val queryBooleanTokens: List<BooleanQuery>,
-        val indexSearcher: IndexSearcher,
-        val queryEntities: List<Pair<String, Double>>,
-        val documentEntities: List<List<String>>,
-        val candidateEntities: List<Pair<String, ArrayList<Double>>>,
-        val tops: TopDocs)
-
-/**
- * Class: ParagraphContainer
- * Description: Represents a scored paragraph (from TopDocs).
- * @param pid: Paragraph Id (obtained from Lucene index)
- * @param qid: Query ID (index of lucene that yielded the TopDocs)
- * @param isRelevant: whether or not this is a relevant paragraph (obtained from qrels)
- * @param features: Scores (from scoring functions) add added to this array for use in reweighting and rescoring
- * @param docId: Document id that this paragraph belongs to
- * @param score: Used when rescoring and reweighting the features
- */
-data class ParagraphContainer(val pid: String, val qid: Int,
-                              val isRelevant: Boolean, val features: ArrayList<Feature>,
-                              val docId: Int, var score:Double = 0.0) {
-
-    // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
-    fun rescoreParagraph() {
-        score = features.sumByDouble(Feature::getAdjustedScore)
-    }
-
-    // Convenience override: prints RankLib compatible lines
-    override fun toString(): String =
-            "${if (isRelevant) 1 else 0} qid:$qid " +
-                    (1..features.size).zip(features)
-                    .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    " #docid=$pid"
-
-}
-
-
-/**
- * Class: QueryContainer
- * Description: One is created for each of the lucene strings in the lucene .cbor file.
- *              Stores corresponding lucene string and TopDocs (obtained from BM25)
- */
-data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
-    val queryData: QueryData)
-
-
-/**
- * Desc: Represents a paragraph that has been scored by a feature.
- * @weight: The amount to adjust the feature's score (used when re-ranking)
- */
-data class Feature(val score: Double, val weight: Double) {
-    fun getAdjustedScore(): Double = sanitizeDouble(score * weight)
-    override fun toString(): String = getAdjustedScore().toString()
-
-}
-
-// Convenience function (turns NaN and infinite values into 0.0)
-private fun sanitizeDouble(d: Double): Double { return if (d.isInfinite() || d.isNaN()) 0.0 else d }
 
 /**
  * Enum: lucene.NormType
@@ -243,7 +187,7 @@ class KotlinRanklibFormatter(queryLocation: String,
                     featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
             .forEach { results ->
                 results.forEach { (score, paragraph) ->
-                                   paragraph.features += Feature(score, weight)
+                                   paragraph.features += FeatureContainer(score, weight)
                 }}
         bar.stop()
         indexSearcher.setSimilarity(curSim)
@@ -267,7 +211,7 @@ class KotlinRanklibFormatter(queryLocation: String,
                 featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
             .forEach { results ->
                 results.forEach { (score, paragraph) ->
-                    paragraph.features += Feature(score, weight)
+                    paragraph.features += FeatureContainer(score, weight)
                 }}
         bar.stop()
         indexSearcher.setSimilarity(curSim)

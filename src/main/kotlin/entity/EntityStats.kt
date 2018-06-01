@@ -1,24 +1,10 @@
 package entity
 
-import com.jsoniter.JsonIterator
 import khttp.get
 import khttp.post
 import org.json.JSONObject
-import org.jsoup.Jsoup
-import org.mapdb.DBMaker
-import org.mapdb.Serializer
-import org.mapdb.serializer.SerializerArray
-import org.mapdb.serializer.SerializerArrayTuple
-import utils.doIORequest
-import utils.getIndexSearcher
-import utils.getIndexWriter
-import utils.withTime
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.locks.ReentrantLock
-import javax.json.JsonObject
-import kotlin.system.measureTimeMillis
+import utils.io.catchJsonException
+import utils.io.doIORequest
 
 
 data class SurfaceFormData(
@@ -59,16 +45,18 @@ data class TagMeData(val id: Long,
     companion object {
         fun createTagMeData(data: JSONObject): TagMeData = with(data) {
             return TagMeData(
-                    id = getLong("id"),
-                    linkProbability = getDouble("link_probability"),
-                    rho = getDouble("rho"),
-                    start = getInt("start"),
-                    end = getInt("end"),
-                    abstract = getString("abstract"),
-                    title = getString("title").replace(" ", "_"),
-                    spot = getString("spot"),
-                    categories = getJSONArray("dbpedia_categories")
-                        .map { it.toString().replace(" ", "_") }.toList()
+                    id = catchJsonException(0L) { getLong("id") },
+                    linkProbability = catchJsonException(0.0) { getDouble("link_probability") },
+                    rho = catchJsonException(0.0) { getDouble("rho") },
+                    start = catchJsonException(0) { getInt("start") },
+                    end = catchJsonException(0) { getInt("end") },
+                    abstract = catchJsonException("") { getString("abstract") },
+                    title = catchJsonException("") { getString("title").replace(" ", "_") },
+                    spot = catchJsonException("") { getString("spot") },
+                    categories = catchJsonException(emptyList()) {
+                        getJSONArray("dbpedia_categories")
+                            .map { it.toString().replace(" ", "_") }.toList()
+                    }
             )
 
         }
@@ -120,9 +108,11 @@ object EntityStats {
         val url = "https://tagme.d4science.org/tagme/tag"
 
         // Try to request links from TagMe a few times. Otherwise, give up and return empty list
-        val p = doIORequest { post(url, data = mapOf(
-                "gcube-token" to tok,
-                "text" to content )) } ?: return emptyList()
+        val p = doIORequest {
+            post(url, data = mapOf(
+                    "gcube-token" to tok,
+                    "text" to content))
+        } ?: return emptyList()
 
         // Turn results into a JSon array and retrieve linked entities (and their rho values)
         val results = p.jsonObject.getJSONArray("annotations")
@@ -137,11 +127,13 @@ object EntityStats {
         val url = "https://tagme.d4science.org/tagme/tag"
 
         // Try to request links from TagMe a few times. Otherwise, give up and return empty list
-        val p = doIORequest { post(url, data = mapOf(
-                "gcube-token" to tok,
-                "text" to content,
-                "include_abstract" to "true",
-                "include_categories" to "true")) } ?: return null
+        val p = doIORequest {
+            post(url, data = mapOf(
+                    "gcube-token" to tok,
+                    "text" to content,
+                    "include_abstract" to "true",
+                    "include_categories" to "true"))
+        } ?: return null
 
         // Turn results into a JSon array and retrieve linked entities (and their rho values)
         return p.jsonObject.getJSONArray("annotations")
@@ -157,7 +149,7 @@ object EntityStats {
         val url = "https://wat.d4science.org/wat/relatedness/graph"
 //        val url = "https://tagme.d4science.org/tagme/rel"
         val formatted = "$url?gcube-token=$tok&ids=$id1&ids=$id2"
-        val p =  doIORequest { get(formatted) }
+        val p = doIORequest { get(formatted) }
 
         // If there was an IO error or the tokens are incorrect, return nothing
         if (p == null || p.statusCode == 400) return null
@@ -174,9 +166,11 @@ object EntityStats {
         val url = "https://tagme.d4science.org/tagme/rel"
         val formatted = "$url?gcube-token=$tok&ids=$id1&ids=$id2"
 
-        val p = doIORequest { post(url, data = mapOf(
-                "gcube-token" to tok,
-                "tt" to "$id1 $id2" )) } ?: return null
+        val p = doIORequest {
+            post(url, data = mapOf(
+                    "gcube-token" to tok,
+                    "tt" to "$id1 $id2"))
+        } ?: return null
 
         // If there was an IO error or the tokens are incorrect, return nothing
         if (p == null || p.statusCode == 400) return null
@@ -202,10 +196,12 @@ object EntityStats {
         val url = "https://swat.d4science.org/tag\n"
 
         // Try to request links from TagMe a few times. Otherwise, give up and return empty list
-        val p = doIORequest { post(url, data = mapOf(
-                "gcube-token" to tok,
-                "content" to content,
-                "title" to title)) }
+        val p = doIORequest {
+            post(url, data = mapOf(
+                    "gcube-token" to tok,
+                    "content" to content,
+                    "title" to title))
+        }
 
     }
 

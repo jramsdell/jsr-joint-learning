@@ -1,3 +1,4 @@
+import experiment.DebugApp
 import experiment.LuceneIndexerApp
 import experiment.ProximityIndexerApp
 import experiment.QueryApp
@@ -17,6 +18,7 @@ fun buildParser(): ArgumentParser {
     ProximityIndexerApp.addExperiments(subparsers)
     LuceneIndexerApp.addExperiments(subparsers)
     QueryApp.addExperiments(subparsers)
+    DebugApp.addExperiments(subparsers)
 
     return mainParser
 }

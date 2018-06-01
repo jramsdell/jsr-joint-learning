@@ -34,8 +34,12 @@ jar {
     }
 }
 
+apply plugin:'application'
+mainClassName = "experiment.ScratchpadKt"
+
 shadowJar {
-    baseName = 'program'
+    baseName = 'program2'
+
     classifier = null
     version = null
 }

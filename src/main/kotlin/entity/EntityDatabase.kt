@@ -5,25 +5,59 @@ import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
 import org.apache.lucene.document.*
 import org.apache.lucene.index.MultiFields
-import org.apache.lucene.queries.function.docvalues.DoubleDocValues
-import org.apache.lucene.queries.function.docvalues.LongDocValues
 import org.apache.lucene.search.IndexSearcher
-import org.json.JSONException
 import utils.*
+import utils.lucene.getIndexSearcher
+import utils.lucene.getIndexWriter
+import utils.misc.identity
+import utils.stats.normalize
 import java.net.URISyntaxException
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.StreamSupport
-import kotlin.coroutines.experimental.buildIterator
 import kotlin.coroutines.experimental.buildSequence
 
 data class EntityData(
         val abstract: String?,
-        val rdf: Set<String> ) {
+        val rdf: Set<String>,
+        val tfidf: Double,
+        val clarity: Double,
+        val boostedLinkProbability: Double,
+        val queryScope: Double,
+        val id: Int,
+        val mutualDependency: Double,
+        val unigram: Map<String, Double>,
+        val bigrams: Map<String, Double>,
+        val bigram_windows: Map<String, Double>) {
 
     companion object {
-        fun emptyEntity(): EntityData {
-            return EntityData("", emptySet())
+//        fun emptyEntity(): EntityData {
+//            return EntityData("", emptySet(), get("tfidf").toDouble())
+//        }
+
+        private fun splitAndCount(doc: Document, field: String) =
+            doc.get(field)
+                .split(" ")
+                .groupingBy(::identity)
+                .eachCount()
+                .normalize()
+
+
+        fun createEntityData(doc: Document) = doc.run {
+            EntityData(
+                    abstract = get("abstract"),
+                    rdf = getValues("rdf").toSet(),
+                    tfidf = get("tfidf").toDouble(),
+                    clarity = get("clarity").toDouble(),
+                    boostedLinkProbability = get("boosted_link_probability").toDouble(),
+                    queryScope = get("query_score").toDouble(),
+                    id = get("id").toInt(),
+                    mutualDependency = get("mutual_dependency").toDouble(),
+                    unigram = splitAndCount(doc, "unigram"),
+                    bigrams = splitAndCount(doc, "bigrams"),
+                    bigram_windows = splitAndCount(doc, "bigram_windows")
+            )
         }
+
     }
 }
 
@@ -33,14 +67,30 @@ class EntityDatabase(dbLoc: String = "") {
 
 
     fun getEntity(entity: String) =
-        searcher.search(AnalyzerFunctions.createQuery(entity, field = "name"), 1).scoreDocs
-            .firstOrNull()
-            ?.let { sc ->
-                val doc = searcher.doc(sc.doc)
+            getEntityDocId(entity)?.let { docId ->
+                val doc = searcher.doc(docId)
                 val abstract = doc.get("abstract")
                 val rdf = doc.getValues("rdf")
-                return EntityData(abstract, rdf.toSet())
-            } ?: EntityData.emptyEntity()
+                EntityData.createEntityData(doc)
+            }
+
+    fun getEntityDocId(entity: String) =
+        searcher.search(AnalyzerFunctions.createQuery(entity, field = "name"), 1)
+            .scoreDocs
+            .firstOrNull()
+            ?.doc
+
+
+    fun doSearch(query: String) {
+        val booleanQuery = AnalyzerFunctions.createQuery(query, field = "abstract")
+        searcher.search(booleanQuery, 10)
+            .scoreDocs
+            .forEach { scoreDoc ->
+                val doc = searcher.doc(scoreDoc.doc)
+                println(scoreDoc.score)
+                println(doc.get("name"))
+            }
+    }
 
     private fun addSurfaceForm(entity: String, doc: Document) {
         val surface = EntityStats.doSurfaceFormQuery(entity) ?: return

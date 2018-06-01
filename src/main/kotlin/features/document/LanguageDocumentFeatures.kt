@@ -5,7 +5,7 @@ import language.GramStatType
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import utils.AnalyzerFunctions
-import utils.CONTENT
+import utils.misc.CONTENT
 
 /**
  * Func: featSDM

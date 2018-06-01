@@ -1,14 +1,13 @@
 package lucene
 
-import entity.EntityData
 import entity.EntityStats
 import entity.TagMeData
 import language.GramIndexer
 import org.apache.lucene.document.*
-import utils.CONTENT
-import utils.PID
-import utils.getIndexSearcher
-import utils.getIndexWriter
+import utils.misc.CONTENT
+import utils.misc.PID
+import utils.lucene.getIndexSearcher
+import utils.lucene.getIndexWriter
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.StreamSupport
 import kotlin.coroutines.experimental.buildIterator
@@ -21,9 +20,9 @@ data class ProximityDocument(
         val rho: Double,
         val linkProbability: Double,
         val categories: List<String>,
-        val unigram_4: String,
-        val bigram_4: String,
-        val windowed_4: String,
+//        val unigram_4: String,
+//        val bigram_4: String,
+//        val windowed_4: String,
         val unigram_25: String,
         val bigram_25: String,
         val windowed_25: String
@@ -37,10 +36,10 @@ data class ProximityDocument(
                     categories = get("categories").split(" "),
                     linkProbability = get("link_probability").toDouble(),
                     rho = get("rho").toDouble(),
-                    unigram_4 = get("unigram_4"),
                     spot = get("spot"),
-                    bigram_4 = get("bigrams_4"),
-                    windowed_4 = get("bigram_windows_4"),
+//                    unigram_4 = get("unigram_4"),
+//                    bigram_4 = get("bigrams_4"),
+//                    windowed_4 = get("bigram_windows_4"),
                     unigram_25 = get("unigram_25"),
                     bigram_25 = get("bigrams_25"),
                     windowed_25 = get("bigram_windows_25")
@@ -67,7 +66,7 @@ class TagMeSDMIndexer(val indexLoc: String) {
             println("Rho: $rho")
             println("link_prob: $linkProbability")
             println("categories: $categories")
-            println("unigram: $unigram_4")
+//            println("unigram: $unigram_4")
             println("--------\n")
         }
     }
@@ -82,9 +81,9 @@ class TagMeSDMIndexer(val indexLoc: String) {
     fun writeProximityDocument(pid: String, text: String, entity: TagMeData) {
         val entityPID = "${pid}_${entity.title}"
         val doc = Document()
-        gramIndexer.indexBall(doc, text, 4, entity.start, entity.end)
+//        gramIndexer.indexBall(doc, text, 4, entity.start, entity.end)
         gramIndexer.indexBall(doc, text, 25, entity.start, entity.end)
-        gramIndexer.index(doc, entity.abstract)
+//        gramIndexer.index(doc, entity.abstract)
 
         doc.add(TextField("abstract", entity.abstract, Field.Store.YES))
         doc.add(StringField("pid", entityPID, Field.Store.YES))

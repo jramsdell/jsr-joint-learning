@@ -4,8 +4,9 @@ import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import entity.SpotlightEntityLinker
 import language.GramIndexer
 import org.apache.lucene.document.*
-import org.apache.lucene.index.IndexableFieldType
-import utils.*
+import utils.lucene.getIndexWriter
+import utils.misc.CONTENT
+import utils.misc.PID
 import java.io.BufferedInputStream
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger

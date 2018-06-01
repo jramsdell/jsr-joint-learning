@@ -1,8 +1,6 @@
 package experiment
 
 import entity.EntityDatabase
-import features.document.TFIDF
-import features.document.featAddLuceneSimilarity
 import features.document.featSDM
 import features.document.featSplitSim
 import features.entity.*
@@ -14,7 +12,7 @@ import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
-import utils.getIndexSearcher
+import utils.lucene.getIndexSearcher
 
 /**
  * Class: MasterExperiment
@@ -104,9 +102,12 @@ class QueryApp(val resources: HashMap<String, Any>) {
     }
 
     fun doEntityDebug() {
-        val ed = TagMeSDMIndexer("index")
-        ed.debugDocuments()
+//        val ed = TagMeSDMIndexer("index")
+//        ed.debugDocuments()
+//        val ed = EntityDatabase("entity_index_2/")
+//        ed.getEntity("Chocolate")
     }
+
 
 
     // This part is used to auto-generate required arguments / help for the arg parser.
@@ -170,7 +171,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
                             doEntitySDMDB()
                         }
 
-                        method("query", "debug_entity_sdm") {
+                        method("query", "debug") {
                             doEntityDebug()
                         }
 

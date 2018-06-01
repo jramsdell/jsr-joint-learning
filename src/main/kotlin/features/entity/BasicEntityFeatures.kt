@@ -1,22 +1,9 @@
 package features.entity
 
-import entity.EntityDatabase
-import entity.EntityStats
-import experiment.QueryData
 import experiment.retrieveTagMeEntities2
 import info.debatty.java.stringsimilarity.NormalizedLevenshtein
-import info.debatty.java.stringsimilarity.interfaces.StringSimilarity
-import language.GramAnalyzer
-import language.GramStatType
-import org.apache.lucene.search.BooleanQuery
-import org.apache.lucene.search.IndexSearcher
-import org.apache.lucene.search.TopDocs
-import org.apache.lucene.search.similarities.*
-import org.apache.lucene.util.BytesRef
-import utils.AnalyzerFunctions
-import utils.CONTENT
-import utils.PID
-import utils.pmapRestricted
+import lucene.containers.QueryData
+import entity.EntityStats
 
 
 fun featEntityStringSim(qd: QueryData): List<Double> = with(qd) {

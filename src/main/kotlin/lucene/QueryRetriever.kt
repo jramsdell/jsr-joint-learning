@@ -5,13 +5,13 @@ import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.search.*
-import utils.getIndexSearcher
+import utils.lucene.getIndexSearcher
 import java.io.BufferedWriter
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import utils.AnalyzerFunctions
-import utils.PID
-import utils.pmap
+import utils.misc.PID
+import utils.parallel.pmap
 
 /**
  * Class: QueryRetriever

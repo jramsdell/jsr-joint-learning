@@ -1,18 +1,12 @@
 package features.document
 
-import experiment.QueryData
-import language.GramAnalyzer
-import language.GramStatType
-import org.apache.lucene.search.BooleanQuery
+import lucene.containers.QueryData
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import org.apache.lucene.search.similarities.BasicStats
 import org.apache.lucene.search.similarities.Similarity
 import org.apache.lucene.search.similarities.SimilarityBase
-import org.apache.lucene.search.similarities.TFIDFSimilarity
-import org.apache.lucene.util.BytesRef
 import utils.AnalyzerFunctions
-import utils.CONTENT
 
 enum class Similarities(val similarity: Similarity) {
 //    TFIDF(TFIDFSimilarity())

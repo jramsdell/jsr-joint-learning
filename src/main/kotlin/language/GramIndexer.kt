@@ -2,24 +2,15 @@
 package language
 
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
-import org.apache.lucene.analysis.en.EnglishAnalyzer
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
 import org.apache.lucene.document.TextField
-import org.apache.lucene.index.IndexWriter
 import utils.AnalyzerFunctions
-import utils.getIndexWriter
 import java.io.BufferedInputStream
-import java.io.File
-import java.io.StringReader
 import java.lang.Math.min
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.experimental.buildIterator
-import kotlin.coroutines.experimental.buildSequence
 import utils.AnalyzerFunctions.AnalyzerType.*
-import utils.forEachParallel
 
 
 /**

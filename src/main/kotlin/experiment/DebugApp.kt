@@ -1,29 +1,25 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
-import lucene.TagMeSDMIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
+import utils.lucene.getIndexSearcher
 
-/**
- * Class: LaunchSparqlDownloader
- * Desc: This is just an app that retrieves stuff from SPARQL.
- * @see KotlinSparql
- */
-class ProximityIndexerApp(resources: HashMap<String, Any>) {
+class DebugApp(resources: HashMap<String, Any>) {
     val index: String by resources
 
-    fun index() {
-        TagMeSDMIndexer(index).doTagMeIndexing()
+    fun debug() {
+        val searcher = getIndexSearcher(index)
+        println(searcher.indexReader.maxDoc())
     }
 
 
     companion object {
         fun addExperiments(mainSubparser: Subparsers) {
-            val mainParser = mainSubparser.addParser("proximity_indexer")
+            val mainParser = mainSubparser.addParser("debug")
                 .help("Indexes corpus.")
-            register("run2", mainParser)
+            register("run", mainParser)
         }
 
         @SuppressWarnings
@@ -31,9 +27,9 @@ class ProximityIndexerApp(resources: HashMap<String, Any>) {
             val exec = { namespace: Namespace ->
                 val resources = dispatcher.loadResources(namespace)
                 val methodName = namespace.get<String>("method")
-                val instance = ProximityIndexerApp(resources)
-                val method = dispatcher.methodContainer!! as MethodContainer<ProximityIndexerApp>
-                method.getMethod("run2", methodName)?.invoke(instance)
+                val instance = DebugApp(resources)
+                val method = dispatcher.methodContainer!! as MethodContainer<DebugApp>
+                method.getMethod("run", methodName)?.invoke(instance)
             }
 
             parser.help("Downloads abstracts and pages for topics.")
@@ -44,8 +40,8 @@ class ProximityIndexerApp(resources: HashMap<String, Any>) {
 
         val dispatcher =
                 buildResourceDispatcher {
-                    methods<ProximityIndexerApp> {
-                        method("run2", "index2") { index() }
+                    methods<DebugApp> {
+                        method("run", "debug") { debug() }
                         help = "Creates a new Lucene index."
                     }
 

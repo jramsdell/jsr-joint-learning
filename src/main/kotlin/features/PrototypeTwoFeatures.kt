@@ -1,18 +1,5 @@
 package features
 
-import info.debatty.java.stringsimilarity.Jaccard
-import info.debatty.java.stringsimilarity.JaroWinkler
-import info.debatty.java.stringsimilarity.NormalizedLevenshtein
-import info.debatty.java.stringsimilarity.SorensenDice
-import info.debatty.java.stringsimilarity.interfaces.StringDistance
-import language.GramStatType
-import org.apache.lucene.index.Term
-import org.apache.lucene.search.*
-import utils.AnalyzerFunctions
-import utils.CONTENT
-import utils.defaultWhenNotFinite
-import kotlin.math.ln
-
 ///**
 // * Function: addStringDistanceFunction
 // * Description: In this method, I try to the distance (or similarity) between the terms (after splitting)
