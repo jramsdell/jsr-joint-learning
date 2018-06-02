@@ -1,9 +1,11 @@
 package language.containers
 
 import language.GramAnalyzer
+import language.GramAnalyzer.Companion.createLanguageStats
 import language.GramStatType
 import language.GramStatType.*
 import org.apache.lucene.document.Document
+import utils.lucene.splitAndCount
 import utils.misc.identity
 import utils.stats.defaultWhenNotFinite
 import utils.stats.normalize
@@ -64,20 +66,17 @@ data class LanguageStatContainer(
 
     companion object {
         fun createLanguageStatContainer(doc: Document) = doc.run {
+            val unigramStat = doc.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
+                .run { createLanguageStats(this, GramStatType.TYPE_UNIGRAM) }
+            val bigramStat = doc.splitAndCount(GramStatType.TYPE_BIGRAM.indexField)
+                .run { createLanguageStats(this, GramStatType.TYPE_BIGRAM) }
+            val bigramWindowStat = doc.splitAndCount(GramStatType.TYPE_BIGRAM_WINDOW.indexField)
+                .run { createLanguageStats(this, GramStatType.TYPE_BIGRAM_WINDOW) }
+
             LanguageStatContainer(
-                    unigramStat = getLanguageStat(doc.get(TYPE_UNIGRAM.indexField), TYPE_UNIGRAM),
-                    bigramStat = getLanguageStat(doc.get(TYPE_BIGRAM.indexField), TYPE_BIGRAM),
-                    bigramWindowStat = getLanguageStat(doc.get(TYPE_BIGRAM_WINDOW.indexField), TYPE_BIGRAM_WINDOW)
-            )
-        }
-
-        private fun getLanguageStat(grams: String, type: GramStatType): LanguageStat {
-            val counts = grams
-                .split(" ")
-                .groupingBy(::identity)
-                .eachCount()
-
-            return LanguageStat(counts, counts.normalize(), type)
+                    unigramStat = unigramStat,
+                    bigramStat = bigramStat,
+                    bigramWindowStat = bigramWindowStat )
         }
     }
 }

@@ -71,38 +71,6 @@ object EntityStats {
 //    private val lock = ReentrantLock()
     private val tok = "7fa2ade3-fce7-4f4a-b994-6f6fefc7e665-843339462"
 
-//    private val db = DBMaker
-//        .fileDB("entity_database.db")
-//        .fileMmapEnable()
-//        .closeOnJvmShutdown()
-//        .make()
-
-//    private val entityIndex = getIndexSearcher("entity_index")
-
-
-//    val entityAbstracts = db.hashMap("entityAbstracts")
-//        .keySerializer(Serializer.STRING)
-//        .valueSerializer(Serializer.STRING)
-//        .createOrOpen()
-//
-//    val paragraphEntities = db.hashMap("paragraphEntities")
-//        .keySerializer(Serializer.STRING)
-//        .valueSerializer(Serializer.STRING)
-//        .createOrOpen()
-//
-//    val queryEntities = db.hashMap("queryEntities")
-//        .keySerializer(Serializer.STRING)
-//        .valueSerializer(Serializer.STRING)
-//        .createOrOpen()
-//
-//    val entitySet = db.hashSet("entitySet")
-//        .serializer(Serializer.STRING)
-//        .createOrOpen()
-//
-//    val entityTypes = db.hashMap("entityTypes")
-//        .keySerializer(Serializer.STRING)
-//        .valueSerializer(SerializerArray<String>(Serializer.STRING))
-//        .createOrOpen()
 
     fun doTagMeQuery(content: String, minRho: Double = 0.2): List<Pair<String, Double>> {
         val url = "https://tagme.d4science.org/tagme/tag"

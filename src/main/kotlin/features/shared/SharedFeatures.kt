@@ -1,9 +1,15 @@
 package features.shared
 
 import entity.EntityDatabase
+import experiment.FeatureType
+import experiment.KotlinRanklibFormatter
+import experiment.NormType
+import experiment.NormType.ZSCORE
+import language.GramStatType
 import lucene.containers.QueryData
 import utils.AnalyzerFunctions
 import utils.lucene.explainScore
+import utils.lucene.splitAndCount
 import utils.misc.CONTENT
 import utils.stats.countDuplicates
 import utils.stats.normalize
@@ -23,13 +29,13 @@ private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphLis
 }
 
 object SharedFeatures {
-    fun sharedRdf(qd: QueryData, sf: SharedFeature, db: EntityDatabase): Unit = with(qd) {
-        val entityFeatures = entityContainers.map { entity -> db.getEntityByID(entity.docId).rdf }
+    private fun sharedRdf(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val entityFeatures = entityContainers.map { entity -> entityDb.getEntityByID(entity.docId).rdf }
         val documentFeatures =
                 tops.scoreDocs.map { scoreDoc ->
                     val doc = paragraphSearcher.doc(scoreDoc.doc)
                     doc.getValues("spotlight")
-                        .mapNotNull { docEntity -> db.getEntity(docEntity) }
+                        .mapNotNull { docEntity -> entityDb.getEntity(docEntity) }
                         .flatMap { docEntity -> docEntity.rdf }
                         .countDuplicates()
                 }
@@ -42,7 +48,7 @@ object SharedFeatures {
                 })
     }
 
-    fun sharedFeatLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+    private fun sharedFeatLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
                     doc.getValues("spotlight")
@@ -57,17 +63,17 @@ object SharedFeatures {
                 })
     }
 
-    fun sharedUnigramLikelihood(qd: QueryData, sf: SharedFeature, db: EntityDatabase): Unit = with(qd) {
+    private fun sharedUnigramLikelihood(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
-                    doc.get("unigram")
-                        .split(" ")
-                        .countDuplicates()
-                        .normalize()
-                }
+                    doc.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
+                        .normalize() }
+
         val entityFeatures = entityContainers.map { entityContainer ->
-            db.getEntityByID(entityContainer.docId).unigram
-        }
+            val entity = entityDb.getDocumentById(entityContainer.docId)
+            entity.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
+                .normalize() }
+
         scoreBoth(sf, documentFeatures, entityFeatures,
                 { docUnigrams, entityUnigrams ->
                     val combinedKeys = (docUnigrams.keys + entityUnigrams.keys).toSet()
@@ -80,7 +86,7 @@ object SharedFeatures {
                 })
     }
 
-    fun sharedBM25(qd: QueryData, sf: SharedFeature, db: EntityDatabase): Unit = with(qd) {
+    private fun sharedBM25(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
                     val text = doc.get(CONTENT)
@@ -89,7 +95,21 @@ object SharedFeatures {
         val entityFeatures = entityContainers.map { entityContainer -> entityContainer.docId }
         scoreBoth(sf, documentFeatures, entityFeatures,
                 { docQuery, entityId ->
-                    db.searcher.explainScore(docQuery, entityId)
+                    entityDb.searcher.explainScore(docQuery, entityId)
                 })
     }
+    fun addSharedBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(this::sharedBM25, FeatureType.SHARED, wt, norm)
+
+    fun addSharedEntityLinks(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(this::sharedFeatLinks, FeatureType.SHARED, wt, norm)
+
+
+    fun addSharedRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(this::sharedRdf, FeatureType.SHARED, wt, norm)
+
+    fun addSharedUnigramLikelihood(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(this::sharedUnigramLikelihood, FeatureType.SHARED, wt, norm)
+
+
 }

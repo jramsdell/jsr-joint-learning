@@ -6,11 +6,13 @@ import language.containers.CorpusStatContainer
 import language.containers.LanguageStat
 import language.containers.LanguageStatContainer
 import org.apache.lucene.analysis.en.EnglishAnalyzer
+import org.apache.lucene.document.Document
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
 import utils.lucene.getIndexSearcher
 import utils.AnalyzerFunctions.AnalyzerType.*
+import utils.lucene.splitAndCount
 import utils.misc.identity
 
 
@@ -31,7 +33,6 @@ enum class GramStatType(val indexField: String)  {
  */
 class GramAnalyzer(val indexSearcher: IndexSearcher) {
     constructor(indexLoc: String) : this(getIndexSearcher(indexLoc))
-    val analyzer = EnglishAnalyzer()
 
     // Returns total frequency of a -gram in corpus
     private fun getCorpusGram(gram: String, gramType: String): Long =
@@ -95,7 +96,7 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
      * Desc: Function used to count number of (stemmed) bigrams in text.
      */
     private fun countBigrams(text: String): Map<String, Int> {
-        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH).toList()
+        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED).toList()
         val docBigramCounts = terms.windowed(2, 1)
             .map { window -> window.joinToString(separator = "") }
             .groupingBy(::identity)
@@ -110,7 +111,7 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
      * Desc: Function used to count number of (stemmed) windowed bigrams in text.
      */
     private fun countWindowedBigrams(text: String): Map<String, Int> {
-        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH)
+        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
         val docBigramWindowCounts = terms
             .windowed(8, 1, true)
             .flatMap { window ->
@@ -130,7 +131,7 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
      * Desc: Functions used to count number of (stemmed) unigrams in text.
      */
     private fun countUnigrams(text: String): Map<String, Int> {
-        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH)
+        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
 
         val docTermCounts = terms
             .groupingBy(::identity)

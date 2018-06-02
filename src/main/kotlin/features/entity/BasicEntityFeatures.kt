@@ -6,50 +6,50 @@ import lucene.containers.QueryData
 import entity.EntityStats
 
 
-fun featEntityStringSim(qd: QueryData): List<Double> = with(qd) {
-    val sim = NormalizedLevenshtein()
-    return tops.scoreDocs
-        .map { scoreDoc ->
-            val doc = indexSearcher.doc(scoreDoc.doc)
-            val entities = doc.getValues("spotlight")
-                .flatMap { it.split("_") }
-                .map { it.toLowerCase() }
-            val tokenSims = entities.flatMap { entity -> queryTokens.map { query -> sim.similarity(entity, query) } }
-            tokenSims.filter { score -> score >= 0.9 }.sum()
-        }
-}
-
-fun featEntitySurface(qd: QueryData): List<Double> = with(qd) {
-    val queryEntities = retrieveTagMeEntities2(queryString)
-        .map { (entity, rho) -> Triple(entity, rho, EntityStats.doWikipediaIDQuery(entity)) }
-
-    return tops.scoreDocs
-        .map { scoreDoc ->
-            val doc = indexSearcher.doc(scoreDoc.doc)
-            val entities = doc.getValues("spotlight")
-                .map { entity -> entity to EntityStats.doWikipediaIDQuery(entity) }
-            val tokenSims = entities.flatMap { (entity, entityID) ->
-                queryEntities.map { (queryEntity, rho, queryEntityID) ->
-                    if (queryEntityID == entityID) 1 * rho else 0.0
-                }
-            }
-            tokenSims.filter { score -> score >= 0.9 }.sum()
-        }
-}
-
-fun featQueryEntityToDocEntity(qd: QueryData): List<Double> = with(qd) {
-    val queryEntities = retrieveTagMeEntities2(queryString)
-    val sim = NormalizedLevenshtein()
-    return tops.scoreDocs
-        .map { scoreDoc ->
-            val doc = indexSearcher.doc(scoreDoc.doc)
-            val entities = doc.getValues("spotlight")
-            val tokenSims = entities.flatMap { entity ->
-                queryEntities.map { query -> sim.similarity(entity, query.first) }
-            }
-            tokenSims.filter { score -> score >= 0.9 }.sum()
-        }
-}
+//fun featEntityStringSim(qd: QueryData): List<Double> = with(qd) {
+//    val sim = NormalizedLevenshtein()
+//    return tops.scoreDocs
+//        .map { scoreDoc ->
+//            val doc = indexSearcher.doc(scoreDoc.doc)
+//            val entities = doc.getValues("spotlight")
+//                .flatMap { it.split("_") }
+//                .map { it.toLowerCase() }
+//            val tokenSims = entities.flatMap { entity -> queryTokens.map { query -> sim.similarity(entity, query) } }
+//            tokenSims.filter { score -> score >= 0.9 }.sum()
+//        }
+//}
+//
+//fun featEntitySurface(qd: QueryData): List<Double> = with(qd) {
+//    val queryEntities = retrieveTagMeEntities2(queryString)
+//        .map { (entity, rho) -> Triple(entity, rho, EntityStats.doWikipediaIDQuery(entity)) }
+//
+//    return tops.scoreDocs
+//        .map { scoreDoc ->
+//            val doc = indexSearcher.doc(scoreDoc.doc)
+//            val entities = doc.getValues("spotlight")
+//                .map { entity -> entity to EntityStats.doWikipediaIDQuery(entity) }
+//            val tokenSims = entities.flatMap { (entity, entityID) ->
+//                queryEntities.map { (queryEntity, rho, queryEntityID) ->
+//                    if (queryEntityID == entityID) 1 * rho else 0.0
+//                }
+//            }
+//            tokenSims.filter { score -> score >= 0.9 }.sum()
+//        }
+//}
+//
+//fun featQueryEntityToDocEntity(qd: QueryData): List<Double> = with(qd) {
+//    val queryEntities = retrieveTagMeEntities2(queryString)
+//    val sim = NormalizedLevenshtein()
+//    return tops.scoreDocs
+//        .map { scoreDoc ->
+//            val doc = indexSearcher.doc(scoreDoc.doc)
+//            val entities = doc.getValues("spotlight")
+//            val tokenSims = entities.flatMap { entity ->
+//                queryEntities.map { query -> sim.similarity(entity, query.first) }
+//            }
+//            tokenSims.filter { score -> score >= 0.9 }.sum()
+//        }
+//}
 
 //fun featEntityCategory(qd: QueryData): List<Double> = with(qd) {
 //    val queryEntities = EntityStats.getQueryEntities(queryString)

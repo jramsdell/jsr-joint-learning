@@ -1,6 +1,7 @@
 package experiment
 
 import entity.EntityDatabase
+import features.document.DocumentRankingFeatures
 import features.document.featSDM
 import features.document.featSplitSim
 import features.entity.*
@@ -79,18 +80,10 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
     fun queryEntity(weights: List<Double>? = null) {
-        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
-//        formatter.addFeature2({ queryData -> featAddLuceneSimilarity(queryData, TFIDF)},
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-//        formatter.addFeature2(::featEntityStringSim,
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-//        val entityDatabase = EntityDatabase("entity_index/")
-//
-//        formatter.addFeature2({ queryData -> featRdf(queryData, entityDatabase)},
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-        formatter.addFeature2(::featEntitySurface,
-                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-
+//        DocumentRankingFeatures.addBM25Document(formatter, weight = 1.0, normType = NormType.ZSCORE)
+//        formatter.addFeature3(DocumentRankingFeatures::queryBM25Document,
+//                weight = 1.0,
+//                normType = NormType.ZSCORE)
     }
 
     fun doDb() {

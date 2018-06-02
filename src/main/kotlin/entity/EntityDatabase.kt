@@ -29,22 +29,17 @@ data class EntityData(
         val queryScope: Double,
         val id: Int,
         val docId: Int,
-        val mutualDependency: Double,
-        val unigram: Map<String, Double>,
-        val bigrams: Map<String, Double>,
-        val bigram_windows: Map<String, Double>) {
+        val mutualDependency: Double
+//        val unigram: Map<String, Double>,
+//        val bigrams: Map<String, Double>,
+//        val bigram_windows: Map<String, Double>
+) {
 
     companion object {
 //        fun emptyEntity(): EntityData {
 //            return EntityData("", emptySet(), get("tfidf").toDouble())
 //        }
 
-        private fun splitAndCount(doc: Document, field: String) =
-            doc.get(field)
-                ?.split(" ")
-                ?.groupingBy(::identity)
-                ?.eachCount()
-                ?.normalize() ?: emptyMap()
 
 
         fun createEntityData(doc: Document, docId: Int) = doc.run {
@@ -58,10 +53,10 @@ data class EntityData(
                     queryScope = get("query_score")?.toDouble() ?: 0.0,
                     id = get("id")?.toInt() ?: 0,
                     docId = docId,
-                    mutualDependency = get("mutual_dependency")?.toDouble() ?: 0.0,
-                    unigram = splitAndCount(doc, "unigram"),
-                    bigrams = splitAndCount(doc, "bigrams"),
-                    bigram_windows = splitAndCount(doc, "bigram_windows")
+                    mutualDependency = get("mutual_dependency")?.toDouble() ?: 0.0
+//                    unigram = splitAndCount(doc, "unigram"),
+//                    bigrams = splitAndCount(doc, "bigrams"),
+//                    bigram_windows = splitAndCount(doc, "bigram_windows")
             )
         }
 
@@ -80,6 +75,11 @@ class EntityDatabase(dbLoc: String = "") {
             val doc = searcher.doc(id)
             return EntityData.createEntityData(doc, id)
     }
+
+    fun getDocumentById(id: Int) = searcher.doc(id)
+
+    fun getEntityDocument(entity: String) =
+            getEntityDocId(entity)?.let { searcher.doc(it) }
 
     fun getEntityDocId(entity: String) =
         searcher.search(AnalyzerFunctions.createQuery(entity, field = "name"), 1)

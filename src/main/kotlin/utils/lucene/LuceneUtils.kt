@@ -8,6 +8,8 @@ import org.apache.lucene.index.IndexWriterConfig
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.Query
 import org.apache.lucene.store.FSDirectory
+import utils.misc.identity
+import utils.stats.normalize
 import java.lang.IllegalStateException
 import java.nio.file.Paths
 
@@ -26,6 +28,12 @@ fun getIndexWriter(indexLocation: String): IndexWriter {
         .apply { openMode = IndexWriterConfig.OpenMode.CREATE_OR_APPEND }
     return IndexWriter(indexDir, conf)
 }
+
+fun Document.splitAndCount(field: String) =
+        get(field)
+            ?.split(" ")
+            ?.groupingBy(::identity)
+            ?.eachCount() ?: emptyMap()
 
 fun Document.getOrDefault(field: String, default: String = "") =
          get(field) ?: default

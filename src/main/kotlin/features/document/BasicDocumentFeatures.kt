@@ -29,13 +29,13 @@ val TFIDF = object : SimilarityBase() {
 }
 
 
-fun featAddLuceneSimilarity(qd: QueryData, similarity: Similarity): List<Double> = with(qd) {
-    indexSearcher.setSimilarity(similarity)
-    return tops.scoreDocs
-        .map { scoreDoc ->
-            indexSearcher.explain(queryBoolean, scoreDoc.doc).value.toDouble()
-        }
-}
+//fun featAddLuceneSimilarity(qd: QueryData, similarity: Similarity): List<Double> = with(qd) {
+//    indexSearcher.setSimilarity(similarity)
+//    return tops.scoreDocs
+//        .map { scoreDoc ->
+//            indexSearcher.explain(queryBoolean, scoreDoc.doc).value.toDouble()
+//        }
+//}
 
 /**
  * Func: featSplitSim
