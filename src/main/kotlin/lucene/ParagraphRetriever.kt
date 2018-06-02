@@ -1,11 +1,9 @@
 package lucene
 
 import lucene.containers.ParagraphContainer
-import lucene.containers.QueryContainer
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import utils.AnalyzerFunctions
-import utils.lucene.getIndexSearcher
 import utils.misc.PID
 import utils.misc.mapOfSets
 import utils.parallel.pmap
@@ -31,40 +29,37 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 val (query, tops) = index.value
                 val relevantToQuery = relevancies?.get(query) ?: emptySet()
 
-                val containers = tops.scoreDocs.map { sc ->
-//                    val doc = indexSearcher.doc(sc.doc)
-//                    val pid = doc.get(PID)
-                    createParagraphContainer(sc.doc, index.index, relevantToQuery)
+                // bad
+//                if (relevancies!!.get(query) == null) {
+//                    println(query)
+//                }
 
-//                    ParagraphContainer(
-//                            pid = pid,
-//                            qid = index.index + 1,
-////                            isRelevant = relevancies?.run { contains(Pair(query, pid)) } ?: false,
-//                            isRelevant = relevantToQuery.contains(pid),
-//                            docId = sc.doc,
-//                            doc = doc,
-//                            features = arrayListOf())
+                val containers = tops.scoreDocs.map { sc ->
+                    createParagraphContainer(sc.doc, index.index, query, relevantToQuery)
+
                 }
 
-                if (includeRelevant && relevancies != null) include(containers, index.index, relevantToQuery)
+                if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
                 else containers
             }
 
-    private fun include(containers: List<ParagraphContainer>, index: Int,
+    private fun include(containers: List<ParagraphContainer>, index: Int, query: String,
                                           relevantToQuery: Set<String>): List<ParagraphContainer> {
         val missingRelevantParagraphs = relevantToQuery - containers.map { p -> p.pid }.toSet()
         val retrievedRelevantParagraphs = retrieveParagraphs(missingRelevantParagraphs.toList())
-            .map { docId -> createParagraphContainer(docId, index, relevantToQuery) }
+            .map { docId -> createParagraphContainer(docId, index, query, relevantToQuery) }
         return containers + retrievedRelevantParagraphs
     }
 
-    private fun createParagraphContainer(docId: Int, index: Int, relevantToQuery: Set<String>): ParagraphContainer {
+    private fun createParagraphContainer(docId: Int, index: Int,
+                                         query: String, relevantToQuery: Set<String>): ParagraphContainer {
         val doc = indexSearcher.doc(docId)
         val pid = doc.get(PID)
         return ParagraphContainer(
                 pid = pid,
                 qid = index + 1,
                 isRelevant = relevantToQuery.contains(pid),
+                query = query,
                 docId = docId,
                 doc = doc,
                 features = arrayListOf())

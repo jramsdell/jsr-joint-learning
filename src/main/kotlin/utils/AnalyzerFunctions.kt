@@ -7,6 +7,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.BooleanClause
 import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.BoostQuery
 import org.apache.lucene.search.TermQuery
 import java.io.File
 import java.io.StringReader
@@ -80,6 +81,19 @@ object AnalyzerFunctions {
                     { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
             .build()
     }
+
+    fun createWeightedTermsQuery(terms: Map<String, Double>, field: String = "text",
+                                 weight: Double = 1.0): BooleanQuery =
+        terms.entries
+//            .map { (term, count) -> BoostQuery(TermQuery(Term(field, term)), count.toFloat() * weight.toFloat()) }
+//            .map { (term, count) -> BoostQuery(TermQuery(Term(field, term)), count.toFloat() * weight.toFloat()) }
+            .map { (term, count) -> boostedTermQuery(field, term, count * weight) }
+                .fold(BooleanQuery.Builder(),
+                        { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
+                .build()
+
+    fun boostedTermQuery(field: String, term: String, weight: Double) =
+            BoostQuery(TermQuery(Term(field, term)), weight.toFloat())
 
     /**
      * Class: createQueryList

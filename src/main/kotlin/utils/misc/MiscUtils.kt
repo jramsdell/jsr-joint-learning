@@ -65,6 +65,8 @@ fun<A, B, C> Iterable<A>.mapOfLists(f: (A) -> Pair<B, C>): Map<B, List<C>> {
     return newMap
 }
 
+
+
 fun<A, B, C> Iterable<A>.mapOfSets(f: (A) -> Pair<B, C>): Map<B, Set<C>> {
     val newMap = HashMap<B, HashSet<C>>()
     forEach { element ->

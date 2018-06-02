@@ -5,14 +5,11 @@ import language.containers.CorpusStat
 import language.containers.CorpusStatContainer
 import language.containers.LanguageStat
 import language.containers.LanguageStatContainer
-import org.apache.lucene.analysis.en.EnglishAnalyzer
-import org.apache.lucene.document.Document
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
 import utils.lucene.getIndexSearcher
 import utils.AnalyzerFunctions.AnalyzerType.*
-import utils.lucene.splitAndCount
 import utils.misc.identity
 
 
@@ -91,65 +88,21 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
 
 
 
-    /**
-     * Func: countBigrams
-     * Desc: Function used to count number of (stemmed) bigrams in text.
-     */
-    private fun countBigrams(text: String): Map<String, Int> {
-        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED).toList()
-        val docBigramCounts = terms.windowed(2, 1)
-            .map { window -> window.joinToString(separator = "") }
-            .groupingBy(::identity)
-            .eachCount()
-
-        return docBigramCounts
-    }
 
 
-    /**
-     * Func: countWindowedBigrams
-     * Desc: Function used to count number of (stemmed) windowed bigrams in text.
-     */
-    private fun countWindowedBigrams(text: String): Map<String, Int> {
-        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
-        val docBigramWindowCounts = terms
-            .windowed(8, 1, true)
-            .flatMap { window ->
-                            val firstTerm = window[0]
-                            window
-                                .slice(1  until window.size)
-                                .flatMap { secondTerm -> listOf(firstTerm + secondTerm, secondTerm + firstTerm) } }
-            .groupingBy(::identity)
-            .eachCount()
-            .toMap()
-        return docBigramWindowCounts
-    }
 
 
-    /**
-     * Func: countUnigrams
-     * Desc: Functions used to count number of (stemmed) unigrams in text.
-     */
-    private fun countUnigrams(text: String): Map<String, Int> {
-        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
-
-        val docTermCounts = terms
-            .groupingBy(::identity)
-            .eachCount()
-            .toMap()
-
-        return docTermCounts
-    }
 
     /**
      * Func: getStats
      * Desc: Counts -grams of a given type and returns a language model using these stats.
      */
     private fun getStats(text: String, statType: GramStatType): LanguageStat {
+        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
         val counts = when (statType) {
-            GramStatType.TYPE_UNIGRAM -> countUnigrams(text)
-            GramStatType.TYPE_BIGRAM -> countBigrams(text)
-            GramStatType.TYPE_BIGRAM_WINDOW -> countWindowedBigrams(text)
+            GramStatType.TYPE_UNIGRAM -> countUnigrams(terms)
+            GramStatType.TYPE_BIGRAM -> countBigrams(terms)
+            GramStatType.TYPE_BIGRAM_WINDOW -> countWindowedBigrams(terms)
         }
 
         return createLanguageStats(counts, statType)
@@ -187,6 +140,51 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
                 .toMap()
 
             return LanguageStat(counts, freqs, type)
+        }
+
+        /**
+         * Func: countUnigrams
+         * Desc: Functions used to count number of (stemmed) unigrams in text.
+         */
+         fun countUnigrams(terms: List<String>): Map<String, Int> {
+            val docTermCounts = terms
+                .groupingBy(::identity)
+                .eachCount()
+                .toMap()
+            return docTermCounts
+        }
+
+        /**
+         * Func: countWindowedBigrams
+         * Desc: Function used to count number of (stemmed) windowed bigrams in text.
+         */
+        fun countWindowedBigrams(terms: List<String>): Map<String, Int> {
+//        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
+            val docBigramWindowCounts = terms
+                .windowed(8, 1, true)
+                .flatMap { window ->
+                    val firstTerm = window[0]
+                    window
+                        .slice(1  until window.size)
+                        .flatMap { secondTerm -> listOf(firstTerm + secondTerm, secondTerm + firstTerm) } }
+                .groupingBy(::identity)
+                .eachCount()
+                .toMap()
+            return docBigramWindowCounts
+        }
+
+        /**
+         * Func: countBigrams
+         * Desc: Function used to count number of (stemmed) bigrams in text.
+         */
+        fun countBigrams(terms: List<String>): Map<String, Int> {
+//        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED).toList()
+            val docBigramCounts = terms.windowed(2, 1)
+                .map { window -> window.joinToString(separator = "") }
+                .groupingBy(::identity)
+                .eachCount()
+
+            return docBigramCounts
         }
 
     }

@@ -21,7 +21,8 @@ data class ParagraphContainer(val pid: String,
                               val sharedFeatures: ArrayList<FeatureContainer> = ArrayList(),
                               val docId: Int,
                               val doc: Document,
-                              var score:Double = 0.0) {
+                              var score: Double = 0.0,
+                              val query: String) {
 
     // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
     fun rescoreParagraph() {
@@ -43,7 +44,7 @@ data class ParagraphContainer(val pid: String,
         return "${if (isRelevant) 1 else 0} qid:$qid " +
                     (1..combinedFeaures.size).zip(combinedFeaures)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    " #docid=$pid"
+                    " #docid=$query"
     }
 
 }

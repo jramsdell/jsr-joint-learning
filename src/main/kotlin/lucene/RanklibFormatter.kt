@@ -54,7 +54,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                              entityIndexLoc: String,
                              entityQrelLoc: String = "",
                              proximityIndexLoc: String = "",
-                             entityQueryLoc: String = ""
+                             entityQueryLoc: String = "",
+                             includeRelevant: Boolean = false
                              ) {
 
     /**
@@ -71,9 +72,9 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             else getIndexSearcher(proximityIndexLoc)
     val entityDb = EntityDatabase(entityIndexLoc)
 
-    val queryRetriever = QueryRetriever(paragraphSearcher)
+    val queryRetriever = QueryRetriever(paragraphSearcher, false)
     val queries = queryRetriever.getSectionQueries(paragraphQueryLoc)
-    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc)
+    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant)
     val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc )
 
 
@@ -92,35 +93,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                     queryData = createQueryData(query, tops, paragraphContainers, entityContainers)
             )
         }
-
-//    // If a qrel filepath was given, reads file and creates a set of lucene/paragraph pairs for relevancies
-//    private val relevancies =
-//            if (qrelLoc == "") null
-//            else
-//                File(qrelLoc)
-//                    .bufferedReader()
-//                    .readLines()
-//                    .map { it.split(" ").let { it[0] to it[2] } }
-//                    .toSet()
-//
-//    // Maps queries into lucene containers (stores paragraph and feature information)
-//    private val queryContainers =
-////        queries.withIndex().map {index,  (query, tops) ->
-//            queries.withIndex().pmap {index ->
-//                val (query, tops) = index.value
-//            val containers = tops.scoreDocs.map { sc ->
-//                val pid = indexSearcher.doc(sc.doc).get(PID)
-//
-//                ParagraphContainer(
-//                        pid = pid,
-//                        qid = index.index + 1,
-//                        isRelevant = relevancies?.run { contains(Pair(query, pid)) } ?: false,
-//                        docId = sc.doc,
-//                        features = arrayListOf())
-//            }
-//            QueryContainer(query = query, tops = tops, paragraphs = containers,
-//            queryData = createQueryData(query, tops))
-//        }.toList()
 
 
 
@@ -253,7 +225,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                     featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
             .forEach { results ->
                 results.forEach { (score, paragraph) ->
-                                   paragraph.features += FeatureContainer(score, weight)
+                                   paragraph.queryFeatures += FeatureContainer(score, weight)
                 }}
         bar.stop()
         paragraphSearcher.setSimilarity(curSim)

@@ -7,14 +7,21 @@ import experiment.NormType.ZSCORE
 import features.shared.SharedFeature
 import language.GramAnalyzer
 import language.GramStatType
+import language.GramStatType.*
 import language.containers.LanguageStatContainer
 import lucene.containers.QueryData
+import org.apache.lucene.index.Term
+import org.apache.lucene.search.BoostQuery
+import org.apache.lucene.search.TermQuery
 import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
 
 import utils.lucene.explainScore
 import utils.lucene.splitAndCount
 import utils.misc.CONTENT
+import utils.stats.countDuplicates
+import utils.stats.normalize
+import utils.stats.takeMostFrequent
 
 
 object DocumentRankingFeatures {
@@ -25,6 +32,30 @@ object DocumentRankingFeatures {
             sf.paragraphScores[index] = score
         }
     }
+
+    private fun queryBM25BoostedGram(qd: QueryData, sf: SharedFeature, gramStatType: GramStatType,
+                                weight: Double = 1.0): Unit = with(qd) {
+        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+        val grams = when(gramStatType) {
+            TYPE_UNIGRAM -> GramAnalyzer.countUnigrams(terms)
+                .takeMostFrequent(15)
+                .normalize()
+            TYPE_BIGRAM -> GramAnalyzer.countBigrams(terms)
+                .takeMostFrequent(15)
+                .normalize()
+            TYPE_BIGRAM_WINDOW -> GramAnalyzer.countWindowedBigrams(terms)
+                .takeMostFrequent(15)
+                .normalize()
+        }
+
+        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+
+        paragraphContainers.mapIndexed {  index, paragraphContainer ->
+            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
+            sf.paragraphScores[index] = score
+        }
+    }
+
 
     private fun querySDMDocument(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         // Parse query and retrieve a language model for it
@@ -49,4 +80,15 @@ object DocumentRankingFeatures {
     fun addSDMDocument(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(this::querySDMDocument, FeatureType.PARAGRAPH, wt, norm)
 
+    fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_UNIGRAM) },
+                FeatureType.PARAGRAPH, wt, norm)
+
+    fun addBM25BoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM) },
+                    FeatureType.PARAGRAPH, wt, norm)
+
+    fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) },
+                    FeatureType.PARAGRAPH, wt, norm)
 }

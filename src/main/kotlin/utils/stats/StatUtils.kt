@@ -14,9 +14,16 @@ fun Iterable<Double>.normalize(): List<Double> {
     return items.map { value -> value / total }
 }
 
-fun Iterable<String>.countDuplicates(): Map<String, Int> =
+fun<A> Iterable<A>.countDuplicates(): Map<A, Int> =
         groupingBy(::identity)
             .eachCount()
+
+fun<A, B: Comparable<B>> Map<A, B>.takeMostFrequent(n: Int): Map<A, B> =
+        entries
+            .sortedByDescending { it.value }
+            .take(n)
+            .map { it.key to it.value }
+            .toMap()
 
 
 

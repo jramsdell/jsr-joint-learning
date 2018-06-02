@@ -18,7 +18,7 @@ import utils.parallel.pmap
  * Description: Used to make queries (using BM25) and to parse the results of queries.
  *              Takes an IndexSearcher (or path to an index) for the Lucene index it will lucene with.
  */
-class QueryRetriever(val indexSearcher: IndexSearcher) {
+class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean = false) {
     constructor(indexPath: String) : this(getIndexSearcher(indexPath))
 
     val analyzer = StandardAnalyzer()
@@ -60,6 +60,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher) {
         val replaceNumbers = """(\d+|enwiki:)""".toRegex()
 
         return DeserializeData.iterableAnnotations(File(queryLocation).inputStream())
+            .run { if (takeSubset) take(10) else this }
             .flatMap { page ->
                 page.flatSectionPaths()
                     .pmap { sectionPath ->

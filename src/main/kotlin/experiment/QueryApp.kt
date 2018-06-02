@@ -80,8 +80,12 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
     fun queryEntity(weights: List<Double>? = null) {
-        DocumentRankingFeatures.addBM25Document(formatter, weights?.get(0) ?: 1.0)
-        EntityRankingFeatures.addSDMAbstract(formatter, weights?.get(1) ?: 1.0)
+//        formatter.addBM25(normType = NormType.ZSCORE, weight = 1.0)
+//        DocumentRankingFeatures.addBM25Document(formatter, weights?.get(0) ?: 1.0)
+        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, weights?.get(0) ?: 1.0)
+        DocumentRankingFeatures.addBM25BoostedBigram(formatter, weights?.get(1) ?: 1.0)
+        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, weights?.get(2) ?: 1.0)
+//        EntityRankingFeatures.addSDMAbstract(formatter, weights?.get(1) ?: 1.0)
     }
 
     fun doDb() {
@@ -176,8 +180,9 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         method("train", "sdm") { querySDM() }
 
 //                        method("query", "entity") { queryEntity(weights = listOf(0.8366295022089238, -0.16337049779107615)) }
-                        method("query", "entity") { queryEntity(weights = listOf(0.8468700283637326, -0.1531299716362674
-                        )) }
+//                        method("query", "entity") { queryEntity() }
+                        method("query", "entity") { queryEntity(weights = listOf(0.8570786290155611, 0.07934068299135334, 0.06358068799308561
+                            )) }
                         method("train", "entity") { queryEntity() }
 
                         method("train", "do_bm25") {
