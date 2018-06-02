@@ -8,6 +8,8 @@ import experiment.NormType.*
 import features.shared.SharedFeature
 import info.debatty.java.stringsimilarity.NormalizedLevenshtein
 import language.GramAnalyzer
+import language.GramStatType
+import language.GramStatType.*
 import language.containers.LanguageStatContainer
 import lucene.containers.QueryData
 import utils.AnalyzerFunctions
@@ -16,6 +18,7 @@ import utils.lucene.explainScore
 import utils.misc.identity
 import utils.stats.countDuplicates
 import utils.stats.normalize
+import utils.stats.takeMostFrequent
 import java.lang.Double.sum
 import kotlin.math.absoluteValue
 
@@ -85,6 +88,32 @@ object EntityRankingFeatures {
         }
     }
 
+    private fun entityBoostedGram(qd: QueryData, sf: SharedFeature, gramStatType: GramStatType,
+                                  weight: Double = 1.0): Unit = with(qd) {
+        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+        val grams = when(gramStatType) {
+            GramStatType.TYPE_UNIGRAM       -> GramAnalyzer.countUnigrams(terms)
+                .takeMostFrequent(15)
+                .keys.toList()
+//                .normalize()
+            GramStatType.TYPE_BIGRAM        -> GramAnalyzer.countBigrams(terms)
+                .takeMostFrequent(15)
+                .keys.toList()
+//                .normalize()
+            GramStatType.TYPE_BIGRAM_WINDOW -> GramAnalyzer.countWindowedBigrams(terms)
+                .takeMostFrequent(15)
+                .keys.toList()
+//                .normalize()
+        }
+
+        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+
+        entityContainers.mapIndexed {  index, entityContainer ->
+            val score = entitySearcher.explainScore(documentQuery, entityContainer.docId )
+            sf.entityScores[index] = score
+        }
+    }
+
 //    fun entityUnigram(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
 //        val queryUnigrams = AnalyzerFunctions
 //            .createTokenList(queryString, useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
@@ -120,5 +149,17 @@ object EntityRankingFeatures {
 
     fun addQueryRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(this::queryRdf, FeatureType.ENTITY, wt, norm)
+
+    fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3({ qd, sf -> entityBoostedGram(qd, sf, TYPE_UNIGRAM) },
+                    FeatureType.ENTITY, wt, norm)
+
+    fun addBM25BoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3({ qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM) },
+                    FeatureType.ENTITY, wt, norm)
+
+    fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3({ qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) },
+                    FeatureType.ENTITY, wt, norm)
 
 }

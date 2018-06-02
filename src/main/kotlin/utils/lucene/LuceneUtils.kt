@@ -7,6 +7,7 @@ import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.Query
+import org.apache.lucene.search.TopDocs
 import org.apache.lucene.store.FSDirectory
 import utils.misc.identity
 import utils.stats.normalize
@@ -35,6 +36,9 @@ fun Document.splitAndCount(field: String) =
             ?.groupingBy(::identity)
             ?.eachCount() ?: emptyMap()
 
+fun TopDocs.docs(indexSearcher: IndexSearcher): List<Pair<Document, Int>> =
+        scoreDocs.map { scoreDoc ->  indexSearcher.doc(scoreDoc.doc) to scoreDoc.doc }
+
 fun Document.getOrDefault(field: String, default: String = "") =
          get(field) ?: default
 //    try { get(field) ?: default }
@@ -45,3 +49,9 @@ fun Document.getValuesOrDefault(field: String) = getValues(field).toList()
 //        catch (e: IllegalStateException) { emptyList<String>() }
 
 fun IndexSearcher.explainScore(query: Query, doc: Int) = explain(query, doc).value.toDouble()
+
+fun IndexSearcher.searchFirstOrNull(query: Query) =
+        search(query, 1)
+            .scoreDocs
+            .firstOrNull()
+

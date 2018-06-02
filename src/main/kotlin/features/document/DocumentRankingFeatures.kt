@@ -9,6 +9,8 @@ import language.GramAnalyzer
 import language.GramStatType
 import language.GramStatType.*
 import language.containers.LanguageStatContainer
+import lucene.FieldQueryFormatter
+import lucene.containers.FieldNames
 import lucene.containers.QueryData
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.BoostQuery
@@ -39,13 +41,16 @@ object DocumentRankingFeatures {
         val grams = when(gramStatType) {
             TYPE_UNIGRAM -> GramAnalyzer.countUnigrams(terms)
                 .takeMostFrequent(15)
-                .normalize()
+                .keys.toList()
+//                .normalize()
             TYPE_BIGRAM -> GramAnalyzer.countBigrams(terms)
                 .takeMostFrequent(15)
-                .normalize()
+                .keys.toList()
+//                .normalize()
             TYPE_BIGRAM_WINDOW -> GramAnalyzer.countWindowedBigrams(terms)
                 .takeMostFrequent(15)
-                .normalize()
+                .keys.toList()
+//                .normalize()
         }
 
         val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
@@ -55,6 +60,40 @@ object DocumentRankingFeatures {
             sf.paragraphScores[index] = score
         }
     }
+
+    private fun combinedBoostedGram(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+        val queryFormatter = FieldQueryFormatter()
+        val weights = listOf(0.8570786290155611, 0.07934068299135334, 0.0635806879930856)
+
+        queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
+        queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
+        queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
+//        queryFormatter.addNormalQuery(queryString, FieldNames.FIELD_TEXT, weights[3])
+        val documentQuery = queryFormatter.createBooleanQuery()
+
+        paragraphContainers.mapIndexed {  index, paragraphContainer ->
+            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
+            sf.paragraphScores[index] = score
+        }
+    }
+
+//    private fun queryCombinedBoostedGram(qd: QueryData, sf: SharedFeature,
+//                                     weight: Double = 1.0): Unit = with(qd) {
+//        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+//        val unigrams = GramAnalyzer.countUnigrams(terms).takeMostFrequent(15).normalize()
+//        val bigrams = GramAnalyzer.countBigrams(terms).takeMostFrequent(15).normalize()
+//        val windows = GramAnalyzer.countWindowedBigrams(terms).takeMostFrequent(15).normalize()
+//
+//
+//
+////        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+//
+//        paragraphContainers.mapIndexed {  index, paragraphContainer ->
+//            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
+//            sf.paragraphScores[index] = score
+//        }
+//    }
 
 
     private fun querySDMDocument(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
@@ -68,7 +107,7 @@ object DocumentRankingFeatures {
 
         paragraphDocuments.forEachIndexed { index, doc ->
             val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
-            val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 4.0)
+            val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 2.0)
             val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
             sf.paragraphScores[index] = score
         }
@@ -91,4 +130,6 @@ object DocumentRankingFeatures {
     fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) },
                     FeatureType.PARAGRAPH, wt, norm)
+    fun addCombinedBoostedGram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(this::combinedBoostedGram, FeatureType.PARAGRAPH, wt, norm)
 }

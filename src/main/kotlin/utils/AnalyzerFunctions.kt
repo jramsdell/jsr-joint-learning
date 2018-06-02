@@ -5,10 +5,7 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.Term
-import org.apache.lucene.search.BooleanClause
-import org.apache.lucene.search.BooleanQuery
-import org.apache.lucene.search.BoostQuery
-import org.apache.lucene.search.TermQuery
+import org.apache.lucene.search.*
 import java.io.File
 import java.io.StringReader
 import kotlin.coroutines.experimental.buildSequence
@@ -18,6 +15,12 @@ private fun buildStopWords(): CharArraySet {
      stops.addAll( File("resources/aggressive_stops.txt").readLines() )
     return stops
 }
+
+
+data class WeightedTermData(
+        val weightedTerms: Map<String, Double>,
+        val field: String,
+        val addiitonalWeight: Double )
 
 /**
  * Static Class: AnalyzerFunctions
@@ -77,23 +80,23 @@ object AnalyzerFunctions {
 
         return createTokenList(query, analyzerType, useFiltering)
             .map { token -> TermQuery(Term(field, token)) }
-            .fold(BooleanQuery.Builder(),
-                    { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
-            .build()
+            .run { buildBooleanQuery(this) }
     }
 
-    fun createWeightedTermsQuery(terms: Map<String, Double>, field: String = "text",
+    fun createWeightedTermsQuery(terms: List<String>, field: String = "text",
                                  weight: Double = 1.0): BooleanQuery =
-        terms.entries
-//            .map { (term, count) -> BoostQuery(TermQuery(Term(field, term)), count.toFloat() * weight.toFloat()) }
-//            .map { (term, count) -> BoostQuery(TermQuery(Term(field, term)), count.toFloat() * weight.toFloat()) }
-            .map { (term, count) -> boostedTermQuery(field, term, count * weight) }
+            weightedTermQueries(terms, field, weight)
                 .fold(BooleanQuery.Builder(),
                         { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
                 .build()
 
+    fun weightedTermQueries(terms: List<String>, field: String = "text",
+                                 weight: Double = 1.0): List<Query> =
+            terms.map { term -> boostedTermQuery(field, term, weight) }
+
     fun boostedTermQuery(field: String, term: String, weight: Double) =
             BoostQuery(TermQuery(Term(field, term)), weight.toFloat())
+
 
     /**
      * Class: createQueryList
@@ -109,4 +112,11 @@ object AnalyzerFunctions {
             .map { termQuery -> BooleanQuery.Builder().add(termQuery, BooleanClause.Occur.SHOULD).build()}
             .toList()
     }
+
+    fun buildBooleanQuery(queries: List<Query>) =
+            queries.fold(BooleanQuery.Builder(),
+                    { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
+                .build()
+
+
 }

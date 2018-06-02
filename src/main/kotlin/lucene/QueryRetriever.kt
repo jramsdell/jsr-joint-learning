@@ -3,6 +3,7 @@ package lucene
 
 import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
+import lucene.containers.FieldNames
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.search.*
 import utils.lucene.getIndexSearcher
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 import utils.AnalyzerFunctions
 import utils.misc.PID
 import utils.parallel.pmap
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Class: QueryRetriever
@@ -58,6 +60,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
     fun getSectionQueries(queryLocation: String): List<Pair<String, TopDocs>> {
         val seen = ConcurrentHashMap<String, String>()
         val replaceNumbers = """(\d+|enwiki:)""".toRegex()
+        val counter = AtomicInteger()
 
         return DeserializeData.iterableAnnotations(File(queryLocation).inputStream())
             .run { if (takeSubset) take(10) else this }
@@ -68,13 +71,26 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                         var queryStr = createQueryString(page, sectionPath)
                         queryStr = queryStr.replace(replaceNumbers, queryStr)      // remove numbers/enwiki:
 
-//                        val result = queryId to indexSearcher.search(createQuery(queryStr), 100)
-                        val query = indexSearcher
-                            .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = false), 100)
-//                        val result = queryId to indexSearcher.search(createQuery(queryStr), 100)
+//                        val query = indexSearcher
+//                            .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = false), 100)
+
+
+                        val weights = listOf(0.8570786290155611, 0.07934068299135334, 0.0635806879930856)
+//                        val weights = listOf(0.8659292351587171, 0.0531597526480729, 0.08091101219320986)
+                        val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
+                                useFiltering = true)
+                        val query = FieldQueryFormatter()
+                            .addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
+                            .addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
+                            .addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
+                            .createBooleanQuery()
+                            .run {
+                                indexSearcher.search(this, 100) }
+
+
                         val result = queryId to query
                         result.takeUnless {seen.put(queryId, "") != null}   // remove duplicates
-                    }
+                    }.apply { println(counter.incrementAndGet()) }
             }.filterNotNull()
     }
 

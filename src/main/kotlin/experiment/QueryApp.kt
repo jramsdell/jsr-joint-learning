@@ -14,6 +14,7 @@ import net.sourceforge.argparse4j.inf.Subparsers
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import utils.lucene.getIndexSearcher
+import utils.misc.filledArray
 
 /**
  * Class: MasterExperiment
@@ -80,11 +81,33 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
     fun queryEntity(weights: List<Double>? = null) {
-//        formatter.addBM25(normType = NormType.ZSCORE, weight = 1.0)
+//        val Weights = listOf(0.2130222927349571, 0.6525891171377952, 0.11243909027833231, -0.021949499848915473)
+//        val Weights = listOf(0.24561161088108927 , 0.7452264415257137 , 0.00702869268534017 , 0.002133254907856875 )
+        val Weights = null
+//        val Weights = listOf(0.5561580572805962 , 0.3878254359818222 , 0.02703809172871249 , 0.0289784150088693 )
+//        val Weights = listOf(0.27582754190104186 , 0.3058954371483745 , 0.1357071506153126 , 0.2825698703352709 )
+        val norm = NormType.SUM
+
+        formatter.addBM25(normType = norm, weight = Weights?.get(0) ?: 1.0)
+        val makeWeight = { index: Int ->  filledArray(6, 0.0).apply { set(index, 1.0) } }
+//        (0 until 6).forEach { index ->
+//            val w = makeWeight(index)
+//            { query, tops, indexSearcher -> featSplitSim(query, tops, indexSearcher) }
+//        }
+
 //        DocumentRankingFeatures.addBM25Document(formatter, weights?.get(0) ?: 1.0)
-        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, weights?.get(0) ?: 1.0)
-        DocumentRankingFeatures.addBM25BoostedBigram(formatter, weights?.get(1) ?: 1.0)
-        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, weights?.get(2) ?: 1.0)
+
+//        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, Weights?.get(1) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBM25BoostedBigram(formatter, Weights?.get(2) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, Weights?.get(3) ?: 1.0, norm = norm)
+
+//        EntityRankingFeatures.addBM25BoostedUnigram(formatter, Weights?.get(4) ?: 1.0)
+//        EntityRankingFeatures.addBM25BoostedBigram(formatter, Weights?.get(5) ?: 1.0)
+//        EntityRankingFeatures.addBM25BoostedWindowedBigram(formatter, Weights?.get(6) ?: 1.0)
+
+//        DocumentRankingFeatures.addCombinedBoostedGram(formatter)
+//        DocumentRankingFeatures.addSDMDocument(formatter)
+
 //        EntityRankingFeatures.addSDMAbstract(formatter, weights?.get(1) ?: 1.0)
     }
 
