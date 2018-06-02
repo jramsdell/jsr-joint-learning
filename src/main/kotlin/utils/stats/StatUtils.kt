@@ -18,7 +18,7 @@ fun Iterable<String>.countDuplicates(): Map<String, Int> =
         groupingBy(::identity)
             .eachCount()
 
-//fun Grouping<T, K>.reduceValues(): Map<T, K>
+
 
 fun Double.defaultWhenNotFinite(default: Double = 0.0): Double = if (!isFinite()) default else this
 // Convenience function (turns NaN and infinite values into 0.0)

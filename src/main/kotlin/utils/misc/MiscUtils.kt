@@ -38,3 +38,48 @@ fun<A> filledArray(nSize: Int, fillValue: A ): ArrayList<A> {
     (0 until nSize).forEach { array += fillValue }
     return array
 }
+
+fun<A, B> Iterable<Pair<A, B>>.groupOfLists(): Map<A, List<B>> {
+    val newMap = HashMap<A, ArrayList<B>>()
+    forEach { (k,v) ->
+        newMap.computeIfAbsent(k, { ArrayList() }).add(v)
+    }
+    return newMap
+}
+
+fun<A, B> Iterable<Pair<A, B>>.groupOfSets(): Map<A, Set<B>> {
+    val newMap = HashMap<A, HashSet<B>>()
+    forEach { (k,v) ->
+        newMap.computeIfAbsent(k, { HashSet() }).add(v)
+    }
+    return newMap
+}
+
+
+fun<A, B, C> Iterable<A>.mapOfLists(f: (A) -> Pair<B, C>): Map<B, List<C>> {
+    val newMap = HashMap<B, ArrayList<C>>()
+    forEach { element ->
+        val (k,v) = f(element)
+        newMap.computeIfAbsent(k, { ArrayList() }).add(v)
+    }
+    return newMap
+}
+
+fun<A, B, C> Iterable<A>.mapOfSets(f: (A) -> Pair<B, C>): Map<B, Set<C>> {
+    val newMap = HashMap<B, HashSet<C>>()
+    forEach { element ->
+        val (k,v) = f(element)
+        newMap.computeIfAbsent(k, { HashSet() }).add(v)
+    }
+    return newMap
+}
+
+//fun<A, B, C> Iterable<A>.mapOfMaps(f: (A) -> Pair<B, C>): Map<A, Map<B, C>> {
+//    val newMap = HashMap<A, HashMap<B, C>>()
+//    forEach { element ->
+//        val (k,v) = f(element)
+//        newMap.computeIfAbsent(element, { HashMap() })[k] = v
+//    }
+//    return newMap
+//}
+
