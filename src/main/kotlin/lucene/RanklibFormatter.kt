@@ -294,20 +294,20 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         queryContainers.forEachParallel { qc ->
 
             // Apply feature and update counter
-            val sf = SharedFeature( paragraphScores = filledArray(qc.paragraphs.size, 0.0),
-                    entityScores = filledArray(qc.entities.size, 0.0) )
+            val sf = SharedFeature(paragraphScores = filledArray(qc.paragraphs.size, 0.0),
+                    entityScores = filledArray(qc.entities.size, 0.0))
             f(qc.queryData, sf)
-            lock.withLock { bar.step() }
 
             // Update containers with scores
             when (featType) {
                 FeatureType.PARAGRAPH -> scoreEntitiesWithParagraphs(qc, sf)
-                FeatureType.ENTITY -> scoreParagraphsWithEntities(qc, sf)
-                else -> Unit
+                FeatureType.ENTITY    -> scoreParagraphsWithEntities(qc, sf)
+                else                  -> Unit
             }
-
             addBothScores(qc, sf, weight, normType)
+            lock.withLock { bar.step() }
         }
+//        }.forEach { (sf, qc) -> addBothScores(qc, sf, weight, normType) }
         bar.stop()
         paragraphSearcher.setSimilarity(curSim)
     }
@@ -328,7 +328,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         sf.paragraphScores.forEachIndexed { index, score ->
             parToEntity[index]?.let { entityDistribution ->
                 entityDistribution.forEach { (entityIndex, entityProb) ->
-                    sf.paragraphScores[entityIndex] += score * entityProb
+                    sf.entityScores[entityIndex] += score * entityProb
                 }
             }
         }
@@ -416,10 +416,17 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * @param outName: Name of the file to write the results to.
      */
     fun writeToRankLibFile(outName: String) {
+        val file = File(outName).bufferedWriter()
         queryContainers
                 .flatMap { queryContainer -> queryContainer.paragraphs  }
                 .joinToString(separator = "\n", transform = ParagraphContainer::toString)
-                .let { File(outName).writeText(it) }
+                .let { file.write(it) }
+
+//        queryContainers
+//            .flatMap { queryContainer -> queryContainer.entities  }
+//            .joinToString(separator = "\n", transform = EntityContainer::toString)
+//            .let { file.write(it) }
+        file.close()
     }
 
     /**

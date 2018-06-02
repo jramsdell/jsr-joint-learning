@@ -32,10 +32,18 @@ data class ParagraphContainer(val pid: String,
     }
 
     // Convenience override: prints RankLib compatible lines
-    override fun toString(): String =
-            "${if (isRelevant) 1 else 0} qid:$qid " +
-                    (1..features.size).zip(features)
+//    override fun toString(): String =
+//            "${if (isRelevant) 1 else 0} qid:$qid " +
+//                    (1..features.size).zip(features)
+//                        .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
+//                    " #docid=$pid"
+
+    override fun toString(): String {
+        val combinedFeaures = queryFeatures + entityFeatures + sharedFeatures
+        return "${if (isRelevant) 1 else 0} qid:$qid " +
+                    (1..combinedFeaures.size).zip(combinedFeaures)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
                     " #docid=$pid"
+    }
 
 }

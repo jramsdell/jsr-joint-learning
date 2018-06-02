@@ -30,13 +30,16 @@ private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphLis
 
 object SharedFeatures {
     private fun sharedRdf(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val entityFeatures = entityContainers.map { entity -> entityDb.getEntityByID(entity.docId).rdf }
+        val entityFeatures = entityContainers.map { entity ->
+            val doc = entityDb.getDocumentById(entity.docId)
+            doc.getValues("rdf")?.toList() ?: emptyList()
+        }
         val documentFeatures =
                 tops.scoreDocs.map { scoreDoc ->
                     val doc = paragraphSearcher.doc(scoreDoc.doc)
                     doc.getValues("spotlight")
-                        .mapNotNull { docEntity -> entityDb.getEntity(docEntity) }
-                        .flatMap { docEntity -> docEntity.rdf }
+                        .mapNotNull { docEntity -> entityDb.getEntityDocument(docEntity) }
+                        .flatMap { docEntity -> docEntity.getValues("rdf")?.toList() ?: emptyList() }
                         .countDuplicates()
                 }
 

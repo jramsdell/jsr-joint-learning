@@ -24,6 +24,8 @@ class EntityRetriever(val db: EntityDatabase,
                     .toSet()
 
 
+
+
     val entityContainers =
             queries.withIndex().pmap {index ->
                 val (query, tops) = index.value

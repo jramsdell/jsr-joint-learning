@@ -21,15 +21,15 @@ import kotlin.coroutines.experimental.buildSequence
 
 data class EntityData(
         val name: String,
-        val abstract: String?,
-        val rdf: Set<String>,
-        val tfidf: Double,
-        val clarity: Double,
-        val boostedLinkProbability: Double,
-        val queryScope: Double,
-        val id: Int,
-        val docId: Int,
-        val mutualDependency: Double
+//        val abstract: String?,
+//        val rdf: Set<String>,
+//        val tfidf: Double,
+//        val clarity: Double,
+//        val boostedLinkProbability: Double,
+//        val queryScope: Double,
+//        val id: Int,
+        val docId: Int
+//        val mutualDependency: Double
 //        val unigram: Map<String, Double>,
 //        val bigrams: Map<String, Double>,
 //        val bigram_windows: Map<String, Double>
@@ -45,15 +45,15 @@ data class EntityData(
         fun createEntityData(doc: Document, docId: Int) = doc.run {
             EntityData(
                     name = get("name"),
-                    abstract = get("abstract") ?: "",
-                    rdf = getValues("rdf").toSet(),
-                    tfidf = get("tfidf")?.toDouble() ?: 0.0,
-                    clarity = get("clarity")?.toDouble() ?: 0.0,
-                    boostedLinkProbability = get("boosted_link_probability")?.toDouble() ?: 0.0,
-                    queryScope = get("query_score")?.toDouble() ?: 0.0,
-                    id = get("id")?.toInt() ?: 0,
-                    docId = docId,
-                    mutualDependency = get("mutual_dependency")?.toDouble() ?: 0.0
+//                    abstract = get("abstract") ?: "",
+//                    rdf = getValues("rdf").toSet(),
+//                    tfidf = get("tfidf")?.toDouble() ?: 0.0,
+//                    clarity = get("clarity")?.toDouble() ?: 0.0,
+//                    boostedLinkProbability = get("boosted_link_probability")?.toDouble() ?: 0.0,
+//                    queryScope = get("query_score")?.toDouble() ?: 0.0,
+//                    id = get("id")?.toInt() ?: 0,
+                    docId = docId
+//                    mutualDependency = get("mutual_dependency")?.toDouble() ?: 0.0
 //                    unigram = splitAndCount(doc, "unigram"),
 //                    bigrams = splitAndCount(doc, "bigrams"),
 //                    bigram_windows = splitAndCount(doc, "bigram_windows")

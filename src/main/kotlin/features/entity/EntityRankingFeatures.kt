@@ -81,7 +81,7 @@ object EntityRankingFeatures {
             val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
             val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 4.0)
             val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
-            sf.paragraphScores[index] = score
+            sf.entityScores[index] = score
         }
     }
 
