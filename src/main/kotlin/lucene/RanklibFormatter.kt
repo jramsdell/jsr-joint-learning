@@ -36,7 +36,9 @@ enum class NormType {
 
 enum class FeatureType {
     PARAGRAPH,
+    PARAGRAPH_TO_ENTITY,
     ENTITY,
+    ENTITY_TO_PARAGRAPH,
     SHARED
 }
 
@@ -73,9 +75,10 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
-    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc)
+    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant)
     val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc )
+    val featureDatabase = FeatureDatabase2()
 
 
     private val queryContainers =
@@ -231,32 +234,9 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         paragraphSearcher.setSimilarity(curSim)
     }
 
-    fun addFeature2(f: (QueryData) -> List<Double>, weight:Double = 1.0,
-                   normType: NormType = NormType.NONE) {
 
-        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
-        bar.start()
-        val lock = ReentrantLock()
-        val curSim = paragraphSearcher.getSimilarity(true)
-
-        queryContainers
-            .pmap { (_, _, paragraphs, queryData) ->
-                // Using scoring function, score each of the paragraphs in our lucene result
-                val featureResult: List<Double> =
-                        f(queryData).run { normalizeResults(this, normType) }
-
-                lock.withLock { bar.step() }
-                featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
-            .forEach { results ->
-                results.forEach { (score, paragraph) ->
-                    paragraph.features += FeatureContainer(score, weight)
-                }}
-        bar.stop()
-        paragraphSearcher.setSimilarity(curSim)
-    }
-
-    fun addFeature3(f: (QueryData, SharedFeature) -> Unit, featType: FeatureType, weight:Double = 1.0,
-                    normType: NormType = NormType.NONE) {
+    fun addFeature3(name: String, featType: FeatureType, weight:Double = 1.0,
+                    normType: NormType = NormType.NONE, f: (QueryData, SharedFeature) -> Unit) {
 
         val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
@@ -272,18 +252,19 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
             // Update containers with scores
             when (featType) {
-                FeatureType.PARAGRAPH -> scoreEntitiesWithParagraphs(qc, sf)
-                FeatureType.ENTITY    -> scoreParagraphsWithEntities(qc, sf)
+                FeatureType.PARAGRAPH_TO_ENTITY -> scoreEntitiesWithParagraphs(qc, sf)
+                FeatureType.ENTITY_TO_PARAGRAPH    -> scoreParagraphsWithEntities(qc, sf)
                 else                  -> Unit
             }
-            addBothScores(qc, sf, weight, normType)
+            addBothScores(qc, sf, weight, normType, featType, name)
             lock.withLock { bar.step() }
         }
-//        }.forEach { (sf, qc) -> addBothScores(qc, sf, weight, normType) }
         bar.stop()
         paragraphSearcher.setSimilarity(curSim)
     }
 
+
+    // Transforms a feature over entities into a feature over paragraphs
     private fun scoreParagraphsWithEntities(qc: QueryContainer, sf: SharedFeature) {
         val entityToPar = qc.queryData.entityToParagraph
         sf.entityScores.forEachIndexed { index, score ->
@@ -295,6 +276,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         }
     }
 
+    // Transforms a feature over paragraphs into a feature over entities
     private fun scoreEntitiesWithParagraphs(qc: QueryContainer, sf: SharedFeature) {
         val parToEntity = qc.queryData.paragraphToEntity
         sf.paragraphScores.forEachIndexed { index, score ->
@@ -306,50 +288,27 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         }
     }
 
-    private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType) {
+    private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType, featType: FeatureType, name: String) {
+//        if (featType != FeatureType.PARAGRAPH) {
         qc.entities
             .zip(sf.entityScores.run { normalizeResults(this, normType) })
             .forEach { (entity, score) ->
-                entity.queryFeatures += FeatureContainer(score, weight)}
+                entity.queryFeatures += FeatureContainer(score, weight, name)}
+//        }
 
-        qc.paragraphs
-            .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
-            .forEach { (paragraph, score) ->
-                paragraph.queryFeatures += FeatureContainer(score, weight)}
+//        if (featType != FeatureType.ENTITY) {
+            qc.paragraphs
+                .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
+                .forEach { (paragraph, score) ->
+                    paragraph.queryFeatures += FeatureContainer(score, weight, name)
+                }
+//        }
     }
 
 
 
 
 
-
-//    fun addSharedFeature(f: (QueryData, SharedFeature) -> Unit, weight:Double = 1.0,
-//                         normType: NormType = NormType.NONE) {
-//
-//        val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
-//        bar.start()
-//        val lock = ReentrantLock()
-//        val curSim = indexSearcher.getSimilarity(true)
-//
-//        queryContainers
-//            .pmap { qc ->
-//                // Using scoring function, score each of the paragraphs in our lucene result
-//                val sf = SharedFeature(
-//                        paragraphs = filledArray(qc.paragraphs.size, 0.0),
-//                        entities = filledArray(qc.entities.size, 0.0)
-//                )
-//
-//                f(qc.queryData, sf)
-//
-//                lock.withLock { bar.step() }
-//                featureResult.zip(qc.entities) } // associate the scores with their corresponding paragraphs
-//            .forEach { results ->
-//                results.forEach { (score, entity) ->
-//                    entity.features += FeatureContainer(score, weight)
-//                }}
-//        bar.stop()
-//        indexSearcher.setSimilarity(curSim)
-//    }
 
 
     private fun bm25(query: String, tops:TopDocs, indexSearcher: IndexSearcher): List<Double> {
@@ -398,8 +357,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            .flatMap { queryContainer -> queryContainer.entities  }
 //            .joinToString(separator = "\n", transform = EntityContainer::toString)
 //            .let { file.write(it) }
+//        queryContainers.forEach(featureDatabase::writeFeatures)
+        featureDatabase.writeFeatures(queryContainers)
         file.close()
     }
+
+
 
     /**
      * Function: writeQueriesToFile
@@ -416,32 +379,3 @@ private fun retrieveTagMeEntities(content: String): List<Pair<String, Double>> {
     return emptyList()
 }
 
-fun retrieveTagMeEntities2(content: String): List<Pair<String, Double>> {
-    val tok = "7fa2ade3-fce7-4f4a-b994-6f6fefc7e665-843339462"
-    val url = "https://tagme.d4science.org/tagme/tag"
-    val p = post(url, data = mapOf(
-            "gcube-token" to tok,
-            "text" to content
-    ))
-    val results = JsonIterator.deserialize(p.content).get("annotations")
-//    val results = p.jsonObject.getJSONArray("annotations")
-    return  results
-//        .mapNotNull { result -> (result as JSONObject).run {
-//            if (getDouble("rho") <= 0.2) null
-//            else getString("title").replace(" ", "_") to getDouble("rho")
-//        } }
-        .map { result -> result.get("title").toString().replace(" ", "_") to result.get("rho").toDouble()}
-        .filter { (_, rho) -> rho > 0.2 }
-//        .mapNotNull { result -> result.run {
-//            if (get("rho").toDouble() <= 0.2) null
-//            else get("title").toString().replace(" ", "_") to get("rho").toDouble()
-//        } }
-//        .filter { result -> (result as JSONObject).getDouble("rho") > 0.2 }
-//        .map { result -> (result as JSONObject) .getString("title")
-//            .replace(" ", "_")}
-}
-
-//fun main(args: Array<String>) {
-//    retrieveTagMeEntities("Computer science is a thing that people who like computers do.")
-//        .apply(::println)
-//}

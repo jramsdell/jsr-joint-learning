@@ -28,10 +28,10 @@ import utils.stats.takeMostFrequent
 
 object DocumentRankingFeatures {
     private fun queryBM25Document(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val documentQuery = AnalyzerFunctions.createQuery(qd.queryString, field = CONTENT, useFiltering = true)
+//        val documentQuery = AnalyzerFunctions.createQuery(qd.queryString, field = CONTENT, useFiltering = true)
         paragraphContainers.mapIndexed {  index, paragraphContainer ->
-            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
-            sf.paragraphScores[index] = score
+//            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
+            sf.paragraphScores[index] = paragraphContainer.score
         }
     }
 
@@ -64,12 +64,27 @@ object DocumentRankingFeatures {
     private fun combinedBoostedGram(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
         val queryFormatter = FieldQueryFormatter()
-        val weights = listOf(0.8570786290155611, 0.07934068299135334, 0.0635806879930856)
+        val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
 
         queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
         queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
         queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
-//        queryFormatter.addNormalQuery(queryString, FieldNames.FIELD_TEXT, weights[3])
+        val documentQuery = queryFormatter.createBooleanQuery()
+
+        paragraphContainers.mapIndexed {  index, paragraphContainer ->
+            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
+            sf.paragraphScores[index] = score
+        }
+    }
+
+    private fun sectionBoostedGrams(qd: QueryData, sf: SharedFeature, sectionIndex: Int): Unit = with(qd) {
+        val sections = AnalyzerFunctions.splitSections(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val section = sections.getOrNull(sectionIndex) ?: emptyList()
+        val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
+        val queryFormatter = FieldQueryFormatter()
+        queryFormatter.addWeightedQueryTokens(section, FieldNames.FIELD_UNIGRAMS, weights[0])
+        queryFormatter.addWeightedQueryTokens(section, FieldNames.FIELD_BIGRAMS, weights[1])
+        queryFormatter.addWeightedQueryTokens(section, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
         val documentQuery = queryFormatter.createBooleanQuery()
 
         paragraphContainers.mapIndexed {  index, paragraphContainer ->
@@ -114,22 +129,23 @@ object DocumentRankingFeatures {
     }
 
     fun addBM25Document(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-        fmt.addFeature3(this::queryBM25Document, FeatureType.PARAGRAPH, wt, norm)
+        fmt.addFeature3("doc_bm25", FeatureType.PARAGRAPH, wt, norm, this::queryBM25Document)
 
     fun addSDMDocument(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(this::querySDMDocument, FeatureType.PARAGRAPH, wt, norm)
+            fmt.addFeature3("doc_sdm", FeatureType.PARAGRAPH, wt, norm, this::querySDMDocument)
 
     fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_UNIGRAM) },
-                FeatureType.PARAGRAPH, wt, norm)
+            fmt.addFeature3("doc_boosted_unigram", FeatureType.PARAGRAPH, wt, norm) { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_UNIGRAM) }
 
     fun addBM25BoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM) },
-                    FeatureType.PARAGRAPH, wt, norm)
+            fmt.addFeature3("doc_boosted_bigram", FeatureType.PARAGRAPH, wt, norm) { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM) }
 
     fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3({ qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) },
-                    FeatureType.PARAGRAPH, wt, norm)
+            fmt.addFeature3("doc_boosted_window", FeatureType.PARAGRAPH, wt, norm)  { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
+
     fun addCombinedBoostedGram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(this::combinedBoostedGram, FeatureType.PARAGRAPH, wt, norm)
+            fmt.addFeature3("doc_combined_boosted_gram", FeatureType.PARAGRAPH, wt, norm, this::combinedBoostedGram)
+
+    fun addSectionBoostedGrams(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE, index: Int) =
+            fmt.addFeature3("doc_section_boost", FeatureType.PARAGRAPH, wt, norm) { qd, sf -> sectionBoostedGrams(qd, sf, index)}
 }

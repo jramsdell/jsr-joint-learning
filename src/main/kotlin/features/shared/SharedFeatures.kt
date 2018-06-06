@@ -29,6 +29,8 @@ private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphLis
 }
 
 object SharedFeatures {
+
+    // Similarity based on how much paragraph's rdf overlaps with entity's
     private fun sharedRdf(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val entityFeatures = entityContainers.map { entity ->
             val doc = entityDb.getDocumentById(entity.docId)
@@ -51,6 +53,8 @@ object SharedFeatures {
                 })
     }
 
+
+    // Similarity based on proportion of entity links from paragraph to entity
     private fun sharedFeatLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
@@ -60,12 +64,14 @@ object SharedFeatures {
                         .normalize()
                 }
         val entityFeatures = entityContainers.map { entityContainer -> entityContainer.name }
-        scoreBoth(sf, documentFeatures, entityFeatures,
-                { docLinks, entityName ->
+        scoreBoth(sf, entityFeatures, documentFeatures,
+                { entityName, docLinks ->
                     docLinks.getOrDefault(entityName, 0.0)
                 })
     }
 
+
+    // Similarity based on unigram (from paragraph text to entity abstract)
     private fun sharedUnigramLikelihood(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
@@ -77,8 +83,8 @@ object SharedFeatures {
             entity.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
                 .normalize() }
 
-        scoreBoth(sf, documentFeatures, entityFeatures,
-                { docUnigrams, entityUnigrams ->
+        scoreBoth(sf, entityFeatures, documentFeatures,
+                { entityUnigrams, docUnigrams ->
                     val combinedKeys = (docUnigrams.keys + entityUnigrams.keys).toSet()
                     combinedKeys
                         .map { key ->
@@ -89,6 +95,8 @@ object SharedFeatures {
                 })
     }
 
+
+    // Similarity based on BM25 (from paragraph text to entity abstract)
     private fun sharedBM25(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
@@ -96,23 +104,22 @@ object SharedFeatures {
                     AnalyzerFunctions.createQuery(text, field = "abstract")
                 }
         val entityFeatures = entityContainers.map { entityContainer -> entityContainer.docId }
-        scoreBoth(sf, documentFeatures, entityFeatures,
-                { docQuery, entityId ->
+        scoreBoth(sf, entityFeatures, documentFeatures,
+                { entityId, docQuery ->
                     entityDb.searcher.explainScore(docQuery, entityId)
                 })
     }
     fun addSharedBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(this::sharedBM25, FeatureType.SHARED, wt, norm)
+            fmt.addFeature3("shared_bm25_abstract", FeatureType.SHARED, wt, norm, this::sharedBM25)
 
     fun addSharedEntityLinks(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(this::sharedFeatLinks, FeatureType.SHARED, wt, norm)
-
+            fmt.addFeature3("shared_links", FeatureType.SHARED, wt, norm, this::sharedFeatLinks)
 
     fun addSharedRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(this::sharedRdf, FeatureType.SHARED, wt, norm)
+            fmt.addFeature3("shared_rdf", FeatureType.SHARED, wt, norm, this::sharedRdf)
 
     fun addSharedUnigramLikelihood(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(this::sharedUnigramLikelihood, FeatureType.SHARED, wt, norm)
+            fmt.addFeature3("shared_unigram_likelihood", FeatureType.SHARED, wt, norm, this::sharedUnigramLikelihood)
 
 
 }

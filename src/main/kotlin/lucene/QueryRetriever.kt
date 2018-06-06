@@ -57,7 +57,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
      * Description: Given a lucene location (.cbor file), queries Lucene index with page name and section names.
      * @return List of pairs (lucene string and the Top 100 documents obtained by doing the lucene)
      */
-    fun getSectionQueries(queryLocation: String): List<Pair<String, TopDocs>> {
+    fun getSectionQueries(queryLocation: String, doBoostedQuery: Boolean = false): List<Pair<String, TopDocs>> {
         val seen = ConcurrentHashMap<String, String>()
         val replaceNumbers = """(\d+|enwiki:)""".toRegex()
         val counter = AtomicInteger()
@@ -71,21 +71,27 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                         var queryStr = createQueryString(page, sectionPath)
                         queryStr = queryStr.replace(replaceNumbers, queryStr)      // remove numbers/enwiki:
 
-//                        val query = indexSearcher
-//                            .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = false), 100)
+                        val query = if (!doBoostedQuery) {
+                            indexSearcher
+                                .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = false), 100)
+
+                        } else {
+//                            val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
+                            val weights = listOf(0.9346718895308014 , 0.04971515179492379 , 0.015612958674274948 )
+                            val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
+                                    useFiltering = true)
+                            FieldQueryFormatter()
+                                .addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
+                                .addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
+                                .addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
+                                .createBooleanQuery()
+                                .run {
+                                    indexSearcher.search(this, 100) }
+//                        val query = FieldQueryFormatter().doSectionQueries(queryStr).createBooleanQuery()
+//                            .run { indexSearcher.search(this, 100) }
+                        }
 
 
-                        val weights = listOf(0.8570786290155611, 0.07934068299135334, 0.0635806879930856)
-//                        val weights = listOf(0.8659292351587171, 0.0531597526480729, 0.08091101219320986)
-                        val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
-                                useFiltering = true)
-                        val query = FieldQueryFormatter()
-                            .addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
-                            .addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
-                            .addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
-                            .createBooleanQuery()
-                            .run {
-                                indexSearcher.search(this, 100) }
 
 
                         val result = queryId to query

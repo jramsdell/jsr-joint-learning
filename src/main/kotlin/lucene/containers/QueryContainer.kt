@@ -1,6 +1,14 @@
 package lucene.containers
 
+import kotlinx.coroutines.experimental.yield
 import org.apache.lucene.search.TopDocs
+import kotlin.coroutines.experimental.buildIterator
+import kotlin.coroutines.experimental.buildSequence
+
+data class ExtractedFeature(val name: String,
+                            val query: String,
+                            val paragraphs: List<Pair<String, Double>>,
+                            val entities: List<Pair<String, Double>> )
 
 /**
  * Class: QueryContainer
@@ -9,4 +17,20 @@ import org.apache.lucene.search.TopDocs
  */
 data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
                           val queryData: QueryData,
-                          val entities: List<EntityContainer>)
+                          val entities: List<EntityContainer>) {
+
+    fun retrieveFeatures(): Sequence<ExtractedFeature> {
+        val nFeatures = paragraphs.first().queryFeatures.size
+        return buildSequence<ExtractedFeature> {
+            (0 until nFeatures).forEach { index ->
+                val featureName = paragraphs.first().queryFeatures[index].name
+                val paragraphScores = paragraphs.map { paragraph ->
+                    paragraph.pid to paragraph.queryFeatures[index].score }
+                val entityScores = entities.map { entity ->
+                    entity.name to entity.queryFeatures[index].score }
+                yield(ExtractedFeature(featureName, query, paragraphScores, entityScores))
+            }
+        }
+    }
+}
+

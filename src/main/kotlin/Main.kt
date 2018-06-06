@@ -1,7 +1,4 @@
-import experiment.DebugApp
-import experiment.LuceneIndexerApp
-import experiment.ProximityIndexerApp
-import experiment.QueryApp
+import experiment.*
 import lucene.LuceneIndexer
 import net.sourceforge.argparse4j.ArgumentParsers
 import net.sourceforge.argparse4j.helper.HelpScreenException
@@ -19,6 +16,7 @@ fun buildParser(): ArgumentParser {
     LuceneIndexerApp.addExperiments(subparsers)
     QueryApp.addExperiments(subparsers)
     DebugApp.addExperiments(subparsers)
+    RanklibReaderApp.addExperiments(subparsers)
 
     return mainParser
 }

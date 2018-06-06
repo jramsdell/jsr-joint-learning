@@ -40,9 +40,9 @@ data class ProximityDocument(
 //                    unigram_4 = get("unigram_4"),
 //                    bigram_4 = get("bigrams_4"),
 //                    windowed_4 = get("bigram_windows_4"),
-                    unigram_25 = get("unigram_25"),
-                    bigram_25 = get("bigrams_25"),
-                    windowed_25 = get("bigram_windows_25")
+                    unigram_25 = get("unigram_4"),
+                    bigram_25 = get("bigrams_4"),
+                    windowed_25 = get("bigram_windows_4")
             )
         }
     }
@@ -82,7 +82,7 @@ class TagMeSDMIndexer(val indexLoc: String) {
         val entityPID = "${pid}_${entity.title}"
         val doc = Document()
 //        gramIndexer.indexBall(doc, text, 4, entity.start, entity.end)
-        gramIndexer.indexBall(doc, text, 25, entity.start, entity.end)
+        gramIndexer.indexBall(doc, text, 4, entity.start, entity.end)
 //        gramIndexer.index(doc, entity.abstract)
 
         doc.add(TextField("abstract", entity.abstract, Field.Store.YES))

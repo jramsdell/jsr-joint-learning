@@ -118,5 +118,10 @@ object AnalyzerFunctions {
                     { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
                 .build()
 
+    fun splitSections(query: String, analyzerType: AnalyzerType = AnalyzerType.ANALYZER_STANDARD) =
+            query.split("/")
+                .map { section -> AnalyzerFunctions
+                    .createTokenList(section, useFiltering = true, analyzerType = analyzerType) }
+
 
 }

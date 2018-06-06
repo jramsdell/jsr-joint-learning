@@ -1,5 +1,6 @@
 package utils.misc
 
+import org.apache.commons.math3.random.JDKRandomGenerator
 import kotlin.system.measureTimeMillis
 
 fun<A> withTime(f: () -> A): Pair<Long, A> {
@@ -84,4 +85,6 @@ fun<A, B, C> Iterable<A>.mapOfSets(f: (A) -> Pair<B, C>): Map<B, Set<C>> {
 //    }
 //    return newMap
 //}
+
+val sharedRand = JDKRandomGenerator(12941)
 
