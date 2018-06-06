@@ -24,6 +24,8 @@ import utils.misc.CONTENT
 import utils.stats.countDuplicates
 import utils.stats.normalize
 import utils.stats.takeMostFrequent
+import lucene.containers.FeatureEnum
+import lucene.containers.FeatureEnum.*
 
 
 object DocumentRankingFeatures {
@@ -129,23 +131,23 @@ object DocumentRankingFeatures {
     }
 
     fun addBM25Document(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-        fmt.addFeature3("doc_bm25", FeatureType.PARAGRAPH, wt, norm, this::queryBM25Document)
+        fmt.addFeature3(DOC_BM25, wt, norm, this::queryBM25Document)
 
     fun addSDMDocument(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("doc_sdm", FeatureType.PARAGRAPH, wt, norm, this::querySDMDocument)
+            fmt.addFeature3(DOC_SDM, wt, norm, this::querySDMDocument)
 
     fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("doc_boosted_unigram", FeatureType.PARAGRAPH, wt, norm) { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_UNIGRAM) }
+            fmt.addFeature3(DOC_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_UNIGRAM) }
 
     fun addBM25BoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("doc_boosted_bigram", FeatureType.PARAGRAPH, wt, norm) { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM) }
+            fmt.addFeature3(DOC_BOOSTED_BIGRAM, wt, norm) { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM) }
 
     fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("doc_boosted_window", FeatureType.PARAGRAPH, wt, norm)  { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
+            fmt.addFeature3(DOC_BOOSTED_WINDOW, wt, norm)  { qd, sf -> queryBM25BoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
 
     fun addCombinedBoostedGram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("doc_combined_boosted_gram", FeatureType.PARAGRAPH, wt, norm, this::combinedBoostedGram)
+            fmt.addFeature3(DOC_BOOSTED_COMBINED, wt, norm, this::combinedBoostedGram)
 
-    fun addSectionBoostedGrams(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE, index: Int) =
-            fmt.addFeature3("doc_section_boost", FeatureType.PARAGRAPH, wt, norm) { qd, sf -> sectionBoostedGrams(qd, sf, index)}
+//    fun addSectionBoostedGrams(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE, index: Int) =
+//            fmt.addFeature3( FeatureType.PARAGRAPH, wt, norm) { qd, sf -> sectionBoostedGrams(qd, sf, index)}
 }

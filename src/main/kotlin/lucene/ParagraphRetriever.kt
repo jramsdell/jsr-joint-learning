@@ -35,8 +35,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
 //                }
 
                 val containers = tops.scoreDocs.map { sc ->
-                    createParagraphContainer(sc.doc, index.index, query, relevantToQuery)
-
+                    createParagraphContainer(sc.doc, index.index, query, relevantToQuery, sc.score)
                 }
 
                 if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
@@ -47,12 +46,12 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                                           relevantToQuery: Set<String>): List<ParagraphContainer> {
         val missingRelevantParagraphs = relevantToQuery - containers.map { p -> p.pid }.toSet()
         val retrievedRelevantParagraphs = retrieveParagraphs(missingRelevantParagraphs.toList())
-            .map { docId -> createParagraphContainer(docId, index, query, relevantToQuery) }
+            .map { docId -> createParagraphContainer(docId, index, query, relevantToQuery, 0.0f) }
         return containers + retrievedRelevantParagraphs
     }
 
     private fun createParagraphContainer(docId: Int, index: Int,
-                                         query: String, relevantToQuery: Set<String>): ParagraphContainer {
+                                         query: String, relevantToQuery: Set<String>, score: Float): ParagraphContainer {
         val doc = indexSearcher.doc(docId)
         val pid = doc.get(PID)
         return ParagraphContainer(
@@ -62,6 +61,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 query = query,
                 docId = docId,
                 doc = doc,
+                score = score.toDouble(),
                 features = arrayListOf())
     }
 

@@ -1,6 +1,7 @@
 package lucene
 
 import lucene.containers.ExtractedFeature
+import lucene.containers.FeatureEnum
 import lucene.containers.QueryContainer
 import org.mapdb.BTreeMap
 import org.mapdb.DBMaker
@@ -52,34 +53,58 @@ class FeatureDatabase {
 //    }
 }
 
+
+private class LineFeature(val query: String, val qid: Int, val id: String, val score: Double) {
+
+    companion object {
+        fun createLineFeature(line: String): LineFeature {
+            val elements = line.split("\t")
+            return LineFeature(
+                    query = elements[0],
+                    qid = elements[1].toInt(),
+                    id = elements[2],
+                    score = elements[3].toDouble())
+        }
+    }
+}
+
 class FeatureDatabase2() {
-    val paragraphsPath = "features/paragraphs/"
-    val entitiesPath = "features/entities/"
-    val paragraphsDir = File(paragraphsPath).apply { if(!exists()) mkdirs() }
-    val entitiesDir = File(entitiesPath).apply { if(!exists()) mkdirs() }
+    val featuresPath = "features/"
+    val featuresDir = File(featuresPath).apply { if(!exists()) mkdirs() }
 
     fun writeFeatures(queryContainers: List<QueryContainer>) {
         queryContainers.flatMap { qc -> qc.retrieveFeatures().toList() }
             .groupBy { it.name }
-            .values.forEach(this::writeFeatureResults)
+            .values.forEachIndexed(this::writeFeatureResults)
     }
 
-    fun writeFeatureResults(featureList: List<ExtractedFeature>) {
+    fun writeFeatureResults(qid: Int, featureList: List<ExtractedFeature>) {
         val name = featureList.first().name
-        val entitiesFile = File(entitiesPath + name + ".txt").bufferedWriter()
-        val paragraphsFile = File(paragraphsPath + name + ".txt").bufferedWriter()
+        val featuresFile = File(featuresPath + name + ".txt").bufferedWriter()
+
+        val formattedFeatures = ArrayList<String>()
+
         featureList.forEach { feature ->
             val q = feature.query
-            paragraphsFile.write( feature.paragraphs.map { (id, score) -> "$q\t$id\t$score" }.joinToString { "\n" } )
-            entitiesFile.write( feature.entities.map { (id, score) -> "$q\t$id\t$score" }.joinToString { "\n" } )
+            formattedFeatures.addAll(feature.paragraphs.map { (id, score) -> "$q\t$qid\t$id\t$score\tparagraph" })
+            formattedFeatures.addAll(feature.entities.map { (id, score) -> "$q\t$qid\t$id\t$score\tentity" })
         }
-        entitiesFile.close()
-        paragraphsFile.close()
+
+        featuresFile.write(formattedFeatures.joinToString("\n"))
+        featuresFile.close()
     }
 
-    fun getFeature(name: String) {
+    private fun getFeature(featureEnum: FeatureEnum) =
+            getLineFeatures(featuresPath + featureEnum.text)
 
+    private fun getFeatures(featureEnums: List<FeatureEnum>) {
+        val features = featureEnums.flatMap(this::getFeature)
     }
+
+    private fun getLineFeatures(filename: String) =
+        File(filename).bufferedReader()
+            .readLines()
+            .map(LineFeature.Companion::createLineFeature)
 
 
 }

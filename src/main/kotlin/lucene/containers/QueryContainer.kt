@@ -23,11 +23,11 @@ data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: 
         val nFeatures = paragraphs.first().queryFeatures.size
         return buildSequence<ExtractedFeature> {
             (0 until nFeatures).forEach { index ->
-                val featureName = paragraphs.first().queryFeatures[index].name
+                val featureName = paragraphs.first().queryFeatures[index].type.text
                 val paragraphScores = paragraphs.map { paragraph ->
-                    paragraph.pid to paragraph.queryFeatures[index].score }
+                    paragraph.pid to paragraph.queryFeatures[index].getAdjustedScore() }
                 val entityScores = entities.map { entity ->
-                    entity.name to entity.queryFeatures[index].score }
+                    entity.name to entity.queryFeatures[index].getAdjustedScore() }
                 yield(ExtractedFeature(featureName, query, paragraphScores, entityScores))
             }
         }

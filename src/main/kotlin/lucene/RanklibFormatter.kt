@@ -1,9 +1,7 @@
 package experiment
 
-import com.jsoniter.JsonIterator
 import entity.EntityDatabase
 import features.shared.SharedFeature
-import khttp.post
 import lucene.*
 import lucene.containers.*
 import org.apache.lucene.search.IndexSearcher
@@ -210,32 +208,32 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * @param normType: lucene.NormType determines the type of normalization (if any) to apply to the new document scores.
      * @param weight: The final list of doubles is multiplies by this weight
      */
-    fun addFeature(f: (String, TopDocs, IndexSearcher) -> List<Double>, weight:Double = 1.0,
-                   normType: NormType = NormType.NONE) {
+//    fun addFeature(f: (String, TopDocs, IndexSearcher) -> List<Double>, weight:Double = 1.0,
+//                   normType: NormType = NormType.NONE) {
+//
+//        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
+//        bar.start()
+//        val lock = ReentrantLock()
+//        val curSim = paragraphSearcher.getSimilarity(true)
+//
+//        queryContainers
+//            .pmap { (query, tops, paragraphs, _) ->
+//                    // Using scoring function, score each of the paragraphs in our lucene result
+//                    val featureResult: List<Double> =
+//                            f(query, tops, paragraphSearcher).run { normalizeResults(this, normType) }
+//
+//                    lock.withLock { bar.step() }
+//                    featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
+//            .forEach { results ->
+//                results.forEach { (score, paragraph) ->
+//                                   paragraph.queryFeatures += FeatureContainer(score, weight)
+//                }}
+//        bar.stop()
+//        paragraphSearcher.setSimilarity(curSim)
+//    }
 
-        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
-        bar.start()
-        val lock = ReentrantLock()
-        val curSim = paragraphSearcher.getSimilarity(true)
 
-        queryContainers
-            .pmap { (query, tops, paragraphs, _) ->
-                    // Using scoring function, score each of the paragraphs in our lucene result
-                    val featureResult: List<Double> =
-                            f(query, tops, paragraphSearcher).run { normalizeResults(this, normType) }
-
-                    lock.withLock { bar.step() }
-                    featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
-            .forEach { results ->
-                results.forEach { (score, paragraph) ->
-                                   paragraph.queryFeatures += FeatureContainer(score, weight)
-                }}
-        bar.stop()
-        paragraphSearcher.setSimilarity(curSim)
-    }
-
-
-    fun addFeature3(name: String, featType: FeatureType, weight:Double = 1.0,
+    fun addFeature3(featureEnum: FeatureEnum, weight:Double = 1.0,
                     normType: NormType = NormType.NONE, f: (QueryData, SharedFeature) -> Unit) {
 
         val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
@@ -251,12 +249,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             f(qc.queryData, sf)
 
             // Update containers with scores
-            when (featType) {
+            when (featureEnum.type) {
                 FeatureType.PARAGRAPH_TO_ENTITY -> scoreEntitiesWithParagraphs(qc, sf)
                 FeatureType.ENTITY_TO_PARAGRAPH    -> scoreParagraphsWithEntities(qc, sf)
                 else                  -> Unit
             }
-            addBothScores(qc, sf, weight, normType, featType, name)
+            addBothScores(qc, sf, weight, normType, featureEnum)
             lock.withLock { bar.step() }
         }
         bar.stop()
@@ -288,19 +286,20 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         }
     }
 
-    private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType, featType: FeatureType, name: String) {
+    private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType,
+                              featureEnum: FeatureEnum) {
 //        if (featType != FeatureType.PARAGRAPH) {
         qc.entities
             .zip(sf.entityScores.run { normalizeResults(this, normType) })
             .forEach { (entity, score) ->
-                entity.queryFeatures += FeatureContainer(score, weight, name)}
+                entity.queryFeatures += FeatureContainer(score, weight, featureEnum)}
 //        }
 
 //        if (featType != FeatureType.ENTITY) {
             qc.paragraphs
                 .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
                 .forEach { (paragraph, score) ->
-                    paragraph.queryFeatures += FeatureContainer(score, weight, name)
+                    paragraph.queryFeatures += FeatureContainer(score, weight, featureEnum)
                 }
 //        }
     }
@@ -321,8 +320,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      *              this simply extracts them as a list of doubles.
      * @see addFeature
      */
-    fun addBM25(weight: Double = 1.0, normType: NormType = NormType.NONE) =
-            addFeature(this::bm25, weight = weight, normType = normType)
+//    fun addBM25(weight: Double = 1.0, normType: NormType = NormType.NONE) =
+//            addFeature(this::bm25, weight = weight, normType = normType)
 
     /**
      * Function: rerankQueries

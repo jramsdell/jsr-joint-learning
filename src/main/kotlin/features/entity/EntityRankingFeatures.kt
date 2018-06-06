@@ -21,6 +21,7 @@ import utils.stats.normalize
 import utils.stats.takeMostFrequent
 import java.lang.Double.sum
 import kotlin.math.absoluteValue
+import lucene.containers.FeatureEnum.*
 
 
 object EntityRankingFeatures {
@@ -136,27 +137,27 @@ object EntityRankingFeatures {
 //    }
 
     fun addBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_bm25_abstract", FeatureType.ENTITY, wt, norm, this::queryBm25Abstract)
+            fmt.addFeature3(ENTITY_BM25, wt, norm, this::queryBm25Abstract)
 
     fun addSDMAbstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_sdm_abstract", FeatureType.ENTITY, wt, norm, this::querySDMAbstract)
+            fmt.addFeature3(ENTITY_SDM, wt, norm, this::querySDMAbstract)
 
     fun addTop25Freq(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_top25_freq", FeatureType.ENTITY, wt, norm, this::entityTop25Freq)
+            fmt.addFeature3(ENTITY_TOP25_FREQ, wt, norm, this::entityTop25Freq)
 
     fun addQuerySimilarity(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_query_similarity", FeatureType.ENTITY, wt, norm, this::entityMatchQueryEntity)
+            fmt.addFeature3(ENTITY_QUERY_SIMILARITY, wt, norm, this::entityMatchQueryEntity)
 
     fun addQueryRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_rdf", FeatureType.ENTITY, wt, norm, this::queryRdf)
+            fmt.addFeature3(ENTITY_QUERY_RDF, wt, norm, this::queryRdf)
 
     fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_boosted_unigram", FeatureType.ENTITY, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_UNIGRAM) }
+            fmt.addFeature3(ENTITY_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_UNIGRAM) }
 
     fun addBM25BoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_boosted_bigram", FeatureType.ENTITY, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM) }
+            fmt.addFeature3(ENTITY_BOOSTED_BIGRAM, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM) }
 
     fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("entity_boosted_window", FeatureType.ENTITY, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
+            fmt.addFeature3(ENTITY_BOOSTED_WINDOW, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
 
 }

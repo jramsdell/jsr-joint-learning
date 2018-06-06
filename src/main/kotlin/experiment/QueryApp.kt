@@ -40,45 +40,45 @@ class QueryApp(val resources: HashMap<String, Any>) {
      * Desc: Like the section-paths variant of BM25, the SDM method is run on each of a query's sections,
      *       and the score of a document is expressed as a weighted sum of likelihoods given each section.
      */
-    private fun querySDMSection() {
-        val hGram = GramAnalyzer(indexer)
-//        val weights = listOf(0.18040763371108623, 0.053702972763138165, 0.3145376765137826, 0.45135171701199295)
-        val weights = listOf(0.08047025663846726, 0.030239885393043505, 0.15642380129849698, 0.45881012321282,
-                0.1370279667285861, 0.1370279667285861
-        )
+//    private fun querySDMSection() {
+//        val hGram = GramAnalyzer(indexer)
+////        val weights = listOf(0.18040763371108623, 0.053702972763138165, 0.3145376765137826, 0.45135171701199295)
+//        val weights = listOf(0.08047025663846726, 0.030239885393043505, 0.15642380129849698, 0.45881012321282,
+//                0.1370279667285861, 0.1370279667285861
+//        )
+//
+//        val bindSDM = { query: String, tops: TopDocs, indexSearcher: IndexSearcher ->
+//            featSDM(query, tops, indexSearcher, hGram, 4.0)
+//        }
+//
+//        formatter.addFeature({ query, tops, indexSearcher ->
+//            featSplitSim(query, tops, indexSearcher, bindSDM, weights)
+//        }, normType = NormType.ZSCORE)
+//    }
 
-        val bindSDM = { query: String, tops: TopDocs, indexSearcher: IndexSearcher ->
-            featSDM(query, tops, indexSearcher, hGram, 4.0)
-        }
-
-        formatter.addFeature({ query, tops, indexSearcher ->
-            featSplitSim(query, tops, indexSearcher, bindSDM, weights)
-        }, normType = NormType.ZSCORE)
-    }
-
-    fun querySDM(weights: List<Double>? = null) {
-        val hGram = GramAnalyzer(indexer)
-        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
-        formatter.addFeature({ query, tops, indexSearcher -> featSDM(query, tops, indexSearcher, hGram, 4.0) },
-                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-//        formatter.addFeature2(::featQueryEntityToDocEntity,
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 2.0)
-    }
-
-
-    fun doBM25() {
-        formatter.addBM25(normType = NormType.ZSCORE)
-    }
-
-    fun queryTFIDF(weights: List<Double>? = null) {
-        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
-//        formatter.addFeature2({ queryData -> featAddLuceneSimilarity(queryData, TFIDF)},
+//    fun querySDM(weights: List<Double>? = null) {
+//        val hGram = GramAnalyzer(indexer)
+//        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
+//        formatter.addFeature({ query, tops, indexSearcher -> featSDM(query, tops, indexSearcher, hGram, 4.0) },
 //                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-//        formatter.addFeature2(::featEntityStringSim,
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-//        formatter.addFeature2(::featQueryEntityToDocEntity,
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-    }
+////        formatter.addFeature2(::featQueryEntityToDocEntity,
+////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 2.0)
+//    }
+
+
+//    fun doBM25() {
+//        formatter.addBM25(normType = NormType.ZSCORE)
+//    }
+
+//    fun queryTFIDF(weights: List<Double>? = null) {
+//        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
+////        formatter.addFeature2({ queryData -> featAddLuceneSimilarity(queryData, TFIDF)},
+////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+////        formatter.addFeature2(::featEntityStringSim,
+////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+////        formatter.addFeature2(::featQueryEntityToDocEntity,
+////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
+//    }
 
 
     fun queryEntity(weights: List<Double>? = null) {
@@ -86,9 +86,9 @@ class QueryApp(val resources: HashMap<String, Any>) {
         val norm = NormType.LINEAR
 
         DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(0) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(1) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(2) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(3) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(1) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(2) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(3) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addQuerySimilarity(formatter, wt = weights?.get(4) ?: 1.0, norm = norm)
 //        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(5) ?: 1.0, norm = norm)
 //        SharedFeatures.addSharedUnigramLikelihood(formatter, wt = weights?.get(6) ?: 1.0, norm = norm)
@@ -173,9 +173,6 @@ class QueryApp(val resources: HashMap<String, Any>) {
                 buildResourceDispatcher {
                     methods<QueryApp> {
 //                        method("train", "hier_ascent") { trainAscentMethods() }
-                        method("query", "do_bm25") {
-                            doBM25()
-                        }
 
                         method("query", "do_db") {
                             doDb()
@@ -189,12 +186,6 @@ class QueryApp(val resources: HashMap<String, Any>) {
                             doEntityDebug()
                         }
 
-                        method("query", "sectionSDM") { querySDMSection() }
-                        method("query", "sdm") { querySDM(weights = listOf(0.11506359501201444, 0.6050693368783704, 0.2798670681096152
-                            )) }
-                        method("train", "tfidf") { queryTFIDF() }
-                        method("query", "tfidf") { queryTFIDF(weights = listOf(0.683615, 0.3163842)) }
-                        method("train", "sdm") { querySDM() }
 
 //                        method("query", "entity") { queryEntity(weights = listOf(0.8366295022089238, -0.16337049779107615)) }
 //                        method("query", "entity") { queryEntity() }
@@ -211,9 +202,9 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
                         method("train", "entity") { queryEntity() }
 
-                        method("train", "do_bm25") {
-                            doBM25()
-                        }
+//                        method("train", "do_bm25") {
+//                            doBM25()
+//                        }
 
                     }
 

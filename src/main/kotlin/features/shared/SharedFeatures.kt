@@ -14,6 +14,8 @@ import utils.misc.CONTENT
 import utils.stats.countDuplicates
 import utils.stats.normalize
 import kotlin.math.absoluteValue
+import lucene.containers.FeatureEnum
+import lucene.containers.FeatureEnum.*
 
 
 data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>)
@@ -109,17 +111,17 @@ object SharedFeatures {
                     entityDb.searcher.explainScore(docQuery, entityId)
                 })
     }
-    fun addSharedBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("shared_bm25_abstract", FeatureType.SHARED, wt, norm, this::sharedBM25)
+//    fun addSharedBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+//            fmt.addFeature3 (SHARED_, wt, norm, this::sharedBM25)
 
     fun addSharedEntityLinks(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("shared_links", FeatureType.SHARED, wt, norm, this::sharedFeatLinks)
+            fmt.addFeature3(SHARED_LINKS, wt, norm, this::sharedFeatLinks)
 
     fun addSharedRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("shared_rdf", FeatureType.SHARED, wt, norm, this::sharedRdf)
+            fmt.addFeature3(SHARED_RDF, wt, norm, this::sharedRdf)
 
     fun addSharedUnigramLikelihood(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3("shared_unigram_likelihood", FeatureType.SHARED, wt, norm, this::sharedUnigramLikelihood)
+            fmt.addFeature3(SHARED_UNI_LIKE, wt, norm, this::sharedUnigramLikelihood)
 
 
 }
