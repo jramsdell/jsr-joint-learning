@@ -21,7 +21,6 @@ class SpotlightEntityLinker(serverLocation: String) {
     // Start up server (can take a while if we need to download files
     val server = SpotlightRunner(serverLocation)
 
-
     /**
      * Function: retrieveEntities
      * Description: Queries spotlight server with string and retrieve list of linked entities.
@@ -34,6 +33,8 @@ class SpotlightEntityLinker(serverLocation: String) {
                 .data("text", content)
                 .post()
 
+        println(jsoupDoc)
+        println(jsoupDoc.html())
         // Parse urls, returning only the last word of the url (after the last /)
         val links = jsoupDoc.select("a[href]")
         return links.map {  element ->

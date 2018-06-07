@@ -122,6 +122,8 @@ dependencies {
     compile "net.sourceforge.argparse4j:argparse4j:0.8.1"
     compile "org.codehaus.plexus:plexus-archiver:2.2"
     compile "com.github.jkcclemens:khttp:0.1.0"
+    compile "org.apache.httpcomponents:httpclient:4.5.5"
+    compile "com.google.code.gson:gson:2.8.0"
 
     // Database
     compile "org.mapdb:mapdb:3.0.5"

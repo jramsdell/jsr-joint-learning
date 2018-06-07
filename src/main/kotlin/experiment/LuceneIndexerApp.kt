@@ -1,7 +1,7 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
-import lucene.LuceneIndexer
+import lucene.indexers.LuceneIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
@@ -17,7 +17,7 @@ class LuceneIndexerApp(resources: HashMap<String, Any>) {
     val serverLoc: String by resources
 
     fun index() {
-        LuceneIndexer(indexLoc, corpus, serverLoc)
+        LuceneIndexer(indexLoc, corpus, serverLoc).index()
     }
 
 
@@ -37,7 +37,7 @@ class LuceneIndexerApp(resources: HashMap<String, Any>) {
                 val methodName = namespace.get<String>("method")
                 val instance = LuceneIndexerApp(resources)
                 val method = dispatcher.methodContainer!! as MethodContainer<LuceneIndexerApp>
-                method.getMethod("", methodName)?.invoke(instance)
+                method.getMethod("run", methodName)?.invoke(instance)
             }
 
             parser.help("Downloads abstracts and pages for topics.")
@@ -49,7 +49,7 @@ class LuceneIndexerApp(resources: HashMap<String, Any>) {
         val dispatcher =
                 buildResourceDispatcher {
                     methods<LuceneIndexerApp> {
-                        method("run", "index") { index() }
+                        method("run", "index2") { index() }
                         help = "Creates a new Lucene index using a paragraph corpus."
                     }
 

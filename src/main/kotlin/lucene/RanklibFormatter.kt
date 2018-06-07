@@ -70,6 +70,15 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val proximitySearcher: IndexSearcher =
             if (proximityIndexLoc == "") paragraphSearcher
             else getIndexSearcher(proximityIndexLoc)
+
+
+    val qrelCreator = QrelCreator(paragraphQrelLoc,
+            "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-article.qrels",
+            indexSearcher =  paragraphSearcher)
+        .apply { writeEntityQrelsUsingParagraphQrels() }
+        .apply { System.exit(0) }
+
+
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
@@ -77,6 +86,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant)
     val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc )
     val featureDatabase = FeatureDatabase2()
+
 
 
     private val queryContainers =

@@ -48,10 +48,26 @@ fun<A, B> Iterable<Pair<A, B>>.groupOfLists(): Map<A, List<B>> {
     return newMap
 }
 
+fun<A, B> Iterable<Pair<A, Iterable<B>>>.groupOfListsFlattened(): Map<A, List<B>> {
+    val newMap = HashMap<A, ArrayList<B>>()
+    forEach { (k,v) ->
+        newMap.computeIfAbsent(k, { ArrayList() }).addAll(v)
+    }
+    return newMap
+}
+
 fun<A, B> Iterable<Pair<A, B>>.groupOfSets(): Map<A, Set<B>> {
     val newMap = HashMap<A, HashSet<B>>()
     forEach { (k,v) ->
         newMap.computeIfAbsent(k, { HashSet() }).add(v)
+    }
+    return newMap
+}
+
+fun<A, B> Iterable<Pair<A, Iterable<B>>>.groupOfSetsFlattened(): Map<A, Set<B>> {
+    val newMap = HashMap<A, HashSet<B>>()
+    forEach { (k,v) ->
+        newMap.computeIfAbsent(k, { HashSet() }).addAll(v)
     }
     return newMap
 }
@@ -65,6 +81,7 @@ fun<A, B, C> Iterable<A>.mapOfLists(f: (A) -> Pair<B, C>): Map<B, List<C>> {
     }
     return newMap
 }
+
 
 
 

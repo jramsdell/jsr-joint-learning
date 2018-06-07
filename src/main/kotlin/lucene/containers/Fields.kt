@@ -10,6 +10,7 @@ enum class FieldNames(val field: String) {
     FIELD_BIGRAMS(GramStatType.TYPE_BIGRAM.indexField),
     FIELD_WINDOWED_BIGRAMS(GramStatType.TYPE_BIGRAM_WINDOW.indexField),
     FIELD_RDF("rdf"),
-    FIELD_PID("pid"),
-    FIELD_NAME("name")
+    FIELD_PID("paragraphid"),
+    FIELD_NAME("name"),
+    FIELD_ENTITIES("spotlight")
 }

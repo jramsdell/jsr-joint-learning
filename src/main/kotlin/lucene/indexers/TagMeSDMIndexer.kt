@@ -1,4 +1,4 @@
-package lucene
+package lucene.indexers
 
 import entity.EntityStats
 import entity.TagMeData
@@ -109,7 +109,7 @@ class TagMeSDMIndexer(val indexLoc: String) {
         entities
             .forEach { entity: TagMeData ->
 //                doc.add(StringField("tagme", entity.title, Field.Store.YES))
-                writeProximityDocument(pid, text, entity)
+//                writeProximityDocument(pid, text, entity)
             }
     }
 

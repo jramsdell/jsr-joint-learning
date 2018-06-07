@@ -1,12 +1,9 @@
 import experiment.*
-import lucene.LuceneIndexer
 import net.sourceforge.argparse4j.ArgumentParsers
 import net.sourceforge.argparse4j.helper.HelpScreenException
 import net.sourceforge.argparse4j.inf.ArgumentParser
-import net.sourceforge.argparse4j.inf.ArgumentParserException
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparsers
-import net.sourceforge.argparse4j.internal.UnrecognizedCommandException
 
 fun buildParser(): ArgumentParser {
     val mainParser: ArgumentParser = ArgumentParsers.newFor("program").build()

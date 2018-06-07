@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 //}
 
 
-inline fun<A> doIORequest(retryAttempts: Int = 5, retryDelay: Long = 100, requestFunction: () -> A): A? {
+inline fun<A> doIORequest(retryAttempts: Int = 5, retryDelay: Long = 5, requestFunction: () -> A): A? {
     (0 until retryAttempts).forEach {
         try {
             return requestFunction()

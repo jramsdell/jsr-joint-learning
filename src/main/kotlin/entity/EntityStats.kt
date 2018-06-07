@@ -1,10 +1,15 @@
 package entity
 
+import com.jsoniter.JsonIterator
+import io.ConcurrentConnectionManager
 import khttp.get
 import khttp.post
+import org.apache.http.impl.client.HttpClients
 import org.json.JSONObject
 import utils.io.catchJsonException
 import utils.io.doIORequest
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
+import org.jsoup.Jsoup
 
 
 data class SurfaceFormData(
@@ -71,8 +76,34 @@ object EntityStats {
 //    private val lock = ReentrantLock()
     private val tok = "7fa2ade3-fce7-4f4a-b994-6f6fefc7e665-843339462"
 
+    private val manager = ConcurrentConnectionManager()
+
+
+    fun test(content: String) {
+        val url = "https://tagme.d4science.org/tagme/tag"
+//        val formatted = "$url?gcube-token=$tok&text=computer_science"
+        manager.doPostOrGetRequest(url, data = mapOf("gcube-token" to tok, "text" to content))
+//        manager.postRequest(formatted, null)
+
+    }
 
     fun doTagMeQuery(content: String, minRho: Double = 0.2): List<Pair<String, Double>> {
+        val url = "https://tagme.d4science.org/tagme/tag"
+
+        val json = doIORequest {
+            manager.doPostOrGetRequest(url, data = mapOf("gcube-token" to tok, "text" to content))
+        } ?: return emptyList()
+
+        // Turn results into a JSon array and retrieve linked entities (and their rho values)
+        val results = json.getJSONArray("annotations")
+        return  results
+            .mapNotNull { result -> (result as JSONObject).run {
+                if (getDouble("rho") <= minRho) null
+                else getString("title").replace(" ", "_") to getDouble("rho")
+            } }
+    }
+
+    fun doTagMeQuery2(content: String, minRho: Double = 0.2): List<Pair<String, Double>> {
         val url = "https://tagme.d4science.org/tagme/tag"
 
         // Try to request links from TagMe a few times. Otherwise, give up and return empty list
@@ -234,30 +265,36 @@ object EntityStats {
 //
 //    fun getDocumentEntities(content: String, docId: Int, minRho: Double = 0.2): List<Pair<String, Double>> =
 //            documentEntities.computeIfAbsent(docId) { doTagMeQuery(content, minRho) }
+
+    fun retrieveSpotlightEntities(content: String): List<String> {
+        val url = "http://model.dbpedia-spotlight.org/en/annotate"        // Hardcoded url to local server
+
+        // Retrieve html file from the Spotlight server
+        val jsoupDoc = Jsoup.connect(url)
+            .data("text", content)
+            .data("confidence", "0.5")
+//            .header("Accept", "application/json")
+//            .header("Accept", "application/json")
+            .ignoreContentType(true)
+            .post()
+
+        println(jsoupDoc.toString())
+
+        // Parse urls, returning only the last word of the url (after the last /)
+        val links = jsoupDoc.select("a[href]")
+        return links.map {  element ->
+            val title = element.attr("title")
+            title.substring(title.lastIndexOf("/") + 1)}
+            .toList()
+    }
 }
 
 fun main(args: Array<String>) {
-//    println(EntityStats.doTagMeQuery("Computer science is a thing in which you do"))
-//    println(EntityStats.getEntityRdf("God"))
-//    EntityStats.doRelatednessQuery("hi", "hi")
-//    println(EntityStats.doSurfaceFormQuery("Barack"))
-//    println(EntityStats.doSurfaceFormQuery("Barack"))
     val test = """
         Computer science is the study of the theory, experimentation, and engineering that form the basis for the design and use of computers. It is the scientific and practical approach to computation and its applications and the systematic study of the feasibility, structure, expression, and mechanization of the methodical procedures (or algorithms) that underlie the acquisition, representation, processing, storage, communication of, and access to, information. An alternate, more succinct definition of computer science is the study of automating algorithmic processes that scale. A computer scientist specializes in the theory of computation and the design of computational systems. See glossary of computer science.
         """
-//    println(EntityStats.doWatEntityLinking(test))
-//    val myfun = { EntityStats.doSurfaceFormQuery("Barack") }
-//    println(EntityStats.doRelatednessQuery("hi", "hi"))
-//    EntityStats.doEntitySaliencyQuery(test, title = "Computer science")
-    val id1 = EntityStats.doWikipediaIDQuery("Computer_science")
-    val id2 = EntityStats.doWikipediaIDQuery("Soda")
-    val id3 = EntityStats.doWikipediaIDQuery("Cola")
-    println(id1)
-    println(id2)
-//    println(EntityStats.doRelatednessQuery2(id1, id2))
-//    println(EntityStats.doRelatednessQuery2(id1, id3))
-//    println(EntityStats.doRelatednessQuery2("Computer_science", "Bill_Gates"))
-//    println(EntityStats.doTagMeQuery2("Computer science is a thing that smart people do. A computer scientist is someone who"))
+    println(EntityStats.retrieveSpotlightEntities(test))
+
 }
 
 

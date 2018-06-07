@@ -2,20 +2,12 @@ package experiment
 
 import entity.EntityDatabase
 import features.document.DocumentRankingFeatures
-import features.document.featSDM
-import features.document.featSplitSim
-import features.entity.*
-import features.shared.SharedFeatures
 //import features.entity.featEntityCategory
-import language.GramAnalyzer
-import lucene.TagMeSDMIndexer
+import lucene.indexers.TagMeSDMIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
-import org.apache.lucene.search.IndexSearcher
-import org.apache.lucene.search.TopDocs
 import utils.lucene.getIndexSearcher
-import utils.misc.filledArray
 
 /**
  * Class: MasterExperiment

@@ -1,7 +1,7 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
-import lucene.TagMeSDMIndexer
+import lucene.indexers.TagMeSDMIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
