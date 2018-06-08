@@ -1,13 +1,12 @@
 package lucene
 
-import lucene.containers.FieldNames
+import lucene.indexers.IndexFields
 import lucene.containers.ParagraphContainer
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import utils.AnalyzerFunctions
 import utils.lucene.searchFirstOrNull
 import utils.misc.PID
-import utils.misc.groupOfSets
 import utils.misc.groupOfSetsFlattened
 import utils.misc.mapOfSets
 import utils.parallel.pmap
@@ -155,13 +154,13 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
             pids
                 // Retrieve paragraph document IDs from index based on their PIDs
                 .mapNotNull { pid: String ->
-                    val query = AnalyzerFunctions.createQuery(pid, field = FieldNames.FIELD_PID.field)
+                    val query = AnalyzerFunctions.createQuery(pid, field = IndexFields.FIELD_PID.field)
                     indexSearcher.searchFirstOrNull(query)?.doc }
 
                 // Retrieve document from index and get spotlight/tagme entities
                 .flatMap {  docId: Int ->
                     val doc = indexSearcher.doc(docId)
-                    doc.getValues(FieldNames.FIELD_ENTITIES.field).toList() }
+                    doc.getValues(IndexFields.FIELD_ENTITIES.field).toList() }
                 .toSet()
 
 

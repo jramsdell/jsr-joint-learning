@@ -34,7 +34,7 @@ class ConcurrentConnectionManager() {
 
     private val gson = Gson()
 
-    fun doPostOrGetRequest(url: String, data: Map<String, String>? = null): JSONObject {
+    fun doPostOrGetRequest(url: String, data: Map<String, String>? = null, header: Pair<String, String>? = null): JSONObject {
         val request: HttpRequestBase
         if (data != null) {
 
@@ -46,6 +46,7 @@ class ConcurrentConnectionManager() {
 //            println(gson.toJson(data))
 
             request.entity = UrlEncodedFormEntity(params, "UTF-8")
+            if (header != null) request.addHeader(header.first, header.second)
         } else {
             request = HttpGet(url)
         }

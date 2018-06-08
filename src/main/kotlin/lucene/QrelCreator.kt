@@ -1,6 +1,6 @@
 package lucene
 
-import lucene.containers.FieldNames
+import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
 import utils.lucene.searchFirstOrNull
@@ -94,13 +94,13 @@ class QrelCreator(paragraphQrel: String, entityQrel: String, val indexSearcher: 
             pids
                 // Retrieve paragraph document IDs from index based on their PIDs
                 .mapNotNull { pid: String ->
-                    val query = AnalyzerFunctions.createQuery(pid, field = FieldNames.FIELD_PID.field)
+                    val query = AnalyzerFunctions.createQuery(pid, field = IndexFields.FIELD_PID.field)
                     indexSearcher.searchFirstOrNull(query)?.doc }
 
                 // Retrieve document from index and get spotlight/tagme entities
                 .flatMap {  docId: Int ->
                     val doc = indexSearcher.doc(docId)
-                    doc.getValues(FieldNames.FIELD_ENTITIES.field).toList() }
+                    doc.getValues(IndexFields.FIELD_ENTITIES.field).toList() }
                 .toSet()
 
 

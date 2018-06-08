@@ -3,7 +3,7 @@ package lucene
 
 import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
-import lucene.containers.FieldNames
+import lucene.indexers.IndexFields
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.search.*
 import utils.lucene.getIndexSearcher
@@ -81,9 +81,9 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                             val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
                                     useFiltering = true)
                             FieldQueryFormatter()
-                                .addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
-                                .addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
-                                .addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
+                                .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
+                                .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
+                                .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
                                 .createBooleanQuery()
                                 .run {
                                     indexSearcher.search(this, 100) }

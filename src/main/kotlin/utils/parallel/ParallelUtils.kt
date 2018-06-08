@@ -24,3 +24,15 @@ fun <A>Iterable<A>.forEachParallelRestricted(nThreads: Int = 10, f: suspend (A) 
     val pool = newFixedThreadPoolContext(nThreads, "parallel")
     map { async(pool) { f(it) } }.forEach { it.await() }
 }
+
+fun <A>Iterable<A>.forEachChunkedParallel(chunkSize: Int, f: suspend (A) -> Unit): Unit = runBlocking {
+    asSequence()
+        .chunked(chunkSize)
+        .forEach { chunk ->
+            chunk.forEachParallel(f)
+        }
+}
+
+fun <A>Iterator<A>.asIterable(): Iterable<A> {
+    return Iterable { this }
+}

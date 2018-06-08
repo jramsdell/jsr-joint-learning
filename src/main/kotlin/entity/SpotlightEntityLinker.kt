@@ -1,6 +1,7 @@
 @file:JvmName("KotEntityLinker")
 package entity
 
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.io.IOException
 import java.net.ConnectException
@@ -26,15 +27,16 @@ class SpotlightEntityLinker(serverLocation: String) {
      * Description: Queries spotlight server with string and retrieve list of linked entities.
      * @return List of linked entities (strings). Empty if no entities were linked or if errors were encountered.
      */
-    fun retrieveEntities(content: String): List<String> {
+    private fun retrieveEntities(content: String): List<String> {
 
+//        return EntityStats.retrieveSpotlightEntities(content, url)
         // Retrieve html file from the Spotlight server
         val jsoupDoc = Jsoup.connect(url)
                 .data("text", content)
                 .post()
 
-        println(jsoupDoc)
-        println(jsoupDoc.html())
+//        println(JSONObject(jsoupDoc.text()).getJSONArray("Resources").filterIsInstance<JSONObject>().map { it.getString("@URI").split("/").last() })
+
         // Parse urls, returning only the last word of the url (after the last /)
         val links = jsoupDoc.select("a[href]")
         return links.map {  element ->
@@ -54,11 +56,11 @@ class SpotlightEntityLinker(serverLocation: String) {
         var entities = ArrayList<String>() as List<String>
 
         // Try three times to query server before giving up
-        for (i in (0..3)) {
+        for (i in (0..100)) {
               try { entities = retrieveEntities(content); break
-            } catch (e: SocketTimeoutException) { Thread.sleep(ThreadLocalRandom.current().nextLong(500))
-            } catch (e: ConnectException) { Thread.sleep(ThreadLocalRandom.current().nextLong(500)) } catch (e: ConnectException) { Thread.sleep(ThreadLocalRandom.current().nextLong(500))
-            } catch (e: IOException) { Thread.sleep(ThreadLocalRandom.current().nextLong(500))}
+            } catch (e: SocketTimeoutException) { Thread.sleep(ThreadLocalRandom.current().nextLong(50))
+            } catch (e: ConnectException) { Thread.sleep(ThreadLocalRandom.current().nextLong(50)) } catch (e: ConnectException) { Thread.sleep(ThreadLocalRandom.current().nextLong(500))
+            } catch (e: IOException) { Thread.sleep(ThreadLocalRandom.current().nextLong(50))}
         }
         return entities
     }

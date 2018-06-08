@@ -25,22 +25,7 @@ class GramIndexer() {
      * Desc: Given the content of a paragraph, indexes unigrams, bigrams, and windowed bigrams.
      */
     fun index(doc: Document, parText: String) {
-        val tokens = AnalyzerFunctions.createTokenList(parText, ANALYZER_ENGLISH_STOPPED)
-//        val doc = Document()
-        val unigrams = ArrayList<String>()
-        val bigrams = ArrayList<String>()
-        val bigramWindows = ArrayList<String>()
-        (0 until tokens.size).forEach { i ->
-            unigrams.add(tokens[i])
-            if (i < tokens.size - 1) {
-                bigrams.add(tokens[i] + tokens[i + 1])
-            }
-
-            ( i + 1 until min(i + 9, tokens.size)).forEach { j ->
-                bigramWindows.add(tokens[i] + tokens[j])
-                bigramWindows.add(tokens[j] + tokens[i])
-            }
-        }
+        val (unigrams, bigrams, bigramWindows) = getGrams(parText)
         doc.add(TextField("unigram", unigrams.joinToString(separator = " "), Field.Store.YES))
         doc.add(TextField("bigrams", bigrams.joinToString(separator = " "), Field.Store.YES))
         doc.add(TextField("bigram_windows", bigrams.joinToString(separator = " "), Field.Store.YES))
@@ -105,31 +90,26 @@ class GramIndexer() {
         return Iterable { iterWrapper }
     }
 
+    companion object {
+        fun getGrams(content: String): Triple<ArrayList<String>, ArrayList<String>, ArrayList<String>> {
+            val tokens = AnalyzerFunctions.createTokenList(content, ANALYZER_ENGLISH_STOPPED)
+            val unigrams = ArrayList<String>()
+            val bigrams = ArrayList<String>()
+            val bigramWindows = ArrayList<String>()
 
-//    /**
-//     * Class: indexGrams
-//     * Desc: Given a paragraph corpus, creates an index of grams, bigrams, and windowed bigrams.
-//     *       Only 30% of the available corpus is used (to save space).
-//     */
-//    fun indexGrams(filename: String) {
-//        val f = File(filename).inputStream().buffered(16 * 1024)
-//        val counter = AtomicInteger()
-//
-//        iterWrapper(f)
-//            .forEachParallel { par ->
-//
-//                // This is just to keep track of how many pages we've parsed
-//                counter.incrementAndGet().let {
-//                    if (it % 100000 == 0) {
-//                        println(it)
-//                        indexWriter.commit()
-//                    }
-//                }
-//
-//                // Extract all of the anchors/entities and add them to database
-//                doIndex(par)
-//            }
-//
-//        indexWriter.close()
-//    }
+            (0 until tokens.size).forEach { i ->
+                unigrams.add(tokens[i])
+                if (i < tokens.size - 1) {
+                    bigrams.add(tokens[i] + tokens[i + 1])
+                }
+
+                ( i + 1 until min(i + 9, tokens.size)).forEach { j ->
+                    bigramWindows.add(tokens[i] + tokens[j])
+                    bigramWindows.add(tokens[j] + tokens[i])
+                }
+            }
+            return Triple(unigrams, bigrams, bigramWindows)
+        }
+    }
+
 }

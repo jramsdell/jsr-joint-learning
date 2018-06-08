@@ -3,8 +3,8 @@ package lucene.indexers
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import entity.SpotlightEntityLinker
 import language.GramIndexer
-import lucene.containers.FieldNames
 import org.apache.lucene.document.*
+import utils.lucene.filteredCategoryNames
 import utils.lucene.getIndexWriter
 import utils.misc.CONTENT
 import utils.misc.PID
@@ -47,7 +47,7 @@ class LuceneIndexer(val indexLoc: String, val corpusLoc: String, val serverLocat
 //         l.addAndGet(measureTimeMillis { EntityStats.retrieveTagMeData(paraText) } )
 
     val entities = linker.queryServer(paraText).joinToString(" ")
-    doc.add(StringField(FieldNames.FIELD_ENTITIES.field, entities, Field.Store.YES))
+    doc.add(StringField(IndexFields.FIELD_ENTITIES.field, entities, Field.Store.YES))
 //            .forEach { entity: String ->
 //                doc.add(StringField("spotlight", entity, Field.Store.YES))
 //            }
@@ -87,11 +87,12 @@ class Other() {
         DeserializeData.iterableAnnotations(f)
             .take(1)
             .forEach { page ->
-                println(page.pageName)
-                println(page.pageMetadata)
-                page.flatSectionPathsParagraphs().forEach { paragraph ->
-                    println(paragraph.paragraph.entitiesOnly)
-                }
+                println(page.pageMetadata.filteredCategoryNames())
+//                println(page.pageName)
+//                println(page.pageMetadata)
+//                page.flatSectionPathsParagraphs().forEach { paragraph ->
+//                    println(paragraph.paragraph.entitiesOnly)
+//                }
 
 //                // Extract all of the anchors/entities and add them to database
 //                page.flatSectionPathsParagraphs()

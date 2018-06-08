@@ -13,7 +13,8 @@ import utils.misc.identity
 
 @DslMarker annotation class DispatchDSL
 
-data class ResourceContainer(val arg: String, val help: String, val default: String = "", val loader: (String) -> Any)
+data class ResourceContainer(val arg: String, val help: String, val default: String = "", val loader: (String) -> Any,
+                             val positional: Boolean)
 
 data class MethodCaller<T> (val choice: String, val method: T.() -> Unit)
 
@@ -44,9 +45,17 @@ class KotlinResourceDispatcher(val resourceContainers: List<ResourceContainer>,
                 .help(container.help)
         }
         resourceContainers.forEach { container ->
-            parser.addArgument("--${container.arg}")
-                .setDefault(container.default)
-                .help(container.help)
+            val arg = container.arg
+            if (!container.positional) {
+                parser.addArgument("--$arg")
+                    .setDefault(container.default)
+                    .help(container.help) }
+            else {
+                parser.addArgument(arg)
+                    .metavar(arg)
+                    .nargs("+")
+                    .help(container.help)
+            }
         }
     }
 
@@ -54,8 +63,13 @@ class KotlinResourceDispatcher(val resourceContainers: List<ResourceContainer>,
         val resources = HashMap<String, Any>()
 
         resourceContainers.forEach { container ->
-            val resourceArgument = namespace.get<String>(container.arg)
-            resources[container.arg] = container.loader(resourceArgument)
+            if (!container.positional) {
+                val resourceArgument = namespace.get<String>(container.arg)
+                resources[container.arg] = container.loader(resourceArgument)
+            } else {
+                val resourceArgument = namespace.get<List<String>>(container.arg)
+                resources[container.arg] = container.loader(resourceArgument.joinToString(" "))
+            }
         }
 
         return resources
@@ -84,13 +98,13 @@ class MethodContainerBuilder<T>(val arg: String) {
 
 
 @DispatchDSL
-class ResourceContainerBuilder(val arg: String) {
+class ResourceContainerBuilder(val positional: Boolean, val arg: String) {
     var help: String = ""
     var default: String = ""
     var loader: (String) -> Any = ::identity
 
     fun build(): ResourceContainer {
-        return ResourceContainer(arg = arg, help = help, default = default, loader = loader)
+        return ResourceContainer(arg = arg, help = help, default = default, loader = loader, positional = positional)
     }
 }
 
@@ -110,8 +124,8 @@ class ResourceDispatchBuilder() {
         methodContainer = methodContainerBuilder.build()
     }
 
-    fun resource(arg: String, setup: ResourceContainerBuilder.() -> Unit) {
-        val resourceBuilder = ResourceContainerBuilder(arg)
+    fun resource(arg: String, positional: Boolean = false, setup: ResourceContainerBuilder.() -> Unit) {
+        val resourceBuilder = ResourceContainerBuilder(positional, arg)
         resourceBuilder.setup()
         resourceContainers += resourceBuilder.build()
     }

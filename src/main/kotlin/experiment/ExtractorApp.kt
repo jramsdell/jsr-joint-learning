@@ -1,26 +1,28 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
+import lucene.parsers.ExtractorStream
 import lucene.parsers.TrecParagraphAnnotator
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import utils.lucene.getIndexSearcher
 
-class DebugApp(resources: HashMap<String, Any>) {
-//    val index: String by resources
+class ExtractorApp(resources: HashMap<String, Any>) {
+    val corpusFiles: List<String> by resources
 
-    fun debug() {
-//        val searcher = getIndexSearcher(index)
-//        println(searcher.indexReader.maxDoc())
-        val a = TrecParagraphAnnotator("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
-        a.annotate(a.cborLocations.first())
+    fun extract() {
+        val extractor = ExtractorStream(corpusFiles)
+        extractor.addParagraphGramExtractor()
+        extractor.addAbstractExtractor()
+        extractor.addMetadataExtractor()
+        extractor.run()
     }
 
 
     companion object {
         fun addExperiments(mainSubparser: Subparsers) {
-            val mainParser = mainSubparser.addParser("debug")
+            val mainParser = mainSubparser.addParser("extract")
                 .help("Indexes corpus.")
             register("run", mainParser)
         }
@@ -30,8 +32,8 @@ class DebugApp(resources: HashMap<String, Any>) {
             val exec = { namespace: Namespace ->
                 val resources = dispatcher.loadResources(namespace)
                 val methodName = namespace.get<String>("method")
-                val instance = DebugApp(resources)
-                val method = dispatcher.methodContainer!! as MethodContainer<DebugApp>
+                val instance = ExtractorApp(resources)
+                val method = dispatcher.methodContainer!! as MethodContainer<ExtractorApp>
                 method.getMethod("run", methodName)?.invoke(instance)
             }
 
@@ -43,16 +45,15 @@ class DebugApp(resources: HashMap<String, Any>) {
 
         val dispatcher =
                 buildResourceDispatcher {
-                    methods<DebugApp> {
-                        method("run", "debug") { debug() }
+                    methods<ExtractorApp> {
+                        method("run", "extract") { extract() }
                         help = "Creates a new Lucene index."
                     }
 
-//                    resource("index") {
-//                        help = "Location of where to  create Lucene index directory."
-//                        default = "index"
-//                    }
-
+                    resource("corpusFiles", true) {
+                        help = ""
+                        loader = { it.split(" ") }
+                    }
 
                 }
     }

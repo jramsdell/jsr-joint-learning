@@ -1,6 +1,5 @@
 package features.document
 
-import experiment.FeatureType
 import experiment.KotlinRanklibFormatter
 import experiment.NormType
 import experiment.NormType.ZSCORE
@@ -10,21 +9,13 @@ import language.GramStatType
 import language.GramStatType.*
 import language.containers.LanguageStatContainer
 import lucene.FieldQueryFormatter
-import lucene.containers.FieldNames
+import lucene.indexers.IndexFields
 import lucene.containers.QueryData
-import org.apache.lucene.index.Term
-import org.apache.lucene.search.BoostQuery
-import org.apache.lucene.search.TermQuery
 import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
 
 import utils.lucene.explainScore
-import utils.lucene.splitAndCount
-import utils.misc.CONTENT
-import utils.stats.countDuplicates
-import utils.stats.normalize
 import utils.stats.takeMostFrequent
-import lucene.containers.FeatureEnum
 import lucene.containers.FeatureEnum.*
 
 
@@ -68,9 +59,9 @@ object DocumentRankingFeatures {
         val queryFormatter = FieldQueryFormatter()
         val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
 
-        queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_UNIGRAMS, weights[0])
-        queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_BIGRAMS, weights[1])
-        queryFormatter.addWeightedQueryTokens(terms, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
+        queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
+        queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
+        queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
         val documentQuery = queryFormatter.createBooleanQuery()
 
         paragraphContainers.mapIndexed {  index, paragraphContainer ->
@@ -84,9 +75,9 @@ object DocumentRankingFeatures {
         val section = sections.getOrNull(sectionIndex) ?: emptyList()
         val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
         val queryFormatter = FieldQueryFormatter()
-        queryFormatter.addWeightedQueryTokens(section, FieldNames.FIELD_UNIGRAMS, weights[0])
-        queryFormatter.addWeightedQueryTokens(section, FieldNames.FIELD_BIGRAMS, weights[1])
-        queryFormatter.addWeightedQueryTokens(section, FieldNames.FIELD_WINDOWED_BIGRAMS, weights[2])
+        queryFormatter.addWeightedQueryTokens(section, IndexFields.FIELD_UNIGRAM, weights[0])
+        queryFormatter.addWeightedQueryTokens(section, IndexFields.FIELD_BIGRAM, weights[1])
+        queryFormatter.addWeightedQueryTokens(section, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
         val documentQuery = queryFormatter.createBooleanQuery()
 
         paragraphContainers.mapIndexed {  index, paragraphContainer ->

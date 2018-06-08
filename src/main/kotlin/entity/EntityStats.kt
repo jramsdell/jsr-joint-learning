@@ -9,6 +9,7 @@ import org.json.JSONObject
 import utils.io.catchJsonException
 import utils.io.doIORequest
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
+import org.json.JSONException
 import org.jsoup.Jsoup
 
 
@@ -76,7 +77,7 @@ object EntityStats {
 //    private val lock = ReentrantLock()
     private val tok = "7fa2ade3-fce7-4f4a-b994-6f6fefc7e665-843339462"
 
-    private val manager = ConcurrentConnectionManager()
+    val manager = ConcurrentConnectionManager()
 
 
     fun test(content: String) {
@@ -266,26 +267,35 @@ object EntityStats {
 //    fun getDocumentEntities(content: String, docId: Int, minRho: Double = 0.2): List<Pair<String, Double>> =
 //            documentEntities.computeIfAbsent(docId) { doTagMeQuery(content, minRho) }
 
-    fun retrieveSpotlightEntities(content: String): List<String> {
-        val url = "http://model.dbpedia-spotlight.org/en/annotate"        // Hardcoded url to local server
+    fun retrieveSpotlightEntities(content: String, url: String = "http://model.dbpedia-spotlight.org/en/annotate"): List<String> {
 
         // Retrieve html file from the Spotlight server
-        val jsoupDoc = Jsoup.connect(url)
-            .data("text", content)
-            .data("confidence", "0.5")
+//        val jsoupDoc = Jsoup.connect(url)
+//            .data("text", content)
+//            .data("confidence", "0.5")
+////            .header("Accept", "application/json")
 //            .header("Accept", "application/json")
-//            .header("Accept", "application/json")
-            .ignoreContentType(true)
-            .post()
+//            .ignoreContentType(true)
+//            .post()
+        try {
+            val result = manager.doPostOrGetRequest(url, mapOf("text" to content), "Accept" to "application/json")
+            return result.getJSONArray("Resources")
+                .filterIsInstance<JSONObject>()
+                .map {
+                    it.getString("@URI")
+                        .split("/").last()
+                }
+        } catch (e: JSONException) {}
 
-        println(jsoupDoc.toString())
+//        println(jsoupDoc.toString())
 
         // Parse urls, returning only the last word of the url (after the last /)
-        val links = jsoupDoc.select("a[href]")
-        return links.map {  element ->
-            val title = element.attr("title")
-            title.substring(title.lastIndexOf("/") + 1)}
-            .toList()
+//        val links = jsoupDoc.select("a[href]")
+//        return links.map {  element ->
+//            val title = element.attr("title")
+//            title.substring(title.lastIndexOf("/") + 1)}
+//            .toList()
+        return emptyList()
     }
 }
 
