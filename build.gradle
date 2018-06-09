@@ -130,8 +130,17 @@ dependencies {
 
     // learning
     compile "com.github.haifengl:smile-core:1.5.1"
-    compile group: "koma", name:"core", version:"0.11"
-    compile group: "koma", name:"backend-matrix-ejml", version: "0.11"
+    compile 'org.nd4j:nd4j-native:1.0.0-beta'
+    compile 'org.nd4j:nd4j-native:1.0.0-beta:linux-x86_64'
+    compile 'org.bytedeco.javacpp-presets:openblas:0.2.20-1.4.1'
+    compile 'org.bytedeco.javacpp-presets:openblas:0.2.20-1.4.1:linux-x86_64'
+    compile 'org.deeplearning4j:deeplearning4j-core:1.0.0-beta'
+
+//    compile group: 'org.nd4j', name: 'nd4j-api', version: '1.0.0-beta'
+//    compile group: 'org.nd4j', name: 'nd4j-native', version: '1.0.0-beta'
+//    compile group: 'org.nd4j', name: 'nd4j-native-platform', version: '1.0.0-beta'
+//    compile group: "koma", name:"core", version:"0.11"
+//    compile group: "koma", name:"backend-matrix-ejml", version: "0.11"
     compile "org.apache.commons:commons-math3:3.6"
 //    compile "org.jetbrains.kotlin:kotlin-reflect:1.2.41"
 

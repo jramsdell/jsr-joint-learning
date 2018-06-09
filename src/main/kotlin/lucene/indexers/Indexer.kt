@@ -1,10 +1,11 @@
-package lucene.parsers
+package lucene.indexers
 
 import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
-import language.GramAnalyzer
 import language.GramIndexer.Companion.getGrams
+import lucene.containers.LuceneDocumentContainer
 import lucene.parsers.ExtractorType.*
+import org.apache.lucene.document.Document
 import utils.AnalyzerFunctions
 import utils.lucene.outlinks
 import utils.lucene.paragraphs
@@ -15,79 +16,73 @@ import utils.parallel.pmap
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPOutputStream
+import lucene.indexers.IndexFields.*
+import kotlin.concurrent.withLock
 
-enum class ExtractorType {
-    EXTRACT_PARAGRAPH,
-    EXTRACT_PAGE
-}
 
-open class Extractor<T>(outLoc: String,
-                           val extractFun: Extractor<T>.(T) -> String, val debug: Boolean = false) {
+open class Indexer(val extractFuns: List<Indexer.(LuceneDocumentContainer) -> Unit>) {
 
-    val extractors = ArrayList<Extractor<String>>()
 
-    private val out = GZIPOutputStream(File("extractions/$outLoc.gz").outputStream())
-        .bufferedWriter()
-        .apply { write("") }
 
-    fun doExtract(iterable: Iterable<T>) {
-        iterable.pmap { item: T ->
-            extractFun(item)
-        }.forEach { result ->
-            out.write(result)
+    fun doExtract(iterable: Iterable<LuceneDocumentContainer>) {
+        iterable.forEachParallel { luceneDoc ->
+            extractFuns.forEach { extractFun -> extractFun(luceneDoc) }
         }
-//        out.append(result.joinToString(""))
-        out.flush()
-//        extractors.forEach { extractor -> extractor.doExtract(result) }
     }
 
 
 }
 
-fun Extractor<Data.Page>.extractGram(page: Data.Page): String =
-    page.paragraphs().map { paragraph ->
-        val id = paragraph.paraId
-        val content = paragraph.textOnly
-        val grams = getGramsFromContent(content)
-        "$id\t$grams\n"
+fun Indexer.extractGram(doc: LuceneDocumentContainer) {
+    val content = doc.paragraph!!.textOnly
+    val (unigrams, bigrams, windowed) = getGramsFromContent(content)
+    doc.lock.withLock {
+        FIELD_PID.setStringField(doc.doc, doc.paragraph!!.paraId)
+        FIELD_TEXT.setTextField(doc.doc, content)
+        FIELD_UNIGRAM.setTextField(doc.doc, unigrams)
+        FIELD_BIGRAM.setTextField(doc.doc, bigrams)
+        FIELD_WINDOWED_BIGRAM.setTextField(doc.doc, windowed)
     }
-        .joinToString("")
-
-fun Extractor<String>.extractGram(result: String): String =
-        result.split("\n").map { line ->
-            val (id, content) = line.split("\t")
-            val grams = getGramsFromContent(content)
-            "$id\t$grams\n"
-        }
-            .joinToString("")
-
-
-
-fun Extractor<Data.Page>.extractMetadata(page: Data.Page): String {
-    val id = page.pageName.replace(" ", "_")
-    val inlinks = page.pageMetadata.inlinkIds.joinToString(" ")
-    val outlinks = page.outlinks().joinToString(" ")
-    val categories = page.pageMetadata.categoryIds.joinToString(" ")
-    val disambiguations = page.pageMetadata.disambiguationNames.joinToString(" ")
-    val redirects = page.pageMetadata.redirectNames.joinToString(" ")
-    val results = listOf(inlinks, outlinks, categories, disambiguations, redirects)
-    return "$id\t${results.joinToString("\t")}\n"
 }
 
-fun Extractor<Data.Page>.extractAbstractAndGrams(page: Data.Page): String {
-    val id = page.pageName.replace(" ", "_")
-    val abstract = page.paragraphs()
-        .take(3)
+
+
+
+fun Indexer.extractMetaData(doc: LuceneDocumentContainer) {
+    val id = doc.page.pageName.replace(" ", "_")
+    val inlinks = doc.page.pageMetadata.inlinkIds.joinToString(" ")
+    val outlinks = doc.page.outlinks().joinToString(" ")
+    val categories = doc.page.pageMetadata.categoryIds.joinToString(" ")
+    val disambiguations = doc.page.pageMetadata.disambiguationNames.joinToString(" ")
+    val redirects = doc.page.pageMetadata.redirectNames.joinToString(" ")
+//    val results = listOf(inlinks, outlinks, categories, disambiguations, redirects)
+
+    doc.lock.withLock {
+        FIELD_NAME.setStringField(doc.doc, id)
+    }
+    FIELD_INLINKS.setTextField(doc.doc, inlinks)
+    FIELD_OUTLINKS.setTextField(doc.doc, outlinks)
+    FIELD_CATEGORIES.setTextField(doc.doc, categories)
+    FIELD_DISAMBIGUATIONS.setTextField(doc.doc, disambiguations)
+    FIELD_REDIRECTS.setTextField(doc.doc, redirects)
+}
+
+fun Indexer.extractEntityAbstractAndGrams(doc: LuceneDocumentContainer) {
+    val abstract = doc.page.paragraphs()
+        .take(2)
         .map { paragraph -> paragraph.textOnly.replace("\n", " ") }
         .joinToString(" ")
-    val grams = getGramsFromContent(abstract)
-    return "$id\t$abstract\t$grams\n"
+    val (unigrams, bigrams, windowed) = getGramsFromContent(abstract)
+    FIELD_UNIGRAM.setTextField(doc.doc, unigrams)
+    FIELD_BIGRAM.setTextField(doc.doc, bigrams)
+    FIELD_WINDOWED_BIGRAM.setTextField(doc.doc, windowed)
+    FIELD_ABSTRACT.setTextField(doc.doc, abstract)
 }
 
 
 
-private fun getGramsFromContent(content: String): String =
-    getGrams(content).toList().map { it.joinToString(" ") }.joinToString("\t")
+private fun getGramsFromContent(content: String): List<String> =
+    getGrams(content).toList().map { it.joinToString(" ") }
 
 
 

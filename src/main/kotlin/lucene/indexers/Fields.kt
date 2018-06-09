@@ -39,5 +39,8 @@ enum class IndexFields(val field: String) {
     FIELD_INLINKS("inlinks"),
     FIELD_OUTLINKS("outlinks"),
     FIELD_CATEGORIES("categories"),
+    FIELD_DISAMBIGUATIONS("disambiguations"),
+    FIELD_REDIRECTS("redirects"),
     FIELD_ENTITIES("spotlight")
+
 }

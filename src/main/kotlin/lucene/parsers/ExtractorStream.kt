@@ -4,11 +4,12 @@ import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import org.json.JSONObject
 import utils.parallel.asIterable
+import utils.parallel.forEachParallel
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
 
-class ExtractorStream(corpusLocs: List<String>, val chunkSize: Int = 5000) {
+class ExtractorStream(corpusLocs: List<String>, val chunkSize: Int = 50000) {
     val extractors = ArrayList<Extractor<Data.Page>>()
     val counter = AtomicInteger()
 
@@ -32,21 +33,24 @@ class ExtractorStream(corpusLocs: List<String>, val chunkSize: Int = 5000) {
 //            else                  -> throw IllegalArgumentException("Unknown type")
 //        } as Iterable<A>
 
-    fun addAbstractExtractor() = extractors +
+    fun addAbstractExtractor() = extractors.add(
         Extractor<Data.Page>("entity_abstracts.tsv", Extractor<Data.Page>::extractAbstractAndGrams)
+    )
 
-    fun addMetadataExtractor() = extractors +
+    fun addMetadataExtractor() = extractors.add(
             Extractor<Data.Page>("entity_metadata.tsv", Extractor<Data.Page>::extractMetadata)
+    )
 
-    fun addParagraphGramExtractor() = extractors +
+    fun addParagraphGramExtractor() = extractors.add(
             Extractor<Data.Page>("paragraph_grams.tsv", Extractor<Data.Page>::extractGram)
+    )
 
     fun run() = corpusStreams.forEach { corpusStream ->
         DeserializeData.iterAnnotations(corpusStream)
             .asSequence()
             .chunked(chunkSize)
             .forEach { chunk ->
-                println(counter.incrementAndGet())
+                println(counter.addAndGet(chunkSize))
                 extractors.forEach { extractor -> extractor.doExtract(chunk) } }
             .apply { corpusStream.close() }
     }

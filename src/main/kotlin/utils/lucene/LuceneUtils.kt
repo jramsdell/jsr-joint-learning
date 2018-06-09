@@ -22,11 +22,11 @@ fun getIndexSearcher(indexLocation: String): IndexSearcher {
     return IndexSearcher(indexReader)
 }
 
-fun getIndexWriter(indexLocation: String): IndexWriter {
+fun getIndexWriter(indexLocation: String, mode: IndexWriterConfig.OpenMode = IndexWriterConfig.OpenMode.CREATE_OR_APPEND): IndexWriter {
     val indexPath = Paths.get(indexLocation)
     val indexDir = FSDirectory.open(indexPath)
     val conf = IndexWriterConfig(StandardAnalyzer())
-        .apply { openMode = IndexWriterConfig.OpenMode.CREATE_OR_APPEND }
+        .apply { openMode = mode }
     return IndexWriter(indexDir, conf)
 }
 

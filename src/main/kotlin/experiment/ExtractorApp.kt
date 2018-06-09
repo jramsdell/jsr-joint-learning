@@ -1,6 +1,7 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
+import lucene.indexers.IndexerStream
 import lucene.parsers.ExtractorStream
 import lucene.parsers.TrecParagraphAnnotator
 import net.sourceforge.argparse4j.inf.Namespace
@@ -12,10 +13,13 @@ class ExtractorApp(resources: HashMap<String, Any>) {
     val corpusFiles: List<String> by resources
 
     fun extract() {
-        val extractor = ExtractorStream(corpusFiles)
-        extractor.addParagraphGramExtractor()
-        extractor.addAbstractExtractor()
-        extractor.addMetadataExtractor()
+        val extractor = IndexerStream(corpusFiles)
+//        extractor.addParagraphGramExtractor()
+//        extractor.addAbstractExtractor()
+//        extractor.addMetadataExtractor()
+//        extractor.run()
+        extractor.addPageIndexer()
+        extractor.addParagraphIndexer()
         extractor.run()
     }
 

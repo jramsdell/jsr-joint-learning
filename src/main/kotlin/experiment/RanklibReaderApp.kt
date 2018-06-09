@@ -14,8 +14,8 @@ class RanklibReaderApp(resources: HashMap<String, Any>) {
 //    val index: String by resources
 
     fun analyze() {
-        val reader = RanklibReader("ranklib_results.txt")
-        reader.createVectors()
+//        val reader = RanklibReader("ranklib_results.txt")
+//        reader.createVectors()
     }
 
 
