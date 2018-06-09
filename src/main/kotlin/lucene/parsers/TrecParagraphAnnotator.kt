@@ -24,7 +24,8 @@ import kotlin.coroutines.experimental.buildIterator
 class TrecParagraphAnnotator(serverLocation: String) {
     val linker = SpotlightEntityLinker(serverLocation)
     val cborLocations = listOf(
-            "/home/jsc57/data/unprocessedAllButBenchmark.cbor/unprocessedAllButBenchmark.cbor",
+//            "/home/jsc57/data/unprocessedAllButBenchmark.cbor/unprocessedAllButBenchmark.cbor",
+//            "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor",
             "/home/jsc57/data/test200/test200-train/train.pages.cbor" )
 
     val output = File("paragraph_mappings.txt").bufferedWriter()
