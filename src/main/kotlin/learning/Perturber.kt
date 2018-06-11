@@ -9,7 +9,7 @@ import utils.stats.normalize
 
 fun perturb(arr: INDArray, nSamples: Int = 10): INDArray {
 
-    val mat = randn(nSamples, arr.columns(), 382239484)
+    val mat = randn(nSamples, arr.columns(), 3233)
 //        .abs()
 //        .normalizeRows()
 

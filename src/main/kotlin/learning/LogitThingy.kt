@@ -14,14 +14,15 @@ class LogitThingy {
 //    val maxIterations = 50000
     val maxIterations = 3000
 //    val learningRate = 0.01
-    var learningRate = 0.05
+    var learningRate = 0.9
 //    var learningRate = 0.001
 //    var learningRate = 0.0000005
 //    val minLearningRate = 0.0001
 //    val minLearningRate = 0.000001
 //    val minLearningRate = 0.000001
-    val minLearningRate = 0.000001
-    var prevKld: Double = 0.0
+    val minLearningRate = 0.00001
+    var prevKld: Double = 9.0
+    var bestParams = zeros(1)
 
 
     /**
@@ -67,12 +68,14 @@ class LogitThingy {
         }
 
         optimalParams = newParams
-        println(optimalParams)
-        println("Best result: $bestResult")
+//        println(optimalParams)
+//        println("Best result: $bestResult")
 //        val kld2 = y.kld(x.mmul(optimalParams).normalizeRows()).sumNumber()
-        val kld2 = y.kld(x.mmul(optimalParams.normalizeColumns()).transpose().normalizeRows()).sumNumber()
+        val kld2 = y.kld(x.mmul(bestParams.normalizeColumns()).transpose().normalizeRows()).sumNumber()
         println("Perturb result: $kld2")
-        return optimalParams.normalizeColumns()
+        println("Best params: $bestParams")
+//        return optimalParams.normalizeColumns()
+        return bestParams
     }
 
 
@@ -99,7 +102,11 @@ class LogitThingy {
 //        val kld2 = y.transpose().kld(pred.transpose().normalizeRows())
         val kld2 = y.transpose().kld(pred.transpose().normalizeRows()).sumNumber()
 //        if (prevKld - kld == 0.0)
-        println(kld2)
+        if (kld2.toDouble() < prevKld) {
+            prevKld = kld2.toDouble()
+            bestParams = p
+        }
+//        prevKld = kld2.toDouble()
 //        if (kld2 - prevKld == 0) return zerosLike(p)
 //        println(p)
 //        println(x.transpose().mmul(diff))
@@ -137,7 +144,7 @@ fun main(args: Array<String>) {
     val logit = LogitThingy()
 //    val (targets, features) = logit.makeStuff()
     val (targets, features) = makeStuff()
-    val perturbations = perturb(targets, 800)
+    val perturbations = perturb(targets, 200000)
     val (results, perturbedTarget) = applyFeatures(perturbations,  features)
 
 //    val optimal = logit.training(results, listOf(0.0, 0.0, 1.0, 0.0, 0.0).toNDArray())
@@ -150,7 +157,7 @@ fun main(args: Array<String>) {
 //    val (time, optimal) = withTime { logit.training(results.transpose(), perturbedTarget.transpose()) }
 //    println("TIME: $time")
 //    val optimal = logit.training(features.combineNDArrays().transpose(), targets.transpose())
-    println(optimal)
+//    println(optimal)
 //    val evals = (onesLike(optimal).div(optimal.normalizeColumns())).normalizeColumns()
     val transformed = (features.take(features.size - 1).combineNDArrays() mulColV optimal).sum(0)
 
