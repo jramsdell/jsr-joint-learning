@@ -4,18 +4,24 @@ import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4j.linalg.factory.Nd4j.*
 import org.nd4j.linalg.ops.transforms.Transforms.*
-import utils.nd4j.normalizeColumns
-import utils.nd4j.normalizeRows
-import utils.nd4j.toDuplicatedNDArray
-import utils.nd4j.toNDArray
+import utils.misc.withTime
+import utils.nd4j.*
 import utils.stats.normalize
 import java.util.*
 
 
 class LogitThingy {
-    val maxIterations = 10
-    val learningRate = 0.01
-    val minLearningRate = 0.0001
+//    val maxIterations = 50000
+    val maxIterations = 3000
+//    val learningRate = 0.01
+    var learningRate = 0.05
+//    var learningRate = 0.001
+//    var learningRate = 0.0000005
+//    val minLearningRate = 0.0001
+//    val minLearningRate = 0.000001
+//    val minLearningRate = 0.000001
+    val minLearningRate = 0.000001
+    var prevKld: Double = 0.0
 
 
     /**
@@ -34,7 +40,12 @@ class LogitThingy {
      */
     fun training(x: INDArray, y: INDArray): INDArray {
         Nd4j.getRandom().setSeed(1234)
-        var params = Nd4j.rand(x.size(1), 1) //random guess
+//        var params = Nd4j.rand(x.size(1), 1).normalizeColumns() //random guess
+        var params = (0 until x.size(1)).map { 1 / x.size(1).toDouble() }.toNDArray().transpose().normalizeColumns()
+
+        val weights = listOf(300.0, 300.0, 0.0, 400.0).normalize().toNDArray()
+//        params = bestBest.transpose()
+        val bestResult = y.kld(x.mmul(weights.transpose()).transpose().normalizeRows()).sumNumber()
 
         var newParams = params.dup()
         var optimalParams = params.dup()
@@ -42,16 +53,26 @@ class LogitThingy {
         for (i in 0 until maxIterations) {
             var gradients = gradient(x, y, params)
             gradients = gradients.mul(learningRate)
-            newParams = params.sub(gradients)
+//            newParams = params.sub(gradients).relu()
+            newParams = params.sub(gradients).relu().normalizeColumns()
+//            newParams = params.sub(gradients).normalizeColumns()
+//            newParams = params.sub(gradients).normalizeColumns()
 
             if (hasConverged(params, newParams, minLearningRate)) {
+                println("Converged in: $i")
                 break
             }
+//            learningRate *= 0.99
             params = newParams
         }
 
         optimalParams = newParams
-        return optimalParams
+        println(optimalParams)
+        println("Best result: $bestResult")
+//        val kld2 = y.kld(x.mmul(optimalParams).normalizeRows()).sumNumber()
+        val kld2 = y.kld(x.mmul(optimalParams.normalizeColumns()).transpose().normalizeRows()).sumNumber()
+        println("Perturb result: $kld2")
+        return optimalParams.normalizeColumns()
     }
 
 
@@ -68,55 +89,34 @@ class LogitThingy {
      */
     private fun gradient(x: INDArray, y: INDArray, p: INDArray): INDArray {
         val m = x.size(0) //number of examples
-        val pred = predict(x, p)
+//        val pred = predict(x, p.normalizeColumns())
+        val pred = x.mmul(p)
+//        val diff = pred.sub(y) * 10
+
+        val diff = y.kld(pred.transpose().normalizeRows()) * -1
+
+//        val kld2 = y.kld(pred).sum(1).sum(0)
+//        val kld2 = y.transpose().kld(pred.transpose().normalizeRows())
+        val kld2 = y.transpose().kld(pred.transpose().normalizeRows()).sumNumber()
+//        if (prevKld - kld == 0.0)
+        println(kld2)
+//        if (kld2 - prevKld == 0) return zerosLike(p)
 //        println(p)
-//        val diff = pow(pred.dup().sub(y), 2.0)
-//        val diff = pred.dup().sub(y.transpose())
-        val diff = max(pred.dup().sub(y), 0.0).transpose()
-//        val diff = pred.dup().sub(y)
+//        println(x.transpose().mmul(diff))
+//        val diff = y.kld(pred) * -100
+//        val diff = y.div(pred).log().mul(y)
+//        println("Diff: $diff")
 //        println(p)
 //        println(pred)
 //        println(y)
-//        println(x)
-        return x.dup()
+//        println(x.transpose().mmul(diff))
+        return x
             .transpose()
-            .mmul(diff)
-            .mul(1.0 / m)
+            .mmul(diff) * p.sign()
+//            .mul(1/m.toDouble())
     }
 
-    /**
-     * Binary logistic regression.
-     *
-     * Computes the probability that one example is a certain type of flower.
-     * Can compute a batch of examples at a time, i.e. a matrix with samples
-     * as rows and columns as features (this is normally done by DL4J internals).
-     *
-     * @param x features
-     * @param p parameters
-     * @return class probability
-     */
-    private fun predict(x: INDArray, p: INDArray): INDArray {
-        val y = x.mmul(p) //linear regression
-        return sigmoid(y)
-    }
 
-    /**
-     * Logistic function.
-     *
-     * Computes a number between 0 and 1 for each element.
-     * Note that ND4J comes with its own sigmoid function.
-     *
-     * @param y input values
-     * @return probabilities
-     */
-//    private fun sigmoid(y: INDArray): INDArray {
-//        var y = y
-//        y = y.mul(-1.0)
-//        y = exp(y, false)
-//        y = y.add(1.0)
-//        y = y.rdiv(1.0)
-//        return y
-//    }
 
     private fun hasConverged(oldParams: INDArray, newParams: INDArray, threshold: Double): Boolean {
         val diffSum = abs(oldParams.sub(newParams)).sumNumber().toDouble()
@@ -132,30 +132,39 @@ class LogitThingy {
 
 }
 
-fun myp(): Pair<INDArray, INDArray> {
-    val rand = Random()
-    val myDist = listOf(6.0, 3.0, 1.0, 59.0, 10.0, 20.0, 30.0, 100.0, 9.0, 10.0).normalize()
-    val stuff = (0..9).map { myDist.shuffled().toNDArray() }
-    val target = myDist.toNDArray()
-    val yay = target.dup()
-    val others =  stuff
-    val perturbs = perturb(target, 10)
-    val results = applyFeatures(perturbs, others)
-    return target to results
-}
 
 fun main(args: Array<String>) {
     val logit = LogitThingy()
 //    val (targets, features) = logit.makeStuff()
-    val (targets, features) = myp()
-    println(features)
+    val (targets, features) = makeStuff()
+    val perturbations = perturb(targets, 800)
+    val (results, perturbedTarget) = applyFeatures(perturbations,  features)
 
-//    println(targets)
-//    val result = targets.transpose()
-//    println(features.transpose())
-//    println(features)
+//    val optimal = logit.training(results, listOf(0.0, 0.0, 1.0, 0.0, 0.0).toNDArray())
+//    val optimal = logit.training(stuff mulRowV vectorOf(1.0, 0.0, 1.0), stuff.sum(1))
+
+//    val weights = predict(results, features.combineNDArrays(), targets, perturbations)
+
+    val uniform = ones(results.columns()) / results.columns().toDouble()
+    val optimal = logit.training(results.transpose(), uniform.transpose())
+//    val (time, optimal) = withTime { logit.training(results.transpose(), perturbedTarget.transpose()) }
+//    println("TIME: $time")
+//    val optimal = logit.training(features.combineNDArrays().transpose(), targets.transpose())
+    println(optimal)
+//    val evals = (onesLike(optimal).div(optimal.normalizeColumns())).normalizeColumns()
+    val transformed = (features.take(features.size - 1).combineNDArrays() mulColV optimal).sum(0)
+
+    println(transformed distEuc targets)
+//    val varianceResult = sqrt(perturbations.subRowVector(transformed).pow(2.0)).sum(1).varianceRows().sumNumber()
+    val varianceResult = abs(perturbations.subRowVector(transformed)).sum(1).varianceRows().sumNumber()
+    println("Mixture variance: $varianceResult")
 //    val optimal = logit.training(features, (0 until 7).map { 1 / 7.0 }.toNDArray())
 //    println(optimal.mmul(features))
+
+//    val varianceResult2 = perturbations.subRowVector(targets).pow(2.0).sqrt().sum(1).varianceRows().sumNumber()
+    val varianceResult2 = perturbations.subRowVector(targets).abs().sum(1).varianceRows().sumNumber()
+    println("Target variance: $varianceResult2")
+//    predict(results.transpose(), features.combineNDArrays(), targets, perturbations)
 }
 
 
