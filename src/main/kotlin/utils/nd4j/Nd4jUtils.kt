@@ -66,11 +66,11 @@ fun INDArray.manhattanDistance(other: INDArray): Double = Transforms.manhattanDi
 
 //fun INDArray.kld(other: INDArray): INDArray = this.dup().div(other).mul(this).sum(1)
 fun INDArray.kld(other: INDArray): INDArray = this.div(other).log().mul(this).sum(1)
-fun INDArray.kldSymmetric(other: INDArray): INDArray = this.kld(other).add(other.kld(this))
+fun INDArray.kldSymmetric(other: INDArray): INDArray = this.div(other).log().mul(this - other).sum(1)
 fun INDArray.kldRow(other: INDArray): INDArray = this.divRowVector(other).log().mul(this).sum(1)
 fun INDArray.varianceRows(): INDArray {
     val total = this.sum(0).div(this.rows().toDouble())
-    return this.subRowVector(total).pow(2.0).sqrt()
+    return this.subRowVector(total).pow(2.0).sum(0).sqrt()
 }
 
 //fun INDArray.variance(): INDArray {
