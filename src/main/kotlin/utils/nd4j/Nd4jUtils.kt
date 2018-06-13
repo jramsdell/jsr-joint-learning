@@ -52,10 +52,13 @@ fun INDArray.sign(): INDArray = Transforms.sign(this)
 
 fun INDArray.acos(): INDArray = Transforms.acos(this)
 fun INDArray.exp(): INDArray = Transforms.exp(this)
+fun INDArray.expm1(): INDArray = Transforms.expm1(this, true)
 fun INDArray.sqrt(): INDArray = Transforms.sqrt(this)
 fun INDArray.log(base: Double? = null): INDArray =
         if (base != null) Transforms.log(this, base)
         else Transforms.log(this)
+
+fun INDArray.log1p(): INDArray = Transforms.log1p(this, true)
 
 fun INDArray.normalizeZeroMeanAndUnitVariance(): INDArray = Transforms.normalizeZeroMeanAndUnitVariance(this)
 
@@ -66,7 +69,8 @@ fun INDArray.manhattanDistance(other: INDArray): Double = Transforms.manhattanDi
 
 //fun INDArray.kld(other: INDArray): INDArray = this.dup().div(other).mul(this).sum(1)
 fun INDArray.kld(other: INDArray): INDArray = this.div(other).log().mul(this).sum(1)
-fun INDArray.kldSymmetric(other: INDArray): INDArray = this.div(other).log().mul(this - other).sum(1)
+//fun INDArray.kldSymmetric(other: INDArray): INDArray = this.div(other).log().mul(this - other).sum(1)
+fun INDArray.kldSymmetric(other: INDArray): INDArray = (this.kld(other) + other.kld(this))/2.0
 fun INDArray.kldRow(other: INDArray): INDArray = this.divRowVector(other).log().mul(this).sum(1)
 fun INDArray.varianceRows(): INDArray {
     val total = this.sum(0).div(this.rows().toDouble())

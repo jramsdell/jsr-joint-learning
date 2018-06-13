@@ -9,12 +9,16 @@ import utils.stats.normalize
 
 fun perturb(arr: INDArray, nSamples: Int = 10, intensity: Double = 0.1): INDArray {
 
-    val mat = randn(nSamples, arr.columns(), 384908)
-        .mul(0.02)
-//        .mulRowVector(arr)
+    var mat = randn(nSamples, arr.columns(), 3808)
+        .mul(0.05)
         .pow(2.0)
         .addRowVector(arr)
-        .normalizeRows()
+
+//    mat = mat
+//        .pow(2.0).mul(mat.sign())
+//        .mulRowVector(arr)
+//        .addRowVector(arr)
+//        .normalizeRows()
     return mat
 }
 
@@ -43,7 +47,9 @@ fun makeStuff(): Pair<INDArray, List<INDArray>> {
 //    val weights = listOf(100.0, 200.0, 0.0, 25.0, 100.0).normalize()
 //    val weights = listOf(200.0, 200.0, 0.0, 25.0, 100.0).normalize()
 //    val weights = listOf(20.0, 5.0, 0.0, 0.0, 100.0).normalize()
-    val weights = listOf(20.0, 25.0, 100.0, 1000.0, 100.0).normalize()
+//    val weights = listOf(1000.0, 0.0, 100.0, 1000.0, 100.0).normalize()
+//    val weights = listOf(1000.0, 0.0, 0.0, 100.0, 100.0).normalize()
+    val weights = listOf(1000.0, 0.0, 0.0, 1000.0, 100.0).normalize()
     println("WEIGHTS: $weights")
 
     val target = f1.dup().mul(weights[0])
@@ -56,7 +62,21 @@ fun makeStuff(): Pair<INDArray, List<INDArray>> {
 }
 
 fun main(args: Array<String>) {
-    val myStuff = vectorOf(0.1, 0.1, 0.3, 0.1, 0.4)
-    val mat = randn(1000, 5, 38490819238) * 0.25 mulRowV  myStuff addRowV  myStuff
+    val myStuff = vectorOf(0.2, 0.2, 0.3, 0.1, 0.1, 0.1)
+    val mat = randn(1, 6, 384908192)
+        .mul(0.00)
+//        .pow(2.0)
+        .addRowVector(myStuff)
+//        .normalizeRows()
+//        .sum(0)
+        .pow(2.0)
+//        .sqrt()
+        .normalizeRows()
+        .sum(0)
+        .sqrt()
+//        .div(1000000)
+        .div(1)
+    println(mat)
+
 
 }
