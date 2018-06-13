@@ -19,19 +19,20 @@ class LogitThingy(val perturbations: INDArray,
                   val originalFeatures: INDArray,
                   val originalTarget: INDArray,
                   val perturbedTarget: INDArray) {
-    val maxIterations = 40000
-    val reportStep = 100
+    val maxIterations = 100
+    val reportStep = 10
     var iterations = 0
-    var learningRate = listOf(0.5, 1.0, 2.0, 5.0, 10.0, 50.0)[2]
+    var learningRate = listOf(0.5, 1.0, 2.0, 5.0, 10.0, 50.0)[1]
     val normalizeBySize = true
 
     val predFun = LogitPred.PRED_DOT_SIGMOID
-    val diffFun = LogitDiff.DIFF_KLD
-    val diffNormal = LogitDiffNormal.DMOD_NONE
+    val diffFun = LogitDiff.DIFF_SUB
+//    val diffNormal = LogitDiffNormal.DMOD_EXP
+    val diffNormal = LogitDiffNormal.DMOD_EXP_NORMAL
 
 
-    val minLearningRate = 0.00000000000001
-    var prevKld: Double = 9.0
+    val minLearningRate = 0.000001
+    var prevKld: Double = 9999999.0
     var bestParams = zeros(1)
     var lowest = 99999.0
     var lowestAt = 0
@@ -41,7 +42,9 @@ class LogitThingy(val perturbations: INDArray,
     var kldLowest = 99999.0 to 0
 
     fun training(x: INDArray, y: INDArray): INDArray {
-        var params = (0 until x.size(1)).map { 1 / x.size(1).toDouble() }.toNDArray().transpose().normalizeColumns()
+//        var params = (0 until x.size(1)).map { 1 / x.size(1).toDouble() }.toNDArray().transpose().normalizeColumns()
+//        var params = (0 until x.size(1)).map { 1.0 }.toNDArray().transpose().normalizeColumns()
+        var params = (0 until x.size(1)).map { x.size(1).toDouble() }.toNDArray().transpose().normalizeColumns()
 
         var newParams = params.dup()
         var optimalParams = params.dup()
@@ -55,11 +58,8 @@ class LogitThingy(val perturbations: INDArray,
             iterations += 1
             params.addi(gradients.mul(learningRate))
 //            params.subi(gradients.mul(learningRate))
+            learningRate *= 1.04
 
-//            newParams = params.sub(gradients).relu().normalizeColumns()
-//            newParams = params.add(gradients).relu().normalizeColumns()
-//            newParams = params.sub(gradients).relu().normalizeColumns()
-//            newParams = params.add(gradients)
 
 //            if (hasConverged(params, newParams, minLearningRate)) {
 //                println("Converged in: $i")
@@ -77,8 +77,8 @@ class LogitThingy(val perturbations: INDArray,
     // GRADIENT
     private fun gradient(x: INDArray, y: INDArray, p: INDArray): INDArray {
         // Calculate dot-product
-        val pred = predFun.f(this, x, p)
-        paramHistory.add(p)
+        val pred = predFun.f(this, x, p.relu())
+        paramHistory.add(p.relu().normalizeColumns())
 
         // Get difference
 //        val diff = diffFun.f(this, y, pred.normalizeRows())
@@ -88,9 +88,11 @@ class LogitThingy(val perturbations: INDArray,
 
         // Logging and Stuff
 //        val kld2 = y.transpose().kld(pred.normalizeRows()).sumNumber().toDouble().absoluteValue
-        val kld2 = y.transpose().kld(x.mmul(p.relu())).sumNumber().toDouble().absoluteValue
-        if (kld2 < kldLowest.first) { kldLowest = kld2 to iterations }
+        val kld2 = y.transpose().kld(x.mmul(p.relu())).sumNumber().toDouble()
+//        val kld2 = y.transpose().kld(x.mmul(p)).sumNumber().toDouble().absoluteValue
+        if (kld2.absoluteValue < kldLowest.first) { kldLowest = kld2.absoluteValue to iterations }
 
+//        val combined = originalFeatures.transpose().mmul(p.relu().normalizeColumns()).euclideanDistance(originalTarget)
         val combined = originalFeatures.transpose().mmul(p.relu().normalizeColumns()).euclideanDistance(originalTarget)
         if (combined < lowest) {
             lowest = combined
@@ -101,18 +103,20 @@ class LogitThingy(val perturbations: INDArray,
         if (iterations % reportStep == 0) {
             println("${kld2.toDouble()}  : $combined  : $iterations")
         }
-        prevKld = kld2.toDouble()
-        bestParams = p
-        if (kld2.toDouble() < prevKld) {
-            prevKld = kld2.toDouble()
-            bestParams = p
-        }
+//        prevKld = kld2.toDouble()
+//        bestParams = p
+//        if (kld2.toDouble().absoluteValue < prevKld) {
+//            prevKld = kld2.toDouble().absoluteValue
+//            bestParams = p
+//        }
 
         // Return gradient
         val m = x.size(0) //number of examples
         return x
             .transpose()
-            .mmul(diff) * p.relu()
+//            .mmul(diff) * p.relu().mul(kld2 * -1)
+            .mmul(diff).mul(kld2 * -1) * p.relu()
+//            .mmul(diff)
             .run { if (normalizeBySize) mul(1/m.toDouble()) else this }
     }
 
@@ -126,6 +130,7 @@ class LogitThingy(val perturbations: INDArray,
 
     fun varianceToPerturbed(vec: INDArray): Double {
         return perturbations.normalizeRows().subRowVector(vec.normalizeRows()).abs().sum(1).varianceRows().sumNumber().toDouble()
+//        return perturbations.normalizeRows().subRowVector(vec.normalizeRows()).pow(2).sum(1).varianceRows().sumNumber().toDouble()
     }
 
     private fun reportResults() {
@@ -155,7 +160,7 @@ class LogitThingy(val perturbations: INDArray,
 
 fun main(args: Array<String>) {
     val (targets, features) = makeStuff()
-    val perturbations = perturb(targets, 2000)
+    val perturbations = perturb(targets, 100)
     val (results, perturbedTarget) = applyFeatures(perturbations,  features)
     val originals = (features.take(features.size - 1).combineNDArrays())
     val logit = LogitThingy(perturbations, originals, targets, perturbedTarget)
