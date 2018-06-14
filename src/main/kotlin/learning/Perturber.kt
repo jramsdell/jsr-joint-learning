@@ -9,16 +9,16 @@ import utils.stats.normalize
 
 fun perturb(arr: INDArray, nSamples: Int = 10, intensity: Double = 0.1): INDArray {
 
-    var mat = randn(nSamples, arr.columns(), 1091238)
-        .mul(0.1)
-        .pow(2.0)
-        .addRowVector(arr)
-        .normalizeRows()
-
-//    mat = mat
-//        .pow(2.0).mul(mat.sign())
-//        .mulRowVector(arr)
+    var mat = randn(nSamples, arr.columns(), 102)
+        .mul(0.2)
+//        .pow(2.0)
 //        .addRowVector(arr)
+//        .normalizeRows()
+
+    mat = mat
+        .pow(2.0).mul(mat.sign())
+        .mulRowVector(arr)
+        .addRowVector(arr)
 //        .normalizeRows()
     return mat
 }
@@ -27,7 +27,7 @@ fun applyFeatures(perturbations: INDArray, features: List<INDArray> ): Pair<INDA
     val result = features.map { feature ->
         pow(perturbations.subRowVector(feature), 2.0).sum(1).toDoubleVector().toList()
 //        pow(perturbations.subRowVector(feature), 2.0).sum(1).sqrt().toDoubleVector().toList()
-//        perturbations.subRowVector(feature).abs().sum(1).toDoubleVector().toList().normalize()
+//        perturbations.subRowVector(feature).abs().sum(1).toDoubleVector().toList()
 //        perturbations.subRowVector(feature).sum(1).toDoubleVector().toList()
 //        abs(perturbations.mulRowVector(feature)).sum(1).toDoubleVector().toList()
 //        perturbations.divRowVector(feature).log().sum(1).toDoubleVector().toList()
@@ -42,13 +42,14 @@ fun makeStuff(): Pair<INDArray, List<INDArray>> {
     val f1 = listOf(10.0, 5.5, 3.4, 2.0, 10.0, 1.0, 10.0, 40.0, 2.0, 30.0, 30.0).normalize().toNDArray()
     val f2 = listOf(10.0, 1.5, 8.4, 0.2, 5.0, 9.0, 1.0, 2.0, 2.0, 10.0, 1.0).normalize().toNDArray()
     val f3 = listOf(500.0, 40.0, 10.0, 10.0, 10.0, 1.0, 40.0, 4.0, 4.0, 4.0, 20.0).normalize().toNDArray()
-    val f4 = listOf(1.0, 5.5, 1.0, 80.0, 1.0, 1.0, 1.0, 2.0, 40.0, 1.0, 1.0).normalize().toNDArray()
+//    val f4 = listOf(1.0, 5.5, 1.0, 80.0, 1.0, 1.0, 1.0, 2.0, 40.0, 1.0, 1.0).normalize().toNDArray()
+    val f4 = f1 * 0.5 +  f2 * 0.5
 //    val f4 = listOf(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0).normalize().toNDArray()
     val f5 = listOf(0.01, 0.03, 0.06, 0.1, 0.3, 0.15, 0.1, 0.05, 0.02, 0.01, 0.01).normalize().toNDArray()
 //    val weights = listOf(100.0, 200.0, 0.0, 25.0, 100.0).normalize()
 //    val weights = listOf(200.0, 200.0, 0.0, 25.0, 100.0).normalize()
-    val weights = listOf(20.0, 100.0, 0.0, 0.0, 100.0).normalize()
-//    val weights = listOf(1000.0, 0.0, 100.0, 1000.0, 100.0).normalize()
+//    val weights = listOf(20.0, 100.0, 0.0, 0.0, 100.0).normalize()
+    val weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0).normalize()
 //    val weights = listOf(1000.0, 0.0, 0.0, 100.0, 100.0).normalize()
 //    val weights = listOf(1000.0, 0.0, 0.0, 1000.0, 100.0).normalize()
     println("WEIGHTS: $weights")
