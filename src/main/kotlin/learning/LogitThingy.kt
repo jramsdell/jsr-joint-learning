@@ -10,6 +10,8 @@ import utils.nd4j.*
 import utils.stats.defaultWhenNotFinite
 import java.util.*
 import kotlin.math.absoluteValue
+import kotlin.math.pow
+import kotlin.math.sign
 
 class StatPrinter {
 
@@ -20,10 +22,10 @@ class LogitThingy(val perturbations: INDArray,
                   val originalFeatures: INDArray,
                   val originalTarget: INDArray,
                   val perturbedTarget: INDArray) {
-    val maxIterations = 300
-    val reportStep = 10
+    val maxIterations = 5
+    val reportStep = 1
     var iterations = 0
-    var learningRate = listOf(0.5, 1.0, 2.0, 5.0, 10.0, 50.0)[0] * 3.0
+    var learningRate = listOf(0.5, 1.0, 2.0, 5.0, 10.0, 50.0)[1]
     val normalizeBySize = true
 
     val predFun = LogitPred.PRED_DOT
@@ -46,6 +48,21 @@ class LogitThingy(val perturbations: INDArray,
     var kldLowest = 99999.0 to 0
     var curKld = 0.0
     var diffSum = 0.0
+    var highest = 0.0
+    var prevTotal = 0.0
+
+    fun getBestChange(pT: Double, cT: Double, pP: INDArray, cP: INDArray): INDArray {
+        val dT = cT - pT
+        val dP = (cP - pP).sumNumber().toDouble()
+        val dSolve = ((cT / (dT / dP).absoluteValue) * 1  )
+//        val dSolve = ((cT / (dT)) * 1  )
+        println("\tdT: $dT ($pT, $cT, $dSolve),  dP: $dP")
+        println(cP * dSolve * -1 * Math.signum(pT))
+//        return (cP * dSolve * -1 * Math.signum(pT))
+        return (cP * dSolve)
+//        return wee.sigmoid() * wee.sign()
+
+    }
 
     fun training(x: INDArray, y: INDArray): INDArray {
 //        var params = (0 until x.size(1)).map {  }.toNDArray().transpose().normalizeColumns()
@@ -55,20 +72,41 @@ class LogitThingy(val perturbations: INDArray,
 
         var newParams = params.dup()
         var optimalParams = params.dup()
+        var prevGradients = params
 
         for (i in 0 until maxIterations) {
 //            val gradients = gradient(x, y, params.relu().normalizeColumns())
             curKld = prevKld
-            var gradients = gradient(x, y, params.softMax())
+//            var gradients = gradient(x, y, params.softMax())
 //            println(gradients.normalizeColumns())
 //            var gradients = gradient(x, y, params.normalizeColumns())
+            val curDiff = prevTotal
+            var gradients = gradient(x, y, params)
+//            prevTotal = gradients.sumNumber().toDouble()
+            println(prevTotal)
+
+
+
+            if (iterations > 0) {
+                val diffRatio = 1 / (curDiff - prevTotal)
+                val gradientRatio =  prevGradients - gradients
+//                if (Math.abs(curDiff - prevTotal) <= 0.000000000000000001) {
+//                    println("Converged at $iterations")
+//                    break
+//                }
+                gradients = getBestChange(prevTotal, curDiff, prevGradients, gradients)
+            }
+
 //            var gradients = gradient(x, y, params.exp().normalizeColumns())
 //            var gradients = gradient(x, y, params.normalizeColumns())
 //            params.addi(gradients.mul(learningRate))
             iterations += 1
-            params = (params + gradients.mul(learningRate))
+            params = (params - gradients.mul(learningRate))
+            prevGradients = params
 //            params.subi(gradients.mul(learningRate))
-            learningRate *= 1.00
+//            println(gradients)
+            learningRate *= 1.0
+
 
 
 //            if (hasConverged(params, newParams, minLearningRate)) {
@@ -97,18 +135,30 @@ class LogitThingy(val perturbations: INDArray,
 //        val inverseP = p.invertDistribution().normalizeColumns()
         val inverseP = p.normalizeColumns()
 //        val inverseP = p
-        val pred = predFun.f(this, x, p.normalizeColumns())
-//        val pred = predFun.f(this, x, p)
+//        val pred = predFun.f(this, x, p.normalizeColumns())
+//        val pred = predFun.f(this, x, p.normalizeColumns())
+        val pred = predFun.f(this, x, p)
         val pred5 = predFun.f(this, x, inverseP)
 //        paramHistory.add(p.relu().normalizeColumns())
         paramHistory.add(inverseP)
 
+
         // Get difference
 //        val diff = diffFun.f(this, y, pred.normalizeRows())
-        val diff = diffFun.f(this, y, pred)
-            .let { result ->  diffNormal.f(this, result) }
+//        val diff = diffFun.f(this, y, pred)
+//            .let { result ->  diffNormal.f(this, result) }
+
+        val diff = pred.transpose()
+//        val diffTotal = diff.sumNumber().toDouble()
+//        println(diffLog)
+//
+//        if (iterations > 60 && iterations < 80) {
+//            println("$iterations: $diffTotal : $diffLog : $diffRatio")
+//        }
 
 
+
+        prevTotal = diff.sumNumber().toDouble()
 //        val pred2 = (pred ).abs().sumNumber()
 //        val predMean = diff.sumNumber().toDouble() / diff.rows().toDouble()
 //        val variance = (diff - predMean).pow(2.0).sumNumber().toDouble()
@@ -122,18 +172,19 @@ class LogitThingy(val perturbations: INDArray,
 //        println(x.mmul(p.normalizeColumns()).sumNumber().toDouble())
 //        val kld2 = y.transpose().kld(x.mmul(p.normalizeColumns())).sumNumber().toDouble().defaultWhenNotFinite(0.0)
 //        val kld2 = y.transpose().kld(x.mmul(p.normalizeColumns()).transpose()).sumNumber().toDouble().defaultWhenNotFinite(0.0)
-        val kld2 = y.transpose().kld(pred).sumNumber().toDouble().defaultWhenNotFinite(0.0)
+//        val kld2 = y.transpose().kld(pred).sumNumber().toDouble().defaultWhenNotFinite(0.0)
 //        val kld2 = x.mmul(p.relu()).kld(y).sumNumber().toDouble().defaultWhenNotFinite(0.0)
 //        val kld2 = pred.transpose().kld(y).sumNumber().toDouble()
 //        val kld2 = y.kldSymmetric(x.mmul(p.relu())).sumNumber().toDouble().defaultWhenNotFinite(0.0)
 //        val kld2 = y.transpose().kld(x.mmul(p)).sumNumber().toDouble().absoluteValue
+        val kld2 = 0.0
 
 //        val kld2 = 0.0
         if (kld2.absoluteValue < kldLowest.first && iterations != 0) { kldLowest = kld2.absoluteValue to iterations }
 //        if (kld2 == 0.0) return zerosLike(p)
 
-//        val combined = originalFeatures.transpose().mmul(inverseP).euclideanDistance(originalTarget).absoluteValue
-        val combined = originalFeatures.transpose().mmul(p.normalizeColumns()).euclideanDistance(originalTarget).absoluteValue
+        val combined = originalFeatures.transpose().mmul(inverseP).euclideanDistance(originalTarget)
+//        val combined = originalFeatures.transpose().mmul(p).euclideanDistance(originalTarget).absoluteValue
 //        val combined = originalFeatures.transpose().mmul(p).euclideanDistance(originalTarget).absoluteValue
         if (combined < lowest) {
             lowest = combined
@@ -146,19 +197,15 @@ class LogitThingy(val perturbations: INDArray,
         if (iterations % reportStep == 0) {
             println("${kld2.toDouble()}  : $combined  : $diffSum : $iterations")
         }
-//        prevKld = kld2.toDouble()
         prevKld = kld2
-//        bestParams = p
 
-//        val diffMean = diff.abs().sumNumber().toDouble() / diff.rows().toDouble()
-//        val diffVar = (diff - diffMean).pow(2.0).sumNumber().toDouble()
-//        val diffRatio = prevDiffVar - diffVar
-//        println("\t$diffVar: $diffRatio")
-//        prevDiffVar = diffVar
+
+
         // Return gradient
         val m = x.size(0) //number of examples
 //        val result = x.transpose().mmul(diff)
-        val result = x.transpose().mmul(diff) * (p.relu().sign())
+//        val result = x.transpose().mmul(diff).mul((p.relu().sign()))
+        val result = x.transpose().mmul(diff)
 //            .run { if (iterations != 0) mul(diffRatio) else this }
             .run { if (normalizeBySize) mul(1/m.toDouble()) else this }
 
@@ -188,7 +235,9 @@ class LogitThingy(val perturbations: INDArray,
 
 
     fun varianceToPerturbed(vec: INDArray): Double {
-        return perturbations.normalizeRows().subRowVector(vec.normalizeRows()).abs().sum(1).varianceRows().sumNumber().toDouble()
+        return perturbations.normalizeRows().subRowVector(vec.normalizeRows()).pow(2.0).sum(1).varianceRows().sumNumber().toDouble()
+//        return perturbations.subRowVector(vec.normalizeRows()).pow(2.0).sum(1).varianceRows().sumNumber().toDouble()
+//        return perturbations.normalizeRows().subRowVector(vec.normalizeRows()).pow(2.0).sumNumber().toDouble()
 //        return perturbations.normalizeRows().subRowVector(vec.normalizeRows()).pow(2).sum(1).varianceRows().sumNumber().toDouble()
     }
 
@@ -225,7 +274,7 @@ class LogitThingy(val perturbations: INDArray,
 
 fun main(args: Array<String>) {
     val (targets, features) = makeStuff()
-    val perturbations = perturb(targets, 400)
+    val perturbations = perturb(targets, 50)
     val (results, perturbedTarget) = applyFeatures(perturbations,  features)
     val originals = (features.take(features.size - 1).combineNDArrays())
     val logit = LogitThingy(perturbations, originals, targets, perturbedTarget)

@@ -40,15 +40,18 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
      * Description: Given a lucene location (.cbor file), queries Lucene index with page names.
      * @return List of pairs (lucene string and the Top 100 documents obtained by doing the lucene)
      */
-    fun getPageQueries(queryLocation: String): List<Pair<String, TopDocs>> =
+    fun getPageQueries(queryLocation: String, doBoostedQuery: Boolean = false): List<Pair<String, TopDocs>> =
             DeserializeData.iterableAnnotations(File(queryLocation).inputStream())
-                .map { page ->
+                .pmap { page ->
                     val queryId = page.pageId
                     val queryStr = createQueryString(page, emptyList())
 //                    queryId to indexSearcher.search(createQuery(queryStr), 100) }
-                    val booleanQuery = indexSearcher
-                        .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = true), 100)
-                    queryId to booleanQuery }
+                    val result = if (!doBoostedQuery) {
+                        indexSearcher
+                            .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = true), 100)
+                    } else { doBoost(queryStr) }
+                    queryId to result
+                }
                 .toList()
 
 
@@ -75,21 +78,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                             indexSearcher
                                 .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = false), 100)
 
-                        } else {
-//                            val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
-                            val weights = listOf(0.9346718895308014 , 0.04971515179492379 , 0.015612958674274948 )
-                            val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
-                                    useFiltering = true)
-                            FieldQueryFormatter()
-                                .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
-                                .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
-                                .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
-                                .createBooleanQuery()
-                                .run {
-                                    indexSearcher.search(this, 100) }
-//                        val query = FieldQueryFormatter().doSectionQueries(queryStr).createBooleanQuery()
-//                            .run { indexSearcher.search(this, 100) }
-                        }
+                        } else { doBoost(queryStr) }
 
 
 
@@ -98,6 +87,22 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                         result.takeUnless {seen.put(queryId, "") != null}   // remove duplicates
                     }.apply { println(counter.incrementAndGet()) }
             }.filterNotNull()
+    }
+
+
+    fun doBoost(queryStr: String): TopDocs {
+//                            val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
+        val weights = listOf(0.9346718895308014 , 0.04971515179492379 , 0.015612958674274948 )
+        val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
+                useFiltering = true)
+        val results = FieldQueryFormatter()
+            .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
+            .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
+            .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
+            .createBooleanQuery()
+            .run {
+                indexSearcher.search(this, 100) }
+        return results!!
     }
 
 

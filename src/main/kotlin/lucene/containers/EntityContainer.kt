@@ -7,7 +7,7 @@ data class EntityContainer(
         val name: String,
         val qid: Int,
         val docId: Int,
-        val isRelevant: Boolean,
+        var isRelevant: Boolean = false,
         val queryFeatures: ArrayList<FeatureContainer> = arrayListOf(),
         val sharedFeatures: ArrayList<FeatureContainer> = arrayListOf(),
         val documentFeatures: ArrayList<FeatureContainer> = arrayListOf(),

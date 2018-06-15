@@ -25,9 +25,9 @@ class EntityRetriever(val db: EntityDatabase,
 
 
 
-
     val entityContainers =
-            queries.withIndex().pmap {index ->
+            queries
+                .withIndex().pmap {index ->
                 val (query, tops) = index.value
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
                 val entityNames = getCandidateEntityNames(tops)
@@ -43,6 +43,7 @@ class EntityRetriever(val db: EntityDatabase,
                 }
             }.toList()
 
+
     private fun getCandidateEntityNames(tops: TopDocs) =
             tops.scoreDocs.flatMap {  scoreDoc ->
                 val doc = indexSearcher.doc(scoreDoc.doc)
@@ -54,8 +55,8 @@ class EntityRetriever(val db: EntityDatabase,
                 .map(db::getEntityByID)
 
     private fun getCandidatesFromQuery(query: String) =
-        db.getEntityDocuments(query, 100)
-            .map { doc -> doc.get("name") }
+        db.getEntityDocuments(query, 5)
+            .map { doc -> doc.get("abstract") }
 
     private fun cleanQrelEntry(entry: String) =
             entry.replace("enwiki:", "")

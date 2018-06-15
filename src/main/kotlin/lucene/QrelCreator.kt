@@ -20,11 +20,18 @@ class QrelCreator(paragraphQrel: String, entityQrel: String, val indexSearcher: 
                     .mapOfSets { it.split(" ").let { it[0] to it[2] } }
 
     private val entityRelevancies =
-                File("/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-article.entity.qrels")
+                File("/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-hierarchical.entity.qrels")
                     .bufferedReader()
                     .readLines()
                     .map { it.split(" ").let { it[0].split("/").first() to cleanQrelEntry(it[2]) } }
                     .toSet()
+
+    private val entityRelevanciesHierarchical =
+            File("/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-hierarchical.entity.qrels")
+                .bufferedReader()
+                .readLines()
+                .map { it.split(" ").let { it[0] to cleanQrelEntry(it[2]) } }
+                .toSet()
 
     private fun cleanQrelEntry(entry: String) =
             entry.replace("enwiki:", "")
@@ -37,11 +44,12 @@ class QrelCreator(paragraphQrel: String, entityQrel: String, val indexSearcher: 
      *
      *       Results are saved to entity_section.qrel and entity_page.qrel
      */
+
+
     fun writeEntityQrelsUsingParagraphQrels() {
         val relevantEntities = createRelevantEntities()
             .mapValues { (query, relEntities) ->
                 val page = query.split("/").first()
-                println(page)
                 relEntities.filter { entity -> page to entity in entityRelevancies }
                     .toSet() }
             .toSortedMap()

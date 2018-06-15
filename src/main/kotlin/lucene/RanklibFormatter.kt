@@ -13,6 +13,8 @@ import utils.*
 import utils.lucene.getIndexSearcher
 import utils.misc.CONTENT
 import utils.misc.filledArray
+import utils.misc.groupOfListsFlattened
+import utils.misc.mapOfLists
 import utils.parallel.forEachParallel
 import utils.parallel.pmap
 import utils.stats.normalize
@@ -72,17 +74,18 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             else getIndexSearcher(proximityIndexLoc)
 
 
-    val qrelCreator = QrelCreator(paragraphQrelLoc,
-            "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-article.qrels",
-            indexSearcher =  paragraphSearcher)
-        .apply { writeEntityQrelsUsingParagraphQrels() }
-        .apply { System.exit(0) }
+//    val qrelCreator = QrelCreator(paragraphQrelLoc,
+//            "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-hierarchical.entity.qrels change this",
+//            indexSearcher =  paragraphSearcher)
+//        .apply { writeEntityQrelsUsingParagraphQrels() }
+//        .apply { System.exit(0) }
 
 
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
-    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
+    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = true)
+//    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant)
     val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc )
     val featureDatabase = FeatureDatabase2()
@@ -218,29 +221,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * @param normType: lucene.NormType determines the type of normalization (if any) to apply to the new document scores.
      * @param weight: The final list of doubles is multiplies by this weight
      */
-//    fun addFeature(f: (String, TopDocs, IndexSearcher) -> List<Double>, weight:Double = 1.0,
-//                   normType: NormType = NormType.NONE) {
-//
-//        val bar = ProgressBar("lucene.Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
-//        bar.start()
-//        val lock = ReentrantLock()
-//        val curSim = paragraphSearcher.getSimilarity(true)
-//
-//        queryContainers
-//            .pmap { (query, tops, paragraphs, _) ->
-//                    // Using scoring function, score each of the paragraphs in our lucene result
-//                    val featureResult: List<Double> =
-//                            f(query, tops, paragraphSearcher).run { normalizeResults(this, normType) }
-//
-//                    lock.withLock { bar.step() }
-//                    featureResult.zip(paragraphs) } // associate the scores with their corresponding paragraphs
-//            .forEach { results ->
-//                results.forEach { (score, paragraph) ->
-//                                   paragraph.queryFeatures += FeatureContainer(score, weight)
-//                }}
-//        bar.stop()
-//        paragraphSearcher.setSimilarity(curSim)
-//    }
 
 
     fun addFeature3(featureEnum: FeatureEnum, weight:Double = 1.0,
@@ -362,10 +342,24 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 .joinToString(separator = "\n", transform = ParagraphContainer::toString)
                 .let { file.write(it) }
 
-//        queryContainers
-//            .flatMap { queryContainer -> queryContainer.entities  }
+//        queryContainers.map { queryContainer -> queryContainer.query to queryContainer.entities  }
+//            .groupOfListsFlattened()
+//            .flatMap { (k,v) ->
+//                v.groupingBy { it.name }
+//                    .reduce { key, accumulator, element ->
+//                        accumulator.apply {
+//                            accumulator.score += element.score
+//                            accumulator.isRelevant = element.isRelevant || accumulator.isRelevant
+//                        }
+//                    }
+//                    .values }
 //            .joinToString(separator = "\n", transform = EntityContainer::toString)
 //            .let { file.write(it) }
+
+        queryContainers
+            .flatMap { queryContainer -> queryContainer.entities  }
+            .joinToString(separator = "\n", transform = EntityContainer::toString)
+            .let { file.write(it) }
 //        queryContainers.forEach(featureDatabase::writeFeatures)
         featureDatabase.writeFeatures(queryContainers)
         file.close()
