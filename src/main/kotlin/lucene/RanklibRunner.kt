@@ -285,13 +285,13 @@ class RanklibRunner(val rankLibLoc: String, var featuresLoc: String) {
             var tensor = 1.0 to 0.0
             fractionList.forEach { fractionCollection ->
                 val fraction = fractionCollection[index]
-                println(tensor)
                 tensor = tensor.first / fraction.toDouble() to tensor.second / fraction.toDouble() + baseScore
             }
 
 
 //            val res = Math.exp(new[index].toDouble() * baseScore)
 //            println(tensor)
+            println(tensor)
             val res = Math.exp(tensor.second / (tensor.first - 1.0))
 //            val res = tensor.second / (tensor.first - 1.0)
             res
