@@ -49,7 +49,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                     val result = if (!doBoostedQuery) {
                         indexSearcher
                             .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = true), 100)
-                    } else { doBoost(queryStr) }
+                    } else { doBoost(queryStr, isPage = true) }
                     queryId to result
                 }
                 .toList()
@@ -90,9 +90,11 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
     }
 
 
-    fun doBoost(queryStr: String): TopDocs {
+    fun doBoost(queryStr: String, isPage: Boolean = false): TopDocs {
 //                            val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
-        val weights = listOf(0.9346718895308014 , 0.04971515179492379 , 0.015612958674274948 )
+        val weights =
+//                if (isPage) listOf(0.9513710217127973 , 0.02830263512128421 , 0.02032634316591837 )
+                 listOf(0.9346718895308014 , 0.04971515179492379 , 0.015612958674274948 )
         val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
                 useFiltering = true)
         val results = FieldQueryFormatter()

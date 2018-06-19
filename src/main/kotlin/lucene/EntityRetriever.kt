@@ -12,7 +12,7 @@ import java.io.File
 class EntityRetriever(val db: EntityDatabase,
                       val indexSearcher: IndexSearcher,
                       queries: List<Pair<String, TopDocs>>,
-                      qrelLoc: String) {
+                      qrelLoc: String, val paragraphRetrieve: ParagraphRetriever) {
 
     private val relevancies =
             if (qrelLoc == "") null
@@ -30,7 +30,7 @@ class EntityRetriever(val db: EntityDatabase,
                 .withIndex().pmap {index ->
                 val (query, tops) = index.value
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
-                val entityNames = getCandidateEntityNames(tops)
+                val entityNames = getCandidateEntityNames(tops, index.index)
                 val entities = getCandidateEntityData(entityNames)
                 entities.map { entity: EntityData ->
                     EntityContainer(
@@ -41,13 +41,28 @@ class EntityRetriever(val db: EntityDatabase,
                             isRelevant = relevancies?.contains(query to entity.name) ?: false
                     )
                 }
-            }.toList()
+            }
+
+    private fun filterNeighbors(containers: List<EntityContainer>): List<EntityContainer> {
+        val nearby = HashSet<Int>()
+        containers.forEachIndexed { index, entityContainer ->
+            if (entityContainer.isRelevant) {
+                nearby += Math.max(index - 1, 0)
+                nearby += Math.min(index + 1, containers.size)
+                nearby += index
+            }
+        }
+        return containers.filterIndexed { index, paragraphContainer ->  index in nearby }
+    }
 
 
-    private fun getCandidateEntityNames(tops: TopDocs) =
-            tops.scoreDocs.flatMap {  scoreDoc ->
-                val doc = indexSearcher.doc(scoreDoc.doc)
-                doc.getValues("spotlight").toList() }
+    private fun getCandidateEntityNames(tops: TopDocs, index: Int) =
+        paragraphRetrieve.paragraphContainers[index].flatMap { pC ->
+            pC.doc.getValues("spotlight").toList()
+        }
+//            tops.scoreDocs.flatMap {  scoreDoc ->
+//                val doc = indexSearcher.doc(scoreDoc.doc)
+//                doc.getValues("spotlight").toList() }
 
     private fun getCandidateEntityData(entities: List<String>) =
             entities.toSortedSet()

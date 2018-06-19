@@ -24,7 +24,8 @@ import java.util.*
  */
 class ParagraphRetriever(val indexSearcher: IndexSearcher,
                          queries: List<Pair<String, TopDocs>>,
-                         qrelLoc: String, includeRelevant: Boolean = false) {
+                         qrelLoc: String, includeRelevant: Boolean = false,
+                         doFiltered: Boolean = false) {
 
     // If a qrel filepath was given, reads file and creates a set of lucene/paragraph pairs for relevancies
     private val relevancies =
@@ -49,7 +50,20 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
 
                 if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
                 else containers
+            }.let { result ->  if (doFiltered) result.map(this::filterNeighbors) else result }
+
+
+    private fun filterNeighbors(containers: List<ParagraphContainer>): List<ParagraphContainer> {
+        val nearby = HashSet<Int>()
+        containers.forEachIndexed { index, paragraphContainer ->
+            if (paragraphContainer.isRelevant) {
+                nearby += Math.max(index - 1, 0)
+                nearby += Math.min(index + 1, containers.size)
+                nearby += index
             }
+        }
+        return containers.filterIndexed { index, paragraphContainer ->  index in nearby }
+    }
 
     private fun include(containers: List<ParagraphContainer>, index: Int, query: String,
                                           relevantToQuery: Set<String>): List<ParagraphContainer> {

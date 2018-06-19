@@ -21,14 +21,14 @@ class StatPrinter {
 class LogitThingy(val perturbations: INDArray,
                   val originalFeatures: INDArray,
                   val originalTarget: INDArray,
-                  val perturbedTarget: INDArray) {
-    val maxIterations = 5
+                  val perturbedTarget: INDArray = zeros(1)) {
+    val maxIterations = 100
     val reportStep = 1
     var iterations = 0
-    var learningRate = listOf(0.5, 1.0, 2.0, 5.0, 10.0, 50.0)[1]
+    var learningRate = listOf(0.5, 1.0, 2.0, 5.0, 10.0, 50.0)[0] * 0.1
     val normalizeBySize = true
 
-    val predFun = LogitPred.PRED_DOT
+    val predFun = LogitPred.PRED_DOT_SIGMOID
     val diffFun = LogitDiff.DIFF_SUB
     val diffNormal = LogitDiffNormal.DMOD_NONE
 //    val diffNormal = LogitDiffNormal.DMOD_EXP_NORMAL
@@ -78,30 +78,30 @@ class LogitThingy(val perturbations: INDArray,
 //            val gradients = gradient(x, y, params.relu().normalizeColumns())
             curKld = prevKld
 //            var gradients = gradient(x, y, params.softMax())
+            var gradients = gradient(x, y, params.relu().normalizeColumns())
+            println(gradients)
 //            println(gradients.normalizeColumns())
 //            var gradients = gradient(x, y, params.normalizeColumns())
-            val curDiff = prevTotal
-            var gradients = gradient(x, y, params)
+//            var gradients = gradient(x, y, params)
 //            prevTotal = gradients.sumNumber().toDouble()
-            println(prevTotal)
 
 
 
-            if (iterations > 0) {
-                val diffRatio = 1 / (curDiff - prevTotal)
-                val gradientRatio =  prevGradients - gradients
-//                if (Math.abs(curDiff - prevTotal) <= 0.000000000000000001) {
-//                    println("Converged at $iterations")
-//                    break
-//                }
-                gradients = getBestChange(prevTotal, curDiff, prevGradients, gradients)
-            }
+//            if (iterations > 0) {
+//                val diffRatio = 1 / (curDiff - prevTotal)
+//                val gradientRatio =  prevGradients - gradients
+////                if (Math.abs(curDiff - prevTotal) <= 0.000000000000000001) {
+////                    println("Converged at $iterations")
+////                    break
+////                }
+//                gradients = getBestChange(prevTotal, curDiff, prevGradients, gradients)
+//            }
 
 //            var gradients = gradient(x, y, params.exp().normalizeColumns())
 //            var gradients = gradient(x, y, params.normalizeColumns())
 //            params.addi(gradients.mul(learningRate))
             iterations += 1
-            params = (params - gradients.mul(learningRate))
+            params = (params + gradients.mul(learningRate)).normalizeColumns()
             prevGradients = params
 //            params.subi(gradients.mul(learningRate))
 //            println(gradients)
@@ -137,18 +137,18 @@ class LogitThingy(val perturbations: INDArray,
 //        val inverseP = p
 //        val pred = predFun.f(this, x, p.normalizeColumns())
 //        val pred = predFun.f(this, x, p.normalizeColumns())
-        val pred = predFun.f(this, x, p)
-        val pred5 = predFun.f(this, x, inverseP)
+        val pred = predFun.f(this, x, p.normalizeColumns())
+//        val pred5 = predFun.f(this, x, inverseP)
 //        paramHistory.add(p.relu().normalizeColumns())
         paramHistory.add(inverseP)
 
 
         // Get difference
 //        val diff = diffFun.f(this, y, pred.normalizeRows())
-//        val diff = diffFun.f(this, y, pred)
-//            .let { result ->  diffNormal.f(this, result) }
+        val diff = diffFun.f(this, y, pred)
+            .let { result ->  diffNormal.f(this, result) }
 
-        val diff = pred.transpose()
+//        val diff = pred.transpose()
 //        val diffTotal = diff.sumNumber().toDouble()
 //        println(diffLog)
 //
@@ -183,6 +183,7 @@ class LogitThingy(val perturbations: INDArray,
         if (kld2.absoluteValue < kldLowest.first && iterations != 0) { kldLowest = kld2.absoluteValue to iterations }
 //        if (kld2 == 0.0) return zerosLike(p)
 
+//        val combined = originalFeatures.transpose().mmul(inverseP).euclideanDistance(originalTarget)
         val combined = originalFeatures.transpose().mmul(inverseP).euclideanDistance(originalTarget)
 //        val combined = originalFeatures.transpose().mmul(p).euclideanDistance(originalTarget).absoluteValue
 //        val combined = originalFeatures.transpose().mmul(p).euclideanDistance(originalTarget).absoluteValue
@@ -204,8 +205,8 @@ class LogitThingy(val perturbations: INDArray,
         // Return gradient
         val m = x.size(0) //number of examples
 //        val result = x.transpose().mmul(diff)
-//        val result = x.transpose().mmul(diff).mul((p.relu().sign()))
-        val result = x.transpose().mmul(diff)
+        val result = x.transpose().mmul(diff).mul((p.relu().sign()))
+//        val result = x.transpose().mmul(diff)
 //            .run { if (iterations != 0) mul(diffRatio) else this }
             .run { if (normalizeBySize) mul(1/m.toDouble()) else this }
 
@@ -249,7 +250,7 @@ class LogitThingy(val perturbations: INDArray,
         reportParams("Lowest Target", lowestAt)
         reportParams("Lowest KLD", kldLowest.second)
         reportParams("Last Result", iterations - 1)
-        reportParams("Minimum Variance", getMinimumVariance())
+//        reportParams("Minimum Variance", getMinimumVariance())
     }
 
     fun getMinimumVariance() =

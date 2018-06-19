@@ -19,6 +19,10 @@ fun Iterable<Iterable<Double>>.toNDArray(): INDArray {
     return create(map { it.toList().toDoubleArray() }.toTypedArray())
 }
 
+fun Array<DoubleArray>.toNDArray(): INDArray {
+    return create(this)
+}
+
 fun Iterable<INDArray>.combineNDArrays(): INDArray {
     val converted = map { arr -> arr.toDoubleVector() }.toTypedArray()
     return create(converted)

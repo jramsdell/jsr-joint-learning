@@ -26,7 +26,8 @@ open class Extractor<T>(outLoc: String,
 
     val extractors = ArrayList<Extractor<String>>()
 
-    private val out = GZIPOutputStream(File("extractions/$outLoc.gz").outputStream())
+//    private val out = GZIPOutputStream(File("extractions/$outLoc.gz").outputStream())
+    private val out = File("extractions/$outLoc.tsv").outputStream()
         .bufferedWriter()
         .apply { write("") }
 

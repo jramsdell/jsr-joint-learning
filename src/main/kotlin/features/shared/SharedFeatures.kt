@@ -39,8 +39,9 @@ object SharedFeatures {
             doc.getValues("rdf")?.toList() ?: emptyList()
         }
         val documentFeatures =
-                tops.scoreDocs.map { scoreDoc ->
-                    val doc = paragraphSearcher.doc(scoreDoc.doc)
+                paragraphDocuments.map { doc ->
+                    //                tops.scoreDocs.map { scoreDoc ->
+//                    val doc = paragraphSearcher.doc(scoreDoc.doc)
                     doc.getValues("spotlight")
                         .mapNotNull { docEntity -> entityDb.getEntityDocument(docEntity) }
                         .flatMap { docEntity -> docEntity.getValues("rdf")?.toList() ?: emptyList() }

@@ -112,3 +112,7 @@ class TrecParagraphAnnotator(serverLocation: String) {
     }
 }
 
+fun main(args: Array<String>) {
+
+}
+

@@ -13,8 +13,6 @@ import utils.*
 import utils.lucene.getIndexSearcher
 import utils.misc.CONTENT
 import utils.misc.filledArray
-import utils.misc.groupOfListsFlattened
-import utils.misc.mapOfLists
 import utils.parallel.forEachParallel
 import utils.parallel.pmap
 import utils.stats.normalize
@@ -84,10 +82,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
-    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = true)
-//    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
-    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant)
-    val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc )
+//    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = true)
+    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
+    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant,
+            doFiltered = paragraphQrelLoc != "")
+//            doFiltered = false)
+    val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
     val featureDatabase = FeatureDatabase2()
 
 
@@ -137,8 +137,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * @see NormType
      */
     private fun normLinear(values: List<Double>): List<Double> {
-        val minValue = values.min()!!
-        val maxValue = values.max()!!
+        val minValue = values.min() ?: return emptyList()
+        val maxValue = values.max() ?: return emptyList()
         return values.map { value -> (value - minValue) / (maxValue - minValue) }
     }
 
@@ -327,6 +327,9 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                     queryContainer.tops.scoreDocs[index].doc = paragraph.docId
                     queryContainer.tops.scoreDocs[index].score = paragraph.score.toFloat()
                 }
+
+            queryContainer.entities
+                .onEach(EntityContainer::rescoreEntity)
         }
 
 
@@ -356,10 +359,11 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            .joinToString(separator = "\n", transform = EntityContainer::toString)
 //            .let { file.write(it) }
 
-        queryContainers
-            .flatMap { queryContainer -> queryContainer.entities  }
-            .joinToString(separator = "\n", transform = EntityContainer::toString)
-            .let { file.write(it) }
+//        queryContainers
+//            .flatMap { queryContainer -> queryContainer.entities  }
+//            .joinToString(separator = "\n", transform = EntityContainer::toString)
+//            .let { file.write(it) }
+
 //        queryContainers.forEach(featureDatabase::writeFeatures)
         featureDatabase.writeFeatures(queryContainers)
         file.close()

@@ -1,6 +1,7 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
+import lucene.RanklibRunner
 import lucene.parsers.TrecParagraphAnnotator
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
@@ -13,8 +14,13 @@ class DebugApp(resources: HashMap<String, Any>) {
     fun debug() {
 //        val searcher = getIndexSearcher(index)
 //        println(searcher.indexReader.maxDoc())
-        val a = TrecParagraphAnnotator("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
-        a.annotate(a.cborLocations.first())
+
+//        val a = TrecParagraphAnnotator("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
+//        a.annotate(a.cborLocations.first())
+
+        RanklibRunner("/home/jsc57/programs/RankLib-2.1-patched.jar", "/home/jsc57/projects/jsr-joint-learning/ranklib_results.txt")
+            .optimizer()
+//            .runRankLib("wee", useKcv = true)
     }
 
 

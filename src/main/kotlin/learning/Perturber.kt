@@ -10,14 +10,10 @@ import utils.stats.normalize
 fun perturb(arr: INDArray, nSamples: Int = 10, intensity: Double = 0.1): INDArray {
 
     var mat = randn(nSamples, arr.columns(), 1112324)
-        .mul(0.2)
+        .mul(0.000001)
         .pow(2.0)
         .addRowVector(arr)
 //        .normalizeRows()
-//        .apply {
-//            println(sum(0).div(nSamples))
-//            println(arr)
-//        }
 
 //    mat = mat
 //        .pow(2.0).mul(mat.sign())
@@ -36,15 +32,23 @@ fun applyFeatures(perturbations: INDArray, features: List<INDArray> ): Pair<INDA
     val result = features.map { feature ->
 //        pow(perturbations.subRowVector(feature), 2.0).sum(1).toDoubleVector().toList()
 //        pow(perturbations.subRowVector(feature), 2.0).sum(1).sqrt().toDoubleVector().toList()
-//        val perturbed = perturbations.subRowVector(feature).abs().sum(1).normalizeColumns()
+//        val perturbed = perturbations.subRowVector(feature).abs().sum(1)
 //            perturbed.toDoubleVector().toList()
-//        perturbations.subRowVector(feature).abs().sum(1).toDoubleVector().toList()
-        perturbations.subRowVector(feature).sum(1).toDoubleVector().toList()
+        perturbations.subRowVector(feature).abs().sum(1).toDoubleVector().toList()
+//        perturbations.subRowVector(feature).sum(0).toDoubleVector().toList()
 //        abs(perturbations.mulRowVector(feature)).sum(1).toDoubleVector().toList()
 //        perturbations.divRowVector(feature).log().sum(1).toDoubleVector().toList()
     }
 //    result.forEach { println(it) }
+//    return result.take(result.size - 1).toNDArray() to result.takeLast(1).first().toNDArray()
     return result.take(result.size - 1).toNDArray() to result.takeLast(1).first().toNDArray()
+}
+
+fun applyFeatures2(perturbations: INDArray, features: List<INDArray> ): INDArray {
+    val result = features.map { feature ->
+        perturbations.subRowVector(feature).sum(1).toDoubleVector().toList()
+    }
+    return result.toNDArray()
 }
 
 

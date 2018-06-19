@@ -20,7 +20,7 @@ data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: 
                           val entities: List<EntityContainer>) {
 
     fun retrieveFeatures(): Sequence<ExtractedFeature> {
-        val nFeatures = paragraphs.first().queryFeatures.size
+        val nFeatures = paragraphs.firstOrNull()?.queryFeatures?.size ?: 0
         return buildSequence<ExtractedFeature> {
             (0 until nFeatures).forEach { index ->
                 val featureName = paragraphs.first().queryFeatures[index].type.text
