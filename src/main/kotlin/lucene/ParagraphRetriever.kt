@@ -58,7 +58,9 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
         containers.forEachIndexed { index, paragraphContainer ->
             if (paragraphContainer.isRelevant) {
                 nearby += Math.max(index - 1, 0)
+                nearby += Math.max(index - 2, 0)
                 nearby += Math.min(index + 1, containers.size)
+                nearby += Math.min(index + 2, containers.size)
                 nearby += index
             }
         }

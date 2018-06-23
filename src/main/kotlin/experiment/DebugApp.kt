@@ -19,7 +19,8 @@ class DebugApp(resources: HashMap<String, Any>) {
 //        a.annotate(a.cborLocations.first())
 
         RanklibRunner("/home/jsc57/programs/RankLib-2.1-patched.jar", "/home/jsc57/projects/jsr-joint-learning/ranklib_results.txt")
-            .optimizer()
+//        RanklibRunner("/home/jsc57/programs/RankLib-2.1-patched.jar", "/home/jsc57/projects/jsr-joint-learning/non_filtered_ranklib_results.txt")
+            .doOptimizer()
 //            .runRankLib("wee", useKcv = true)
     }
 

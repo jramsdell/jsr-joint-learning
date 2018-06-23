@@ -3,6 +3,8 @@ package lucene
 
 import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
+import lucene.containers.EntityContainer
+import lucene.containers.QueryContainer
 import lucene.indexers.IndexFields
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.search.*
@@ -135,5 +137,24 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
         writer.flush()
         writer.close()
     }
+
+    fun writeEntitiesToFile(queries: List<QueryContainer>) {
+        val writer = File("entity_results.run").bufferedWriter()
+        val seen = HashSet<String>()
+        queries.forEach { container ->
+            val query = container.query
+            container.entities.forEach(EntityContainer::rescoreEntity)
+            container.entities
+                .filter { entity -> seen.add(entity.name) }
+                .sortedByDescending(EntityContainer::score)
+                .forEachIndexed { index, entity ->
+                    val id = "enwiki:" + entity.name.toLowerCase().replace("_", "%20")
+                    writer.write("${query.toLowerCase()} Q0 $id ${index + 1} ${entity.score} Entity\n")
+                }
+        }
+        writer.flush()
+        writer.close()
+    }
+
 }
 

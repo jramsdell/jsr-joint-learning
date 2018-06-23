@@ -85,8 +85,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = true)
     val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant,
-            doFiltered = paragraphQrelLoc != "")
-//            doFiltered = false)
+//            doFiltered = paragraphQrelLoc != "")
+            doFiltered = false)
     val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
     val featureDatabase = FeatureDatabase2()
 
@@ -343,7 +343,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         queryContainers
                 .flatMap { queryContainer -> queryContainer.paragraphs  }
                 .joinToString(separator = "\n", transform = ParagraphContainer::toString)
-                .let { file.write(it) }
+                .let { file.write(it + "\n") }
 
 //        queryContainers.map { queryContainer -> queryContainer.query to queryContainer.entities  }
 //            .groupOfListsFlattened()
@@ -359,10 +359,10 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            .joinToString(separator = "\n", transform = EntityContainer::toString)
 //            .let { file.write(it) }
 
-//        queryContainers
-//            .flatMap { queryContainer -> queryContainer.entities  }
-//            .joinToString(separator = "\n", transform = EntityContainer::toString)
-//            .let { file.write(it) }
+        queryContainers
+            .flatMap { queryContainer -> queryContainer.entities  }
+            .joinToString(separator = "\n", transform = EntityContainer::toString)
+            .let { file.append(it) }
 
 //        queryContainers.forEach(featureDatabase::writeFeatures)
         featureDatabase.writeFeatures(queryContainers)
@@ -378,6 +378,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      */
     fun writeQueriesToFile(outName: String) {
         queryRetriever.writeQueriesToFile(queries, outName)
+        queryRetriever.writeEntitiesToFile(queryContainers)
     }
 }
 

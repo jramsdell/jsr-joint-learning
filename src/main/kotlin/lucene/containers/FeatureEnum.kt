@@ -37,6 +37,26 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = SHARED,
             func = SharedFeatures::addSharedEntityLinks),
 
+    SHARED_BM25(text = "shared_bm25",
+            type = SHARED,
+            func = SharedFeatures::addSharedBM25Abstract),
+
+    SHARED_DIRICHLET(text = "shared_dirichlet",
+            type = SHARED,
+            func = SharedFeatures::addSharedDirichlet),
+
+    SHARED_BOOSTED_UNIGRAM(text = "shared_boosted_unigram",
+            type = SHARED,
+            func = SharedFeatures::addSharedBoostedUnigram),
+
+    SHARED_BOOSTED_BIGRAM(text = "shared_boosted_bigram",
+            type = SHARED,
+            func = SharedFeatures::addSharedBoostedBigram),
+
+    SHARED_BOOSTED_WINDOWED(text = "shared_boosted_windowed",
+            type = SHARED,
+            func = SharedFeatures::addSharedBoostedWindowed),
+
     SHARED_RDF(text = "shared_rdf",
             type = SHARED,
             func = SharedFeatures::addSharedRdf),
@@ -48,6 +68,10 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     ENTITY_BM25(text = "entity_bm25_abstract",
             type = ENTITY,
             func = EntityRankingFeatures::addBM25Abstract),
+
+    ENTITY_DIRICHLET(text = "entity_bm25_abstract",
+            type = ENTITY,
+            func = EntityRankingFeatures::addDirichletAbstract),
 
     ENTITY_SDM(text = "entity_sdm_abstract",
             type = ENTITY,

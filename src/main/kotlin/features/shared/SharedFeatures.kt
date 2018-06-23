@@ -5,6 +5,7 @@ import experiment.FeatureType
 import experiment.KotlinRanklibFormatter
 import experiment.NormType
 import experiment.NormType.ZSCORE
+import language.GramAnalyzer
 import language.GramStatType
 import lucene.containers.QueryData
 import utils.AnalyzerFunctions
@@ -16,6 +17,10 @@ import utils.stats.normalize
 import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum
 import lucene.containers.FeatureEnum.*
+import org.apache.lucene.document.Document
+import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.similarities.LMDirichletSimilarity
+import utils.stats.takeMostFrequent
 
 
 data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>)
@@ -98,22 +103,78 @@ object SharedFeatures {
                 })
     }
 
+    private fun getDocumentGramQuery(paragraphDoc: Document, gramStatType: GramStatType): BooleanQuery {
+        val terms = paragraphDoc.get(gramStatType.indexField).split(" ")
+            .countDuplicates()
+            .takeMostFrequent(15)
+            .keys.toList()
+            .joinToString(" ")
+        return AnalyzerFunctions.createQuery(terms, gramStatType.indexField)
+    }
+
+
+    private fun sharedBoostedGram(qd: QueryData, sf: SharedFeature, gramStatType: GramStatType,
+                                  weight: Double = 1.0): Unit = with(qd) {
+         val documentFeatures =
+                 paragraphDocuments.map{ doc ->
+                     val docQuery = getDocumentGramQuery(doc, gramStatType)
+                     entityDb.searcher.search(docQuery, 1000)
+                         .scoreDocs
+                         .map { sc -> sc.doc to sc.score.toDouble() }
+                         .toMap()
+                 }
+
+        val entityFeatures = entityContainers.map { it.docId }
+
+        scoreBoth(sf, entityFeatures, documentFeatures,
+                { entityId, docQuery ->
+//                    entityDb.searcher.explainScore(docQuery, entityId)
+                    docQuery[entityId] ?: 0.0
+                })
+    }
+
+
 
     // Similarity based on BM25 (from paragraph text to entity abstract)
     private fun sharedBM25(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
                     val text = doc.get(CONTENT)
-                    AnalyzerFunctions.createQuery(text, field = "abstract")
+                    val query = AnalyzerFunctions.createQuery(text, field = "abstract")
+                    entityDb.searcher.search(query, 1000)
+                        .scoreDocs
+                        .map { sc -> sc.doc to sc.score.toDouble() }
+                        .toMap()
                 }
         val entityFeatures = entityContainers.map { entityContainer -> entityContainer.docId }
         scoreBoth(sf, entityFeatures, documentFeatures,
                 { entityId, docQuery ->
-                    entityDb.searcher.explainScore(docQuery, entityId)
+                    docQuery[entityId] ?: 0.0
                 })
     }
-//    fun addSharedBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-//            fmt.addFeature3 (SHARED_, wt, norm, this::sharedBM25)
+
+    private fun sharedDirichlet(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        entityDb.searcher.setSimilarity(LMDirichletSimilarity(1.0f))
+        val documentFeatures =
+                paragraphDocuments.map { doc ->
+                    val text = doc.get(CONTENT)
+                    val query = AnalyzerFunctions.createQuery(text, field = "abstract")
+                    entityDb.searcher.search(query, 1000)
+                        .scoreDocs
+                        .map { sc -> sc.doc to sc.score.toDouble() }
+                        .toMap()
+                }
+        val entityFeatures = entityContainers.map { entityContainer -> entityContainer.docId }
+        scoreBoth(sf, entityFeatures, documentFeatures,
+                { entityId, docQuery ->
+                    docQuery[entityId] ?: 0.0
+                })
+    }
+    fun addSharedBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3 (SHARED_BM25, wt, norm, this::sharedBM25)
+
+    fun addSharedDirichlet(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3 (SHARED_DIRICHLET, wt, norm, this::sharedDirichlet)
 
     fun addSharedEntityLinks(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(SHARED_LINKS, wt, norm, this::sharedFeatLinks)
@@ -123,6 +184,15 @@ object SharedFeatures {
 
     fun addSharedUnigramLikelihood(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(SHARED_UNI_LIKE, wt, norm, this::sharedUnigramLikelihood)
+
+    fun addSharedBoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(SHARED_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> sharedBoostedGram(qd, sf, GramStatType.TYPE_UNIGRAM) }
+
+    fun addSharedBoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(SHARED_BOOSTED_BIGRAM, wt, norm) { qd, sf -> sharedBoostedGram(qd, sf, GramStatType.TYPE_BIGRAM) }
+
+    fun addSharedBoostedWindowed(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(SHARED_BOOSTED_WINDOWED, wt, norm) { qd, sf -> sharedBoostedGram(qd, sf, GramStatType.TYPE_BIGRAM_WINDOW) }
 
 
 }

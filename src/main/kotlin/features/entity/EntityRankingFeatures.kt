@@ -22,13 +22,31 @@ import utils.stats.takeMostFrequent
 import java.lang.Double.sum
 import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum.*
+import org.apache.lucene.search.similarities.LMDirichletSimilarity
 
 
 object EntityRankingFeatures {
     private fun queryBm25Abstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = "abstract", useFiltering = true)
+        val scores = entityDb.searcher.search(abstractQuery, 200000)
+            .scoreDocs
+            .map { sc -> sc.doc to sc.score.toDouble() }
+            .toMap()
         entityContainers.mapIndexed {  index, entity ->
-            val score = entityDb.searcher.explainScore(abstractQuery, entity.docId)
+            val score = scores[entity.docId] ?: 0.0
+            sf.entityScores[index] = score
+        }
+    }
+
+    private fun queryDirichletAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        entityDb.searcher.setSimilarity(LMDirichletSimilarity(1.0f))
+        val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = "abstract", useFiltering = true)
+        val scores = entityDb.searcher.search(abstractQuery, 200000)
+            .scoreDocs
+            .map { sc -> sc.doc to sc.score.toDouble() }
+            .toMap()
+        entityContainers.mapIndexed {  index, entity ->
+            val score = scores[entity.docId] ?: 0.0
             sf.entityScores[index] = score
         }
     }
@@ -56,7 +74,7 @@ object EntityRankingFeatures {
             .fold(0.0) { acc, freq -> acc + freq.second}
             .entries
             .sortedByDescending(Map.Entry<Int, Double>::value)
-            .take(25)
+//            .take(100)
             .forEach { (entity, score) -> sf.entityScores[entity] = score }
     }
 
@@ -107,10 +125,16 @@ object EntityRankingFeatures {
 //                .normalize()
         }
 
-        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+//        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+        val documentQuery = AnalyzerFunctions.createQuery(grams.joinToString(" "), gramStatType.indexField)
+        val scores = entityDb.searcher.search(documentQuery, 20000)
+            .scoreDocs
+            .map { sc -> sc.doc to sc.score.toDouble() }
+            .toMap()
 
         entityContainers.mapIndexed {  index, entityContainer ->
-            val score = entitySearcher.explainScore(documentQuery, entityContainer.docId )
+//            val score = entitySearcher.explainScore(documentQuery, entityContainer.docId )
+            val score = scores[entityContainer.docId] ?: 0.0
             sf.entityScores[index] = score
         }
     }
@@ -138,6 +162,9 @@ object EntityRankingFeatures {
 
     fun addBM25Abstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_BM25, wt, norm, this::queryBm25Abstract)
+
+    fun addDirichletAbstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_DIRICHLET, wt, norm, this::queryBm25Abstract)
 
     fun addSDMAbstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_SDM, wt, norm, this::querySDMAbstract)

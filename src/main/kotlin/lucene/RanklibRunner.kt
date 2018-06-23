@@ -1,9 +1,13 @@
 @file:JvmName("KotFeatureSelector")
 package lucene
 
+import org.apache.commons.math3.distribution.NormalDistribution
 import org.apache.commons.math3.fraction.Fraction
 import utils.parallel.pmap
+import utils.stats.normalize
 import java.io.File
+import kotlin.math.pow
+import kotlin.system.exitProcess
 
 
 /**
@@ -91,12 +95,13 @@ class RanklibRunner(val rankLibLoc: String, var featuresLoc: String) {
      * Function: getBestModel
      * Desc: Given cross validation results, prints weights of the best model.
      */
-    private fun getBestModel(logLoc: String): List<Double> =
+    private fun getBestModel(logLoc: String, useKcv: Boolean): List<Double> =
+            if (!useKcv) retrieveWeights("model.txt") else
             extractLogResults(logLoc)
                 .maxBy { it.second }
                 .let { result ->
-//                    retrieveWeights("models/f${result!!.first}.default")
-                    retrieveWeights("models/f5.default")
+                    retrieveWeights("models/f${result!!.first}.default")
+//                    retrieveWeights("models/f5.default")
                 }
 
 
@@ -180,7 +185,7 @@ class RanklibRunner(val rankLibLoc: String, var featuresLoc: String) {
         writeFeatures(curBestFeatures, "final")
         runRankLib("final", useFeatures = true)
         println("Best Model:")
-        getBestModel("final")
+        getBestModel("final", false)
     }
 
 
@@ -234,8 +239,11 @@ class RanklibRunner(val rankLibLoc: String, var featuresLoc: String) {
             .redirectErrorStream(false)
         val process = processBuilder.start()
         process.waitFor()
-        println(getAveragePerformance(logLoc))
-        return getBestModel(logLoc)
+        if (useKcv) {
+            println(getAveragePerformance(logLoc))
+        }
+        return getBestModel(logLoc, useKcv)
+
     }
 
     /**
@@ -250,26 +258,100 @@ class RanklibRunner(val rankLibLoc: String, var featuresLoc: String) {
         }
     }
 
-    fun optimizer() {
-        var result = runRankLib("wee", useKcv = true)
+    fun sigmoid(v: Double): Double {
+        return (1.0/(1.0 + Math.exp(-1*v)))
+    }
+
+    fun doOptimizer() {
         val reader = RanklibReader(featuresLoc)
-        val fractionList = ArrayList<List<Fraction>>()
+        reader.writeRanklibFile("test.txt")
+        featuresLoc = "test.txt"
+        optimizer(reader)
+
+//        reader.addNormal()
+//        reader.writeRanklibFile("test.txt")
+//        reader.setBase()
+//        optimizer(reader)
+
+
+        reader.printRunfile()
+        reader.printSums()
+
+    }
+
+    fun optimizer(reader: RanklibReader) {
+
+        var result = runRankLib("wee", useKcv = false)
+        val fractionList = ArrayList<List<Double>>()
         var curResult = result
         val nIterations = 4
 
-        (0 until nIterations).forEach { iteration ->
-            fractionList.add(result.map { r -> Fraction(r) })
+        for (iteration in 0 until nIterations) {
+//        (0 until nIterations).forEach { iteration ->
+            fractionList.add(result.map { r -> r })
+//            val rescore = { index: Int, curScore: Double, baseScore: Double ->
+//                val toExp = Math.exp( curResult[index] * baseScore)
+//                if (iteration == 0) toExp else toExp * curScore
+//            }
+
             val rescore = { index: Int, curScore: Double, baseScore: Double ->
-//                val toExp = Math.exp(Math.pow(curResult[index], (iteration.toDouble() + 1.0)) * baseScore)
-                val toExp = Math.exp(curResult[index] * baseScore)
+                val toExp =  Math.exp(curResult[index] * baseScore)
                 if (iteration == 0) toExp else toExp * curScore
             }
+            println(result)
+
+            val rescore2 = { index: Int, total: Double, baseScore: Double ->
+                val toExp = Math.exp( curResult[index] * baseScore)
+                if (iteration == 0) toExp else toExp * total
+            }
+
+            val scoreColumn = { column: List<RanklibFeature> ->
+                val total = column.sumByDouble { it.verticalScore }
+                column.forEach { element ->
+                    val toExp = Math.exp(curResult[element.id - 1] * element.base)
+                    val score = if (iteration == 0) toExp else toExp * element.verticalScore
+                    element.verticalScore = score
+                }
+            }
+
+            val scoreRow = { row: RanklibTrainingExample ->
+                val total = row.features.sumByDouble { it.horizontalScore }
+                row.features.forEach { feature ->
+                    val toExp = Math.exp(curResult[feature.id - 1] * feature.base)
+                    val score = if (iteration == 0) toExp else toExp * total
+                    feature.horizontalScore = score
+                }
+            }
+
+            val scoreBoth = { element: RanklibFeature ->
+                element.value =  element.verticalScore
+            }
+
+//            val scoreOnlyRow = { element: RanklibFeature ->
+//                element.value =  element.horizontalScore
+//            }
+
+
             reader.applyRescoringFunction(rescore)
+//            reader.applyColumnFunctor(scoreColumn)
+//            reader.applyRowFunctor(scoreRow)
+//            reader.applyElementFunctor(scoreBoth)
+//            reader.applyElementFunctor(scoreOnlyRow)
+//            reader.normalize()
+//            reader.applyVerticalRescoringFunction(rescore)
+//            reader.applyHorizontalRescoringFunction(rescore2)
+//            reader.normalize()
+
+
             reader.writeRanklibFile("test.txt")
-            featuresLoc = "test.txt"
 
             if (iteration != nIterations - 1) {
-                result = runRankLib("wee", useKcv = true)
+                val uniform = result.map { 1.0 }.normalize()
+                val nextResult = runRankLib("wee", useKcv = false)
+                if (nextResult.normalize() == result.normalize() || nextResult.normalize() == uniform) {
+                    break
+                }
+                result = nextResult
                 curResult = curResult.zip(result).map { (f1, f2) -> f1 * f2 }
             }
 
@@ -281,22 +363,27 @@ class RanklibRunner(val rankLibLoc: String, var featuresLoc: String) {
 //                Fraction(f1.numerator * f2.denominator + f2.numerator, f1.denominator * f2.denominator)
 //            }  }
 
-        reader.applyRescoringFunction { index, curScore, baseScore ->
+//        reader.setBase()
+//        reader.applyRescoringFunction { index, curScore, baseScore ->
+//            var tensor = 1.0 to 0.0
+//            fractionList.forEachIndexed { fracIndex, fractionCollection ->
+//                val fraction = fractionCollection[index]
+//                tensor = tensor.first / fraction to tensor.second / fraction + baseScore
+//            }
+//            val res = Math.exp((tensor.second) / (tensor.first))
+//            res
+//        }
+
+        reader.applyElementFunctor { element: RanklibFeature ->
             var tensor = 1.0 to 0.0
-            fractionList.forEach { fractionCollection ->
-                val fraction = fractionCollection[index]
-                tensor = tensor.first / fraction.toDouble() to tensor.second / fraction.toDouble() + baseScore
+            fractionList.forEachIndexed { fracIndex, fractionCollection ->
+                val fraction = fractionCollection[element.id - 1]
+                tensor = tensor.first / fraction to tensor.second / fraction + element.base
             }
-
-
-//            val res = Math.exp(new[index].toDouble() * baseScore)
-//            println(tensor)
-            println(tensor)
-            val res = Math.exp(tensor.second / (tensor.first - 1.0))
-//            val res = tensor.second / (tensor.first - 1.0)
-            res
+            val res = Math.exp((tensor.second) / (tensor.first))
+            element.lastValue = element.value
+            element.value = res
         }
-        reader.printSums()
 
     }
 

@@ -38,7 +38,7 @@ class EntityRetriever(val db: EntityDatabase,
                             qid = index.index + 1,
                             docId = entity.docId,
                             doc = db.searcher.doc(entity.docId),
-                            isRelevant = relevancies?.contains(query to entity.name) ?: false
+                            isRelevant = relevancies?.contains(query to entity.name.toLowerCase()) ?: false
                     )
                 }
             }
@@ -56,18 +56,26 @@ class EntityRetriever(val db: EntityDatabase,
     }
 
 
-    private fun getCandidateEntityNames(tops: TopDocs, index: Int) =
-        paragraphRetrieve.paragraphContainers[index].flatMap { pC ->
-            pC.doc.getValues("spotlight").toList()
-        }
+    private fun getCandidateEntityNames(tops: TopDocs, index: Int): List<String> {
+//        val seen = HashSet<String>()
+        val entities = paragraphRetrieve
+            .paragraphContainers[index].flatMap { pC -> pC.doc.getValues("spotlight").toList() }
+//            .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->
 //                val doc = indexSearcher.doc(scoreDoc.doc)
 //                doc.getValues("spotlight").toList() }
+        return entities
+    }
 
-    private fun getCandidateEntityData(entities: List<String>) =
-            entities.toSortedSet()
-                .mapNotNull(db::getEntityDocId)
-                .map(db::getEntityByID)
+    private fun getCandidateEntityData(entities: List<String>): List<EntityData> {
+        val seen = HashSet<String>()
+        val result = entities.toSortedSet()
+            .mapNotNull(db::getEntityDocId)
+            .map(db::getEntityByID)
+//            .filter { doc -> seen.add(doc.name) }
+        return result
+
+    }
 
     private fun getCandidatesFromQuery(query: String) =
         db.getEntityDocuments(query, 5)
@@ -76,5 +84,6 @@ class EntityRetriever(val db: EntityDatabase,
     private fun cleanQrelEntry(entry: String) =
             entry.replace("enwiki:", "")
                 .replace("%20", "_")
+                .toLowerCase()
 
 }

@@ -1,3 +1,6 @@
+
+
+
 buildscript {
     ext.kotlin_version = '1.2.41'
 
@@ -12,19 +15,47 @@ buildscript {
         }
     }
     dependencies {
+//        compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.5'
+//        compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.5'
+//        compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.0'
+//        compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.0'
+//        build group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.0'
+//        build group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.0'
+//        compile "org.apache.logging.log4j:log4j-api:2.5"
+//        compile "org.apache.logging.log4j:log4j-core:2.5"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.4'
     }
+
+
 }
 
-group 'jsr-joint-learning'
-version '1.0-SNAPSHOT'
+plugins {
+    id 'io.spring.dependency-management' version '1.0.1.RELEASE'
+}
 
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'kotlin'
 
+group 'jsr-joint-learning'
+version '1.0-SNAPSHOT'
+
+
+
 sourceCompatibility = 1.8
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.apache.logging.log4j:log4j-bom:2.11.0'
+    }
+    dependencies{
+//        dependency "org.apache.logging.log4j:log4j-api:2.5"
+//        dependency "org.apache.logging.log4j:log4j-core:2.5"
+        dependency "log4j:log4j:1.2.17"
+    }
+
+}
 
 jar {
     manifest {
@@ -80,9 +111,15 @@ repositories {
         url "http://dl.bintray.com/kyonifer/maven"
         jcenter()
     }
+
+    maven { url "http://krum.rz.uni-mannheim.de/maven-repository"}
+    maven { url "http://www.lab4inf.fh-muenster.de/lab4inf/maven-repository"}
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots"}
 }
 
 dependencies {
+
+
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     testCompile group: 'junit', name: 'junit', version: '4.12'
 //    compile "com.xenomachina:kotlin-argparser:2.0.6"
@@ -109,6 +146,10 @@ dependencies {
     compile "org.apache.lucene:lucene-analyzers-common:7.2.1"
     compile "org.apache.lucene:lucene-queryparser:7.2.1"
     compile "com.github.TREMA-UNH:trec-car-tools-java:2.0"
+
+    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.5'
+    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.5'
+    compile("org.matheclipse:matheclipse-core:1.0.0-SNAPSHOT")
 
 
 

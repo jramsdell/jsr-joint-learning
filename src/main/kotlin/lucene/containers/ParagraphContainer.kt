@@ -44,7 +44,7 @@ data class ParagraphContainer(val pid: String,
         return "${if (isRelevant) 1 else 0} qid:$qid " +
                     (1..combinedFeaures.size).zip(combinedFeaures)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    " #docid=$query"
+                    " #$query#$pid"
     }
 
 }

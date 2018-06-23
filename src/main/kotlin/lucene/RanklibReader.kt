@@ -7,30 +7,36 @@ import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j.ones
 import utils.nd4j.combineNDArrays
 import utils.nd4j.toNDArray
+import utils.stats.defaultWhenNotFinite
 import utils.stats.normalize
 import java.io.File
 
 
-data class RanklibFeature(val id: String, var value: Double, var lastValue: Double, val base: Double) {
+data class RanklibFeature(val id: Int, var value: Double, var lastValue: Double, var base: Double) {
+    var horizontalScore = value
+    var verticalScore = value
     companion object {
         fun createRanklibFeature(element: String) =
                 element.split(":").let { (id, value) ->
                     val v = value.toDouble()
-                    RanklibFeature(id, v, v, v) }
+                    RanklibFeature(id.toInt(), v, v, v) }
     }
 
     override fun toString(): String {
         return "$id:$value"
     }
 }
-data class RanklibTrainingExample(val relevant: Int, val features: List<RanklibFeature>, val qid: Int)  {
+data class RanklibTrainingExample(val relevant: Int, val features: ArrayList<RanklibFeature>, val qid: Int,
+                                  val query: String, val pid: String)  {
     companion object {
-        fun createTrainingExample(e: List<String>) =
+        fun createTrainingExample(e: List<String>, query: String, pid: String) =
                 RanklibTrainingExample(
                         relevant = e[0].toInt(),
                         qid = e[1].split(":")[1].toInt(),
                         features  = e.subList(2, e.size - 1)
-                            .map(RanklibFeature.Companion::createRanklibFeature))
+                            .map(RanklibFeature.Companion::createRanklibFeature).toMutableList() as ArrayList<RanklibFeature>,
+                        query = query,
+                        pid = pid)
     }
 
     fun applyRescoringFunction(f: (Int, Double, Double) -> Double) {
@@ -39,16 +45,50 @@ data class RanklibTrainingExample(val relevant: Int, val features: List<RanklibF
             ranklibFeature.value = f(index, ranklibFeature.value, ranklibFeature.base)  }
     }
 
+    fun applyVerticalRescoringFunction(f: (Int, Double, Double) -> Double) {
+        features.forEachIndexed { index, ranklibFeature ->
+            ranklibFeature.verticalScore = f(index, ranklibFeature.verticalScore, ranklibFeature.base)  }
+    }
+
+    fun applyHorizontalRescoringFunction(f: (Int, Double, Double) -> Double) {
+//        val total = getValueMultiple()
+        val total = getHorizontalValueMultiple()
+        features.forEachIndexed { index, ranklibFeature ->
+//            ranklibFeature.lastValue = ranklibFeature.value
+//            ranklibFeature.value = f(index, total, ranklibFeature.base)  }
+            ranklibFeature.horizontalScore = f(index, total, ranklibFeature.base)  }
+    }
+
     fun printSums() {
         val total = features.sumByDouble { feature -> feature.value }
         val totalLast = features.sumByDouble { feature -> feature.lastValue }
         val baseTotal = features.sumByDouble { feature -> feature.base }
         val valueMultiple = features.fold(1.0) { acc, ranklibFeature -> acc * ranklibFeature.value  }
-        return println("$relevant qid:$qid\t$total\t$totalLast\t$baseTotal\t$valueMultiple")
+        val prevValueMultiple = getValueTotalPrevMultiple()
+        return println("$relevant qid:$qid\t$total\t$totalLast\t$baseTotal\t$valueMultiple\t$prevValueMultiple")
+    }
+
+    fun addNormal(normDist: Double) {
+        features.add(RanklibFeature(features.size + 1, normDist, normDist, normDist))
     }
 
     fun getValueTotal() = features.sumByDouble { feature -> feature.value }
+    fun getValueTotalPrev() = features.sumByDouble { feature -> feature.lastValue }
+    fun getValueTotalPrevMultiple() = features.fold(1.0) { acc, ranklibFeature -> acc * ranklibFeature.lastValue  }
+    fun getValueMultiple() = features.fold(1.0) { acc, ranklibFeature -> acc * ranklibFeature.value  }
+    fun getHorizontalValueMultiple() = features.fold(1.0) { acc, ranklibFeature -> acc * ranklibFeature.horizontalScore  }
     fun getBaseTotal() = features.sumByDouble { feature -> feature.base }
+    fun scoringFun() = getValueMultiple()
+
+    fun normalize() {
+        val total = getValueTotal()
+        features.forEach { feature -> feature.value /= total }
+    }
+
+    fun getRunfileLine(index: Int): String {
+        val total = scoringFun()
+        return "$query Q0 $pid $index $total Query"
+    }
 
 
     override fun toString(): String {
@@ -60,10 +100,15 @@ data class RanklibTrainingExample(val relevant: Int, val features: List<RanklibF
 class RanklibReader(fileLoc: String) {
     val trainingExamples = File(fileLoc).readLines()
         .map { line ->
-            line.split("#")
-                .first()
-                .split(" ")
-                .let { elements -> RanklibTrainingExample.createTrainingExample(elements) }
+            val elements = line.split("#")
+            val featureScores = elements[0].split(" ")
+            val queryId = elements[1]
+            val paragraphId = elements[2]
+            RanklibTrainingExample.createTrainingExample(featureScores, queryId, paragraphId)
+//            line.split("#")
+//                .first()
+//                .split(" ")
+//                .let { elements -> RanklibTrainingExample.createTrainingExample(elements) }
         }
 
     fun createVectors(): Pair<INDArray, List<INDArray>> {
@@ -98,12 +143,99 @@ class RanklibReader(fileLoc: String) {
     fun applyRescoringFunction(f: (Int, Double, Double) -> Double) =
             trainingExamples.forEach { example -> example.applyRescoringFunction(f) }
 
+    fun applyVerticalRescoringFunction(f: (Int, Double, Double) -> Double) =
+            trainingExamples.forEach { example -> example.applyVerticalRescoringFunction(f) }
+
+    fun applyHorizontalRescoringFunction(f: (Int, Double, Double) -> Double) =
+            trainingExamples.forEach { example -> example.applyHorizontalRescoringFunction(f) }
+
+    fun applyRowFunctor(f: (RanklibTrainingExample) -> Unit) =
+            trainingExamples.forEach(f)
+
+    fun applyElementFunctor(f: (RanklibFeature) -> Unit) =
+            trainingExamples.forEach { example -> example.features.forEach(f) }
+
+    fun applyColumnFunctor(f: (List<RanklibFeature>) -> Unit) {
+        (0 until trainingExamples.first().features.size).forEach { fIndex ->
+            groupByQid()
+                .forEach { (qid, examples) ->
+                    val column = examples.map { example -> example.features[fIndex] }
+                    f(column)
+                }
+        }
+    }
+
+    fun addNormal() {
+            groupByQid()
+            .forEach { (qid, feats) ->
+                val normDist = 1 / feats.size.toDouble()
+                feats.forEach { feat -> feat.addNormal(normDist) }
+
+            }
+    }
+
+    fun addInverses() =
+            groupByQid()
+                .forEach { (qid, feats) ->
+                    val normDist = 1 / feats.size.toDouble()
+                    val nFeats = feats[0].features.size
+                    (0 until nFeats).forEach { fId ->
+                        val inverseTotal = feats.sumByDouble { 1.0 / it.features[fId].value }
+                        feats.forEach { feat ->
+                            val newVal = ((1.0 / feat.features[fId].value) / inverseTotal).defaultWhenNotFinite(0.0)
+                            feat.features.add(RanklibFeature(nFeats + 1 + fId, newVal, newVal, newVal))
+
+                             }
+                    }
+
+                }
+
+    private fun groupByQid() =
+            trainingExamples
+                .groupBy { it.qid }
+                .toList()
 
     fun printSums() {
         trainingExamples
-            .sortedWith(compareBy({it.qid}, {it.getValueTotal()}))
+            .sortedWith(compareBy({it.qid}, {it.scoringFun()}))
             .reversed()
             .forEach { example -> example.printSums() }
+    }
+
+    fun normalize() {
+        trainingExamples
+            .groupBy { it.qid }
+            .toList()
+            .forEach { (qid, feats) ->
+                val nFeats = feats[0].features.size
+                (0 until nFeats).forEach { fId ->
+                    val total = feats.sumByDouble { it.features[fId].value }
+                    feats.forEach { feat -> feat.features[fId].value /= total }
+                }
+            }
+    }
+
+    fun setBase() {
+        trainingExamples.forEach { example -> example.features.forEach { feature -> feature.base = feature.value  } }
+    }
+
+    fun normalizeRow() {
+        trainingExamples
+            .forEach { e -> e.normalize() }
+    }
+
+    fun printRunfile() {
+        trainingExamples
+//            .sortedWith(compareBy({it.qid}, {it.getValueMultiple()}))
+            .sortedWith(compareBy({it.qid}, {it.scoringFun()}))
+            .reversed()
+            .groupBy { it.qid }
+            .flatMap { grouping ->
+                grouping.value.mapIndexed { index, example ->
+                    example.getRunfileLine(index + 1)
+                } }
+            .joinToString("\n")
+            .let { result ->  File("query_results.run").bufferedWriter().apply{ write(result) }.close() }
     }
 }
 
