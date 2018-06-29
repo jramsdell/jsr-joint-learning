@@ -226,10 +226,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     fun addFeature3(featureEnum: FeatureEnum, weight:Double = 1.0,
                     normType: NormType = NormType.NONE, f: (QueryData, SharedFeature) -> Unit) {
 
+        println("Weight was: $weight")
         val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
         val lock = ReentrantLock()
         val curSim = paragraphSearcher.getSimilarity(true)
+        val curSimEntity = entitySearcher.getSimilarity(true)
 
         queryContainers.forEachParallel { qc ->
 
@@ -249,6 +251,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         }
         bar.stop()
         paragraphSearcher.setSimilarity(curSim)
+        entitySearcher.setSimilarity(curSimEntity)
     }
 
 
@@ -340,10 +343,20 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      */
     fun writeToRankLibFile(outName: String) {
         val file = File(outName).bufferedWriter()
+        val onlyParagraph = File("ony_paragraph.txt").bufferedWriter()
+        val onlyEntity = File("ony_entity.txt").bufferedWriter()
+
+//        queryContainers
+//                .flatMap { queryContainer -> queryContainer.paragraphs  }
+//                .joinToString(separator = "\n", transform = ParagraphContainer::toString)
+//                .let { file.write(it + "\n"); onlyParagraph.write(it + "\n") }
+
         queryContainers
-                .flatMap { queryContainer -> queryContainer.paragraphs  }
-                .joinToString(separator = "\n", transform = ParagraphContainer::toString)
-                .let { file.write(it + "\n") }
+            .flatMap { queryContainer -> queryContainer.entities.map(EntityContainer::toString) + queryContainer.paragraphs.map(ParagraphContainer::toString)  }
+//            .map { (par, ent) -> par.toString() + "\n" + ent.toString() }
+//            .joinToString(separator = "\n", transform = ParagraphContainer::toString)
+            .joinToString(separator = "\n")
+            .let { file.write(it + "\n"); onlyParagraph.write(it + "\n") }
 
 //        queryContainers.map { queryContainer -> queryContainer.query to queryContainer.entities  }
 //            .groupOfListsFlattened()
@@ -362,11 +375,13 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         queryContainers
             .flatMap { queryContainer -> queryContainer.entities  }
             .joinToString(separator = "\n", transform = EntityContainer::toString)
-            .let { file.append(it) }
+            .let { file.append(it); onlyEntity.write(it) }
 
 //        queryContainers.forEach(featureDatabase::writeFeatures)
         featureDatabase.writeFeatures(queryContainers)
         file.close()
+        onlyEntity.close()
+        onlyParagraph.close()
     }
 
 

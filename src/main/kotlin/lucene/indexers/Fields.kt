@@ -30,6 +30,10 @@ fun IndexFields.boostedTermQuery(term: String, weight: Double) =
 enum class IndexFields(val field: String) {
     FIELD_TEXT("text"),
     FIELD_ABSTRACT("abstract"),
+    FIELD_SECTION_TEXT("section_text"),
+    FIELD_SECTION_UNIGRAM("section_${GramStatType.TYPE_UNIGRAM.indexField}"),
+    FIELD_SECTION_BIGRAM("section_${GramStatType.TYPE_BIGRAM.indexField}"),
+    FIELD_SECTION_WINDOWED_BIGRAM("section_${GramStatType.TYPE_BIGRAM_WINDOW.indexField}"),
     FIELD_UNIGRAM(GramStatType.TYPE_UNIGRAM.indexField),
     FIELD_BIGRAM(GramStatType.TYPE_BIGRAM.indexField),
     FIELD_WINDOWED_BIGRAM(GramStatType.TYPE_BIGRAM_WINDOW.indexField),
@@ -42,5 +46,6 @@ enum class IndexFields(val field: String) {
     FIELD_DISAMBIGUATIONS("disambiguations"),
     FIELD_REDIRECTS("redirects"),
     FIELD_ENTITIES("spotlight")
+//    FIELD_PARAGRAPH_OUTLINKS("paragraph_outlinks")
 
 }

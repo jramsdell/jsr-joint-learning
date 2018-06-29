@@ -145,7 +145,8 @@ dependencies {
     compile "org.apache.lucene:lucene-queries:7.2.1"
     compile "org.apache.lucene:lucene-analyzers-common:7.2.1"
     compile "org.apache.lucene:lucene-queryparser:7.2.1"
-    compile "com.github.TREMA-UNH:trec-car-tools-java:2.0"
+//    compile "com.github.TREMA-UNH:trec-car-tools-java:2.0"
+    compile "com.github.TREMA-UNH:trec-car-tools-java:9"
 
     compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.5'
     compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.5'

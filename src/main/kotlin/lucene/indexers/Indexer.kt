@@ -17,6 +17,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPOutputStream
 import lucene.indexers.IndexFields.*
+import utils.stats.countDuplicates
 import kotlin.concurrent.withLock
 
 
@@ -46,15 +47,29 @@ fun Indexer.extractGram(doc: LuceneDocumentContainer) {
 }
 
 
+private fun cleanEntity(entry: String) =
+    entry.replace("enwiki:", "")
+        .replace("%20", "_")
 
 
 fun Indexer.extractMetaData(doc: LuceneDocumentContainer) {
     val id = doc.page.pageName.replace(" ", "_")
-    val inlinks = doc.page.pageMetadata.inlinkIds.joinToString(" ")
-    val outlinks = doc.page.outlinks().joinToString(" ")
-    val categories = doc.page.pageMetadata.categoryIds.joinToString(" ")
-    val disambiguations = doc.page.pageMetadata.disambiguationNames.joinToString(" ")
-    val redirects = doc.page.pageMetadata.redirectNames.joinToString(" ")
+    val inlinks = doc.page.pageMetadata.inlinkIds
+        .map(::cleanEntity)
+        .joinToString(" ")
+    val outlinks = doc.page.outlinks()
+        .map(::cleanEntity)
+        .joinToString(" ")
+    val categories = doc.page.pageMetadata.categoryIds
+        .map(::cleanEntity)
+        .map { it.replace("[^ ]*:".toRegex(), "") }
+        .joinToString(" ")
+    val disambiguations = doc.page.pageMetadata.disambiguationNames
+        .map { it.replace(" (disambiguation)", "").replace(" ", "_") }
+        .joinToString(" ")
+    val redirects = doc.page.pageMetadata.redirectNames
+        .filter { !it.startsWith("Category:") }
+        .joinToString(" ")
 //    val results = listOf(inlinks, outlinks, categories, disambiguations, redirects)
 
     doc.lock.withLock {
@@ -67,22 +82,35 @@ fun Indexer.extractMetaData(doc: LuceneDocumentContainer) {
     FIELD_REDIRECTS.setTextField(doc.doc, redirects)
 }
 
-fun Indexer.extractEntityAbstractAndGrams(doc: LuceneDocumentContainer) {
-    val abstract = doc.page.paragraphs()
-        .take(2)
-        .map { paragraph -> paragraph.textOnly.replace("\n", " ") }
-        .joinToString(" ")
-    val (unigrams, bigrams, windowed) = getGramsFromContent(abstract)
+
+fun Indexer.extractEntityTextAndGrams(doc: LuceneDocumentContainer) {
+    val text = doc.page.paragraphs().map { it.textOnly }.joinToString("\n")
+//        .take(2)
+//        .map { paragraph -> paragraph.textOnly.replace("\n", " ") }
+//        .joinToString(" ")
+    val (unigrams, bigrams, windowed) = getGramsFromContent(text)
     FIELD_UNIGRAM.setTextField(doc.doc, unigrams)
     FIELD_BIGRAM.setTextField(doc.doc, bigrams)
     FIELD_WINDOWED_BIGRAM.setTextField(doc.doc, windowed)
-    FIELD_ABSTRACT.setTextField(doc.doc, abstract)
+    FIELD_TEXT.setTextField(doc.doc, text)
+}
+
+fun Indexer.addEntityHeaders(doc: LuceneDocumentContainer) {
+    val sections = doc.page.childSections.map { it.heading }.joinToString("\n")
+    val (unigrams, bigrams, windowed) = getGramsFromContent(sections)
+    FIELD_SECTION_UNIGRAM.setTextField(doc.doc, unigrams)
+    FIELD_SECTION_BIGRAM.setTextField(doc.doc, bigrams)
+    FIELD_SECTION_WINDOWED_BIGRAM.setTextField(doc.doc, windowed)
+    FIELD_SECTION_TEXT.setTextField(doc.doc, sections)
 }
 
 
 
+
 private fun getGramsFromContent(content: String): List<String> =
-    getGrams(content).toList().map { it.joinToString(" ") }
+    getGrams(content).toList()
+        .map { it.countDuplicates().entries.sortedByDescending { it.value }.take(20) }
+        .map { it.joinToString(" ") }
 
 
 

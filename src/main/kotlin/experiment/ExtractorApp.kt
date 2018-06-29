@@ -1,6 +1,7 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
+import lucene.indexers.IndexFields
 import lucene.indexers.IndexerStream
 import lucene.parsers.ExtractorStream
 import lucene.parsers.TrecParagraphAnnotator
@@ -13,14 +14,28 @@ class ExtractorApp(resources: HashMap<String, Any>) {
     val corpusFiles: List<String> by resources
 
     fun extract() {
-        val extractor = IndexerStream(corpusFiles)
-//        extractor.addParagraphGramExtractor()
-//        extractor.addAbstractExtractor()
-//        extractor.addMetadataExtractor()
+//        val extractor = IndexerStream(corpusFiles)
+//        extractor.addPageIndexer()
+//        extractor.addParagraphIndexer()
 //        extractor.run()
-        extractor.addPageIndexer()
-        extractor.addParagraphIndexer()
-        extractor.run()
+
+        val pageIndex = getIndexSearcher("extractions/page")
+        val paragraphIndex = getIndexSearcher("extractions/paragraph")
+        val page = pageIndex.doc(0)
+        println(page.get(IndexFields.FIELD_TEXT.field))
+        println()
+        println(page.get(IndexFields.FIELD_INLINKS.field))
+        println()
+        println(page.get(IndexFields.FIELD_OUTLINKS.field))
+        println()
+        println(page.get(IndexFields.FIELD_REDIRECTS.field))
+        println()
+        println(page.get(IndexFields.FIELD_DISAMBIGUATIONS.field))
+        println()
+        println(page.get(IndexFields.FIELD_UNIGRAM.field))
+        println()
+        println(page.get(IndexFields.FIELD_CATEGORIES.field))
+
     }
 
 

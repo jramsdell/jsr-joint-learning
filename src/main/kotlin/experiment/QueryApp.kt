@@ -10,6 +10,7 @@ import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import utils.lucene.getIndexSearcher
+import experiment.OptimalWeights.*
 
 /**
  * Class: MasterExperiment
@@ -87,78 +88,30 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
     fun queryEntity(weights: List<Double>? = null) {
-        val Weights = null
-        val norm = NormType.LINEAR
+        val norm = NormType.ZSCORE
         var i = 0
 
-//        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//
-//        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedUnigramLikelihood(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//
-//        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        EntityRankingFeatures.addQuerySimilarity(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
-//        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-
-//        SharedFeatures.addSharedBM25Abstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-
-//        SharedFeatures.addSharedDirichlet(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedBoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-
+        SharedFeatures.addSharedDirichlet(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SharedFeatures.addSharedBoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SharedFeatures.addSharedBoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedBoostedWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SharedFeatures.addSharedBoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
 //        SharedFeatures.addSharedBoostedWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
         EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25Abstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addSDMAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addDirichletAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-
-//        EntityRankingFeatures.addQueryRdf(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        EntityRankingFeatures.addQuerySimilarity(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-
-
     }
 
-    fun queryFiltered(weights: List<Double>? = null) {
-        val Weights = null
-        val norm = NormType.SUM
-//
-//        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(0) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(1) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(2) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(3) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(4) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(5) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedUnigramLikelihood(formatter, wt = weights?.get(6) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(7) ?: 1.0, norm = norm)
-
-        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(0) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25Document(formatter, wt = 0.5, norm = norm)
-        val offset = -1
-        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(1) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(2) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(3) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(4) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(5) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(6) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedUnigramLikelihood(formatter, wt = weights?.get(7) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(8) ?: 1.0, norm = norm)
-
-        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(6 + offset) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25Abstract(formatter, wt = weights?.get(7 + offset) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(8 + offset) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(9 + offset) ?: 1.0, norm = norm)
-    }
 
 
     fun doDb() {
@@ -239,24 +192,6 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         method("query", "boostPage") { queryBoostPage() }
 
 
-//                        method("query", "entity") { queryEntity(weights = listOf(0.8366295022089238, -0.16337049779107615)) }
-//                        method("query", "entity") { queryEntity() }
-
-                        // Paragraph-only
-//                        method("query", "entity") { queryEntity(weights = listOf(0.12016558147149999 , 0.12423360701620655 , 0.44560647857997665 , 0.058168709692011676 , 0.058168709692011676 , 0.028809284485686062 , -0.07556580738669853, 0.08928182167590887 )) }
-
-                        // Entity-only
-//                        method("query", "entity") { queryEntity(weights = listOf(0.008898035104899246 , 0.24725045987454178 , 0.5075641854039981 , 0.008898035104899246 , 0.008898035104899246 , 0.03294397073755544 , -0.15535487279562943 , 0.030192405873577667 )) }
-
-
-                        // paragraph-oonly
-//                        method("query", "entity") { queryEntity(weights = listOf(0.004028733353886988 , 0.26891496380109386 , 0.5400287941439731 , 0.004028733353886988 , 0.004028733353886988 , -0.006218787718492399 , -0.10504427907692072 , 0.0677069751978589 )) }
-//                        method("query", "entity") { queryEntity(weights = listOf(0.11438453948318311, 0.21879891495885317, 0.6668165455579637)) }
-//                        method("query", "entity") { queryEntity(weights = listOf(
-//                                0.12903710147510608, 0.12180311150582368, 0.5049939606459275, 2.2843418060396493E-4, 2.2843418060396493E-4, 0.05437931760548622, -0.08813622978004068, 0.10119341062640817
-//
-//                            )) }
-
                         // Cur best?
 //                        method("query", "entity") { queryEntity(weights = listOf(
 //                                0.019313034650612276 , 0.16258214586942915 , 0.509287506070476 , -0.06890715290139084 , -0.16840097695062275 , 0.0715091835574691
@@ -265,48 +200,14 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         // Page best
 //                        method("query", "entity") { queryEntity(weights = listOf(
 //                                0.06206049130433155, 0.1374662146601575 , 0.2604290468911512 , 0.19530904360336585 , -0.3229833761680545 , 0.021751827372939462
-//
-//
 //                            )) }
 
 
-//                         Page best joint
-                        method("query", "entity") { queryEntity(weights = listOf(
-//                                0.28155753945482226 , 0.07672311559213126 , -0.16794733078318738 , 4.320966956722017E-4 , -0.23476105082214452 , -0.08780364546646648 , 0.07538761059278792 , 0.07538761059278792
-//                                0.19561555186481694 , 0.0862719291703963 , -0.03213647601768599 , 0.10280855756928756 , -0.31996935077166255 , -0.06326005235882702 , 0.09996904112366183 , 0.09996904112366183
-
-                                // best for entity
-//                                0.08504525984443301 , 0.046227464991488845 , 0.07261133784093181 , 0.03238719224208533 , 0.1595353874050578 , 0.08773369448202654 , 0.024121710239466243 , -0.004068084416659966 , 0.20330187249126888 , 0.03259558824945541 , 0.01937976562598702 , 0.03883210702852322 , 0.03883210702852322 , 0.03883210702852322 , 0.03883210702852322 , 0.03883210702852322 , 0.03883210702852322
-    0.9681553692625837,0.009744062477562076,-4.6350706193701936E-4,0.010749598796979308,0.010887462400937874
-
-
-
-
-
-
-
-//
-//
-//
-                            )) }
-
-
-//                        // Section joint
-//                        method("query", "entity") { queryEntityPerturb(weights = listOf(
-//                                0.25, 0.25, 0.25, 0.0, 0.0, 0.0, 0.25, 0.0
-//
-//                            )) }
-
+                        method("query", "entity") { queryEntity(JOINT_SHARED_SUBSET.weights) }
                         method("train", "entity") { queryEntity() }
 
                         method("train", "boostPage") { queryBoostPage() }
 
-                        method("query", "filtered") { queryFiltered(weights = listOf(
-//                                0.27994793388638495 , -0.08219964698085336 , -0.15428832502687742 , 0.07063311154432697 , 0.010180215255625995 , -0.02614175097249093 , -0.3311745930465509 , 0.045434423286889375
-                                 -0.004192347686345682 , 0.16845350380984792 , -0.004735565481647957 , -0.6074752919163403 , 0.012322360871290235 , 0.027819008461067718 , 0.0182692122320841 , -0.11614561893193742 , -0.0405870906094388
-
-                            )) }
-                        method("train", "filtered") { queryFiltered() }
 
 //                        method("train", "do_bm25") {
 //                            doBM25()

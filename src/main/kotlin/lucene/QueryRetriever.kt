@@ -148,8 +148,8 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                 .filter { entity -> seen.add(entity.name) }
                 .sortedByDescending(EntityContainer::score)
                 .forEachIndexed { index, entity ->
-                    val id = "enwiki:" + entity.name.toLowerCase().replace("_", "%20")
-                    writer.write("${query.toLowerCase()} Q0 $id ${index + 1} ${entity.score} Entity\n")
+                    val id = "enwiki:" + entity.name.replace("_", "%20")
+                    writer.write("${query} Q0 $id ${index + 1} ${entity.score} Entity\n")
                 }
         }
         writer.flush()
