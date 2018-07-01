@@ -83,6 +83,10 @@ shadowJar {
     version = null
 }
 
+//tasks.withType(JavaExec) {
+//    jvmArgs = ['-Xms512m', '-Xmx20000m']
+//}
+
 task rollJar(type: Jar) {
     manifest {
         attributes 'Implementation-Title': 'jsr-joint-learning',

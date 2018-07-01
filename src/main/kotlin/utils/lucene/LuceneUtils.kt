@@ -2,17 +2,17 @@ package utils.lucene
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.document.Document
-import org.apache.lucene.index.DirectoryReader
-import org.apache.lucene.index.IndexWriter
-import org.apache.lucene.index.IndexWriterConfig
+import org.apache.lucene.index.*
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.Query
 import org.apache.lucene.search.TopDocs
 import org.apache.lucene.store.FSDirectory
 import utils.misc.identity
+import utils.parallel.asIterable
 import utils.stats.normalize
 import java.lang.IllegalStateException
 import java.nio.file.Paths
+import kotlin.coroutines.experimental.buildIterator
 
 //// Retrieves an index searcher (I use this everywhere so might as well put it here)
 fun getIndexSearcher(indexLocation: String): IndexSearcher {
@@ -28,6 +28,23 @@ fun getIndexWriter(indexLocation: String, mode: IndexWriterConfig.OpenMode = Ind
     val conf = IndexWriterConfig(StandardAnalyzer())
         .apply { openMode = mode }
     return IndexWriter(indexDir, conf)
+}
+
+fun getFieldIterator(field: String, indexReader: IndexReader): Iterable<String> {
+    val fields = MultiFields.getFields(indexReader)
+    val spotLightTerms = fields.terms(field)
+//        val numTerms = 2100000 // Hard coding number of entities for progress bar (no easy way to count this)
+    val termIterator = spotLightTerms.iterator()
+
+    // Build a sequence that lets us iterate over terms in chunks and run them in parallel
+    val termSeq = buildIterator<String> {
+        while (true) {
+            val bytesRef = termIterator.next() ?: break
+            yield(bytesRef.utf8ToString())
+        }
+    }
+
+    return termSeq.asIterable()
 }
 
 fun Document.splitAndCount(field: String) =

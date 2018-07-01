@@ -81,13 +81,6 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = ENTITY,
             func = EntityRankingFeatures::addTop25Freq),
 
-    ENTITY_QUERY_SIMILARITY(text = "entity_query_similarity",
-            type = ENTITY,
-            func = EntityRankingFeatures::addQuerySimilarity),
-
-    ENTITY_QUERY_RDF(text = "entity_query_rdf",
-            type = ENTITY,
-            func = EntityRankingFeatures::addQueryRdf),
 
     ENTITY_BOOSTED_UNIGRAM(text = "entity_boosted_unigram",
             type = ENTITY,

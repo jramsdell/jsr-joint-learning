@@ -61,7 +61,8 @@ object SharedFeatures {
                 paragraphDocuments.map { doc ->
                     //                tops.scoreDocs.map { scoreDoc ->
 //                    val doc = paragraphSearcher.doc(scoreDoc.doc)
-                    doc.getValues("spotlight")
+//                    doc.getValues("spotlight")
+                    doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
                         .mapNotNull { docEntity -> entityDb.getEntityDocument(docEntity) }
                         .flatMap { docEntity -> docEntity.getValues("rdf")?.toList() ?: emptyList() }
                         .countDuplicates()
@@ -80,7 +81,8 @@ object SharedFeatures {
     private fun sharedFeatLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
-                    doc.getValues("spotlight")
+                    doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+//                    doc.getValues("spotlight")
                         .toList()
                         .countDuplicates()
                         .normalize()
@@ -96,7 +98,8 @@ object SharedFeatures {
     private fun sharedFeatLinksSymmetric(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
-                    doc.getValues("spotlight")
+                    doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+//                    doc.getValues("spotlight")
                         .toList()
                         .countDuplicates()
                         .normalize()
@@ -245,7 +248,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
                     val text = doc.get(CONTENT)
-                    val query = AnalyzerFunctions.createQuery(text, field = "abstract")
+                    val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     entityDb.searcher.search(query, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -263,7 +266,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
                     val text = doc.get(CONTENT)
-                    val query = AnalyzerFunctions.createQuery(text, field = "abstract")
+                    val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     entityDb.searcher.search(query, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -283,7 +286,7 @@ object SharedFeatures {
                 paragraphContainers.map { container ->
                     val doc = container.doc
                     val text = doc.get(CONTENT)
-                    val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_ABSTRACT.field)
+                    val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = entityDb.searcher.search(query, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -294,7 +297,7 @@ object SharedFeatures {
         val entityToDocFeature =
                 entityContainers.map { container ->
                     val doc = container.doc
-                    val text = doc.get(IndexFields.FIELD_ABSTRACT.field)
+                    val text = doc.get(IndexFields.FIELD_TEXT.field)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = paragraphSearcher.search(query, 1000)
                         .scoreDocs
@@ -319,7 +322,7 @@ object SharedFeatures {
                 paragraphContainers.map { container ->
                     val doc = container.doc
                     val text = doc.get(CONTENT)
-                    val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_ABSTRACT.field)
+                    val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = entityDb.searcher.search(query, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -330,7 +333,7 @@ object SharedFeatures {
         val entityToDocFeature =
                 entityContainers.map { container ->
                     val doc = container.doc
-                    val text = doc.get(IndexFields.FIELD_ABSTRACT.field)
+                    val text = doc.get(IndexFields.FIELD_TEXT.field)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = paragraphSearcher.search(query, 1000)
                         .scoreDocs

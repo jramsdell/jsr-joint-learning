@@ -4,6 +4,7 @@ import entity.EntityDatabase
 import features.shared.SharedFeature
 import lucene.*
 import lucene.containers.*
+import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import java.io.File
@@ -176,7 +177,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
 
         paragraphContainers.forEachIndexed { paragraphIndex, paragraphContainer ->
-            val entityIndices = paragraphContainer.doc.getValues("spotlight")
+            val entityIndices = paragraphContainer.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+//            val entityIndices = paragraphContainer.doc.getValues("spotlight")
                 .toList()
                 .mapNotNull { entity -> entityNameMap[entity]  }
 
@@ -198,7 +200,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 paragraphSearcher = paragraphSearcher,
                 entitySearcher = entitySearcher,
                 proximitySearcher = proximitySearcher,
-                queryEntities = retrieveTagMeEntities(query),
                 paragraphDocuments = paragraphDocuments,
                 entityDocuments = entityDocuments,
                 entityToParagraph = entityToParMap.mapValues { it.value.normalize() },
@@ -398,7 +399,4 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 }
 
 
-private fun retrieveTagMeEntities(content: String): List<Pair<String, Double>> {
-    return emptyList()
-}
 

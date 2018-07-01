@@ -1,5 +1,6 @@
 package lucene.containers
 
+import lucene.indexers.IndexFields
 import org.apache.lucene.document.Document
 
 /**
@@ -45,6 +46,7 @@ data class ParagraphContainer(val pid: String,
                     (1..combinedFeaures.size).zip(combinedFeaures)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
                     " #$query#$pid"
+//        " #$query#$pid#${doc.get(IndexFields.FIELD_TEXT.field).replace("\n", " ")}"
     }
 
 }

@@ -16,7 +16,6 @@ data class QueryData(
         val entitySearcher: IndexSearcher,
         val proximitySearcher: IndexSearcher,
 
-        val queryEntities: List<Pair<String, Double>>,
         val paragraphDocuments: List<Document>,
         val entityDocuments: List<Document>,
         val entityContainers: List<EntityContainer>,

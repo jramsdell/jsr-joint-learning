@@ -96,20 +96,21 @@ class QueryApp(val resources: HashMap<String, Any>) {
         DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
-        SharedFeatures.addSharedDirichlet(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedBoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedBoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SharedFeatures.addSharedBoostedWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedDirichlet(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedEntityLinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedBoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SharedFeatures.addSharedBoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //        SharedFeatures.addSharedBoostedWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedRdf(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedBoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
-        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addSDMAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addDirichletAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SharedFeatures.addSharedBoostedWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//
+//        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addSDMAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addDirichletAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
     }
 
 

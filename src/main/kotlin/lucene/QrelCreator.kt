@@ -108,7 +108,8 @@ class QrelCreator(paragraphQrel: String, entityQrel: String, val indexSearcher: 
                 // Retrieve document from index and get spotlight/tagme entities
                 .flatMap {  docId: Int ->
                     val doc = indexSearcher.doc(docId)
-                    doc.getValues(IndexFields.FIELD_ENTITIES.field).toList() }
+                    doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
+//    doc.getValues(IndexFields.FIELD_ENTITIES.field).toList() }
                 .toSet()
 
 

@@ -22,12 +22,13 @@ import utils.stats.takeMostFrequent
 import java.lang.Double.sum
 import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum.*
+import lucene.indexers.IndexFields
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
 
 
 object EntityRankingFeatures {
     private fun queryBm25Abstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = "abstract", useFiltering = true)
+        val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = IndexFields.FIELD_TEXT.field, useFiltering = true)
         val scores = entityDb.searcher.search(abstractQuery, 200000)
             .scoreDocs
             .map { sc -> sc.doc to sc.score.toDouble() }
@@ -40,7 +41,7 @@ object EntityRankingFeatures {
 
     private fun queryDirichletAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         entityDb.searcher.setSimilarity(LMDirichletSimilarity(1.0f))
-        val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = "abstract", useFiltering = true)
+        val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = IndexFields.FIELD_TEXT.field, useFiltering = true)
         val scores = entityDb.searcher.search(abstractQuery, 200000)
             .scoreDocs
             .map { sc -> sc.doc to sc.score.toDouble() }
@@ -51,19 +52,6 @@ object EntityRankingFeatures {
         }
     }
 
-    private fun queryRdf(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val queryRdf = queryEntities
-            .flatMap { (entityToken, rho) ->
-                val entity = qd.entityDb.getEntityDocument(entityToken)
-                entity?.getValues("rdf")?.map { it to rho } ?: emptyList() }
-            .groupingBy { it.first }
-            .fold(0.0) { acc, (_, normalizedRdfScore) -> acc + normalizedRdfScore }
-        entityDocuments.forEachIndexed { index, doc ->
-            val rdfs = doc.getValues("rdf")?.toList() ?: emptyList()
-            val score = rdfs.sumByDouble { rdf -> queryRdf.getOrDefault(rdf, 0.0) }
-            sf.entityScores[index] = score
-        }
-    }
 
 
     private fun entityTop25Freq(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
@@ -78,16 +66,6 @@ object EntityRankingFeatures {
             .forEach { (entity, score) -> sf.entityScores[entity] = score }
     }
 
-    private fun entityMatchQueryEntity(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val dist = NormalizedLevenshtein()
-        entityContainers
-            .forEachIndexed { index, entity  ->
-                val entityScore = queryEntities.map { (qEntity, rho) ->
-                    if (dist.similarity(qEntity, entity.name) >= 0.9) 1.0 * rho else 0.0  }
-                    .sum()
-                sf.entityScores[index] = entityScore
-            }
-    }
 
     private fun querySDMAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         // Parse query and retrieve a language model for it
@@ -172,11 +150,6 @@ object EntityRankingFeatures {
     fun addTop25Freq(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_TOP25_FREQ, wt, norm, this::entityTop25Freq)
 
-    fun addQuerySimilarity(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(ENTITY_QUERY_SIMILARITY, wt, norm, this::entityMatchQueryEntity)
-
-    fun addQueryRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(ENTITY_QUERY_RDF, wt, norm, this::queryRdf)
 
     fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_UNIGRAM) }

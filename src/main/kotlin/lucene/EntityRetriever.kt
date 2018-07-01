@@ -59,7 +59,8 @@ class EntityRetriever(val db: EntityDatabase,
     private fun getCandidateEntityNames(tops: TopDocs, index: Int): List<String> {
         val seen = HashSet<String>()
         val entities = paragraphRetrieve
-            .paragraphContainers[index].flatMap { pC -> pC.doc.getValues("spotlight").toList() }
+            .paragraphContainers[index].flatMap { pC -> pC.doc.get("spotlight").split(" ") }
+//            .paragraphContainers[index].flatMap { pC -> pC.doc.getValues("spotlight").toList() }
             .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->
 //                val doc = indexSearcher.doc(scoreDoc.doc)

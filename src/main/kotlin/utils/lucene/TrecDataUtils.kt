@@ -19,6 +19,35 @@ fun Data.Page.outlinks() =
             .toSet()
 
 
+private val sectionsToIgnore = setOf(
+        "See also", "References", "External links", "Further reading", "Notes"
+)
+
+fun getSections(cur: Data.Section): List<String> {
+    if (cur.heading in sectionsToIgnore) return emptyList()
+    val header = listOf(cur.heading)
+    return  if (cur.childSections.isEmpty()) header
+            else header + cur.childSections.flatMap { child -> getSections(child) }
+}
+
+private fun foldOverSection(f: (Data.Section, List<Data.Paragraph>) -> Unit, cur: Data.Section) {
+    if (cur.heading !in sectionsToIgnore) {
+        val content = cur.children
+            .filterIsInstance<Data.Para>()
+            .map { it.paragraph }
+        f(cur, content)
+        cur.childSections.forEach { child -> foldOverSection(f, child) }
+    }
+}
+
+fun Data.Page.foldOverSection(f: (Data.Section, List<Data.Paragraph>) -> Unit) {
+    childSections.forEach { section -> foldOverSection(f, section) }
+}
+
+fun Data.Page.getSectionLevels() =
+    childSections.flatMap { child -> getSections(child) }
+
+
 fun Data.PageMetadata.filteredCategoryNames() =
         categoryNames
             .map { name -> name.split(":")[1].replace(" ", "_") }
