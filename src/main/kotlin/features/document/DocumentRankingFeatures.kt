@@ -86,6 +86,27 @@ object DocumentRankingFeatures {
         }
     }
 
+    private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
+        // Parse query and retrieve a language model for it
+        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+                analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val fq = FieldQueryFormatter()
+        val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+//        val fieldQuery = AnalyzerFunctions.createQuery(queryString, field.field, useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
+
+//        val scores = paragraphSearcher.search(fieldQuery, 2000)
+//            .scoreDocs
+//            .map { sc -> sc.doc to sc.score.toDouble() }
+//            .toMap()
+
+
+        paragraphContainers.forEachIndexed { index, container ->
+            val score = paragraphSearcher.explainScore(fieldQuery, container.docId)
+//            sf.paragraphScores[index] = scores[container.docId] ?: 0.0
+            sf.paragraphScores[index] = score
+        }
+    }
+
 //    private fun queryCombinedBoostedGram(qd: QueryData, sf: SharedFeature,
 //                                     weight: Double = 1.0): Unit = with(qd) {
 //        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
@@ -138,6 +159,27 @@ object DocumentRankingFeatures {
 
     fun addCombinedBoostedGram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_BOOSTED_COMBINED, wt, norm, this::combinedBoostedGram)
+
+    fun addJointUnigramField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_JOINT_UNIGRAM_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_JOINT_UNIGRAMS) }
+
+    fun addJointBigramField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_JOINT_BIGRAM_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_JOINT_BIGRAMS) }
+
+    fun addJointWindowedField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_JOINT_WINDOWED_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_JOINT_WINDOWED) }
+
+    fun addUnionUnigramField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_UNION_UNIGRAM_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_NEIGHBOR_UNIGRAMS) }
+
+    fun addUnionBigramField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_UNION_BIGRAM_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_NEIGHBOR_BIGRAMS) }
+
+    fun addUnionWindowedField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_UNION_WINDOWED_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_NEIGHBOR_WINDOWED) }
+
+    fun addJointEntityField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_JOINT_ENTITIES_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_NEIGHBOR_ENTITIES_UNIGRAMS) }
 
 //    fun addSectionBoostedGrams(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE, index: Int) =
 //            fmt.addFeature3( FeatureType.PARAGRAPH, wt, norm) { qd, sf -> sectionBoostedGrams(qd, sf, index)}

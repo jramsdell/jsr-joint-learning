@@ -116,12 +116,12 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 
     fun processSectionContext(page: Data.Page) {
         val seenSections = HashMap<String, HashMap<String, ArrayList<String>>>()
-        val categories = page.pageMetadata.categoryIds.map(::cleanEntity)
-            .joinToString(" ")
-            .run { convertToUnigrams(this) }
-        val inlinks = page.pageMetadata.inlinkIds.map(::cleanEntity)
-            .joinToString(" ")
-            .run { convertToUnigrams(this) }
+//        val categories = page.pageMetadata.categoryIds.map(::cleanEntity)
+//            .joinToString(" ")
+//            .run { convertToUnigrams(this) }
+//        val inlinks = page.pageMetadata.inlinkIds.map(::cleanEntity)
+//            .joinToString(" ")
+//            .run { convertToUnigrams(this) }
 
         page.foldOverSection { section: Data.Section, paragraphs: List<Data.Paragraph> ->
             val heading = section.heading
@@ -169,34 +169,35 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     .run { joinToString(" ") }
                 val neighbors = sectionHash.computeIfAbsent("neighbors", { ArrayList() })
                     .run { joinToString(" ") }
-                val sectionInlinks = sectionHash.computeIfAbsent("inlinks", { ArrayList() })
-                    .map { inlinks }
-                    .run { joinToString(" ") }
-                val sectionCategories = sectionHash.computeIfAbsent("categories", { ArrayList() })
-                    .map { categories }
-                    .run { joinToString(" ") }
+//                val sectionInlinks = sectionHash.computeIfAbsent("inlinks", { ArrayList() })
+//                    .map { inlinks }
+//                    .run { joinToString(" ") }
+//                val sectionCategories = sectionHash.computeIfAbsent("categories", { ArrayList() })
+//                    .map { categories }
+//                    .run { joinToString(" ") }
 
                 IndexFields.FIELD_NAME.setTextField(doc, section)
+                IndexFields.FIELD_PID.setTextField(doc, section.replace(" ", "_"))
                 IndexFields.FIELD_ENTITIES.setTextField(doc, entities)
                 IndexFields.FIELD_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(entities))
                 IndexFields.FIELD_UNIGRAM.setTextField(doc, unigrams)
                 IndexFields.FIELD_BIGRAM.setTextField(doc, bigrams)
                 IndexFields.FIELD_WINDOWED_BIGRAM.setTextField(doc, windowed)
                 IndexFields.FIELD_NEIGHBOR_SECTIONS.setTextField(doc, neighbors)
-                IndexFields.FIELD_INLINKS_UNIGRAMS.setTextField(doc, sectionInlinks)
-                IndexFields.FIELD_CATEGORIES_UNIGRAMS.setTextField(doc, sectionCategories)
+//                IndexFields.FIELD_INLINKS_UNIGRAMS.setTextField(doc, inlinks)
+//                IndexFields.FIELD_CATEGORIES_UNIGRAMS.setTextField(doc, categories)
                 sectionContextIndex.addDocument(doc)
             }
     }
 
     fun processEntityContext(page: Data.Page) {
         val seenEntities = HashMap<String, HashMap<String, ArrayList<String>>>()
-        val categories = page.pageMetadata.categoryIds.map(::cleanEntity)
-            .joinToString(" ")
-            .run { convertToUnigrams(this) }
-        val inlinks = page.pageMetadata.inlinkIds.map(::cleanEntity)
-            .joinToString(" ")
-            .run { convertToUnigrams(this) }
+//        val categories = page.pageMetadata.categoryIds.map(::cleanEntity)
+//            .joinToString(" ")
+//            .run { convertToUnigrams(this) }
+//        val inlinks = page.pageMetadata.inlinkIds.map(::cleanEntity)
+//            .joinToString(" ")
+//            .run { convertToUnigrams(this) }
 
         page.foldOverSection { section: Data.Section, paragraphs: List<Data.Paragraph> ->
             paragraphs
@@ -211,6 +212,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     entityHash.computeIfAbsent("unigrams", { ArrayList() }).apply { add(unigrams) }
                     entityHash.computeIfAbsent("bigrams", { ArrayList() }).apply { add(bigrams) }
                     entityHash.computeIfAbsent("windowed", { ArrayList() }).apply { add(windowed) }
+                    entityHash.computeIfAbsent("sections", { ArrayList() }).apply { addAll(AnalyzerFunctions.createTokenList(section.heading, ANALYZER_ENGLISH_STOPPED)) }
                     entityHash.computeIfAbsent("neighbors", { ArrayList() }).apply { addAll(entities) }
                     entityHash.computeIfAbsent("inlinks", { ArrayList() }).apply { add(" ") }
                     entityHash.computeIfAbsent("categories", { ArrayList() }).apply { add(" ") }
@@ -227,12 +229,12 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                 .run { joinToString(" ") }
             val entityNeighbors = entityHash.computeIfAbsent("neighbors", { ArrayList() })
                 .run { joinToString(" ") }
-            val entityInlinks = entityHash.computeIfAbsent("inlinks", { ArrayList() })
-                .map { inlinks }
-                .run { joinToString(" ") }
-            val entityCategories = entityHash.computeIfAbsent("categories", { ArrayList() })
-                .map { categories }
-                .run { joinToString(" ") }
+//            val entityInlinks = entityHash.computeIfAbsent("inlinks", { ArrayList() })
+//                .map { inlinks }
+//                .run { joinToString(" ") }
+//            val entityCategories = entityHash.computeIfAbsent("categories", { ArrayList() })
+//                .map { categories }
+//                .run { joinToString(" ") }
 
             val doc = Document()
             IndexFields.FIELD_NAME.setTextField(doc, entity)
@@ -241,8 +243,8 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
             IndexFields.FIELD_UNIGRAM.setTextField(doc, entityUnigrams)
             IndexFields.FIELD_BIGRAM.setTextField(doc, entityBigrams)
             IndexFields.FIELD_WINDOWED_BIGRAM.setTextField(doc, entityWindowed)
-            IndexFields.FIELD_CATEGORIES_UNIGRAMS.setTextField(doc, entityCategories)
-            IndexFields.FIELD_INLINKS_UNIGRAMS.setTextField(doc, entityInlinks)
+//            IndexFields.FIELD_CATEGORIES_UNIGRAMS.setTextField(doc, categories)
+//            IndexFields.FIELD_INLINKS_UNIGRAMS.setTextField(doc, inlinks)
 
             entityContextIndex.addDocument(doc)
         }
@@ -271,9 +273,15 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
     }
 
     private fun convertToUnigrams(text: String) =
-            AnalyzerFunctions.createTokenList(text.replace("_", " "), ANALYZER_ENGLISH_STOPPED)
-                .filter { it.length > 2 }
+            text.split(" ")
+                .asSequence()
+                .map { it.replace("_", " ") }
+                .map {  AnalyzerFunctions.createTokenList(it, ANALYZER_ENGLISH_STOPPED) }
+                .map { it.joinToString("_") }
                 .joinToString(" ")
+//            AnalyzerFunctions.createTokenList(text.replace("_", " "), ANALYZER_ENGLISH_STOPPED)
+//                .filter { it.length > 2 }
+//                .joinToString(" ")
 
     fun processParagraphs(page: Data.Page) {
         page.foldOverSection { section, paragraphs ->
@@ -371,9 +379,9 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                 .forEachParallelQ(1000, 60) { page: Data.Page ->
 //                    processSectionContext(page)
 //                    processEntityContext(page)
+
                     processPageIndexers(page)
-//                    processParagraphIndexers(page)
-                    processParagraphs(page)
+//                    processParagraphs(page)
                     val result = pageCounter.incrementAndGet()
                     if (result % 10000 == 0) {
                         println(result)

@@ -29,7 +29,7 @@ class ExtractorApp(resources: HashMap<String, Any>) {
 //        val pageIndex = getIndexSearcher("extractions2/page")
         val speedy = "/speedy/jsc57/"
 
-        val paragraphIndex = getIndexSearcher("${speedy}extractions2/paragraph")
+       val paragraphIndex = getIndexSearcher("${speedy}extractions2/paragraph")
         val paragraphWriter = getIndexWriter("${speedy}extractions2/paragraph", IndexWriterConfig.OpenMode.APPEND)
 //        val sectionContextIndex = getIndexSearcher("extractions2/section_context")
 //        val page = sectionContextIndex.doc(1)

@@ -34,8 +34,8 @@ class FieldQueryFormatter() {
     fun addWeightedQueryTokens(tokens: List<String>, fieldName: IndexFields, weight: Double = 1.0): FieldQueryFormatter {
 
         val result = when (fieldName) {
-            FIELD_BIGRAM          -> parseBigrams(tokens)
-            FIELD_WINDOWED_BIGRAM -> parseWindowedBigrams(tokens)
+            FIELD_BIGRAM, FIELD_NEIGHBOR_BIGRAMS, FIELD_JOINT_BIGRAMS          -> parseBigrams(tokens)
+            FIELD_WINDOWED_BIGRAM, FIELD_NEIGHBOR_WINDOWED, FIELD_JOINT_WINDOWED -> parseWindowedBigrams(tokens)
             else                  -> parseUnigrams(tokens)
         }
 

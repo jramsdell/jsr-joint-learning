@@ -70,7 +70,8 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
         return DeserializeData.iterableAnnotations(File(queryLocation).inputStream())
             .run { if (takeSubset) take(10) else this }
             .flatMap { page ->
-                page.flatSectionPaths()
+//                (page.flatSectionPaths())
+                (page.flatSectionPaths().apply { this.add(kotlin.collections.emptyList()) })
                     .pmap { sectionPath ->
                         val queryId = Data.sectionPathId(page.pageId, sectionPath)
                         var queryStr = createQueryString(page, sectionPath)
@@ -78,7 +79,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
 
                         val query = if (!doBoostedQuery) {
                             indexSearcher
-                                .search(AnalyzerFunctions.createQuery(queryStr, useFiltering = false), 100)
+                                .search(AnalyzerFunctions.createQuery( queryStr, field = IndexFields.FIELD_TEXT.field, useFiltering = false), 100)
 
                         } else { doBoost(queryStr) }
 
@@ -97,9 +98,22 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
         val weights =
 //                if (isPage) listOf(0.9513710217127973 , 0.02830263512128421 , 0.02032634316591837 )
                  listOf(0.9346718895308014 , 0.04971515179492379 , 0.015612958674274948 )
+//        listOf(0.975344486511033 ,0.0025553537817999484 ,0.0014602021610285421 ,0.02063995754613844 )
+//        listOf(
+//                0.2931706701610092 ,0.2694585839132235 ,-0.03311896562582617 ,0.2423680843314018 ,0.1570971513118776 ,0.004786544656661633
+//        )
+
         val terms = AnalyzerFunctions.createTokenList(queryStr, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
                 useFiltering = true)
+        var i = 0
         val results = FieldQueryFormatter()
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_UNIGRAMS, 1.0)
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_BIGRAMS, weights[i++])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_WINDOWED, weights[i++])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_JOINT_UNIGRAMS, weights[i++])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_JOINT_BIGRAMS, weights[i++])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_JOINT_WINDOWED, weights[i++])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_UNIGRAMS, weights[i++])
             .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
             .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
             .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
@@ -115,6 +129,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
      * Description: Writes formatted lucene results to a file (for use with trec_eval)
      */
     private fun writeRankingsToFile(tops: TopDocs, queryId: String, writer: BufferedWriter, queryNumber: Int) {
+        val seen = HashSet<String>()
         (0 until tops.scoreDocs.size).forEach { index ->
             val sd = tops.scoreDocs[index]
             val doc = indexSearcher.doc(sd.doc)
@@ -122,7 +137,9 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
             val score = sd.score
             val searchRank = index + 1
 
-            writer.write("$queryId Q$queryNumber $paragraphid $searchRank $score Query\n")
+            if (seen.add(paragraphid)) {
+                writer.write("$queryId Q$queryNumber $paragraphid $searchRank $score Query\n")
+            }
         }
     }
 

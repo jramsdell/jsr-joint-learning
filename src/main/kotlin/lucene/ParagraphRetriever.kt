@@ -43,10 +43,11 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
             queries.withIndex().pmap { index ->
                 val (query, tops) = index.value
                 val relevantToQuery = relevancies?.get(query) ?: emptySet()
+                val seen = HashSet<String>()
 
                 val containers = tops.scoreDocs.map { sc ->
-                    createParagraphContainer(sc.doc, index.index, query, relevantToQuery, sc.score)
-                }
+                    createParagraphContainer(sc.doc, index.index, query, relevantToQuery, sc.score) }
+                    .filter { seen.add(it.pid) }
 
                 if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
                 else containers

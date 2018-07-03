@@ -1,6 +1,7 @@
 package utils.misc
 
 import org.apache.commons.math3.random.JDKRandomGenerator
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
 fun<A> withTime(f: () -> A): Pair<Long, A> {
@@ -106,6 +107,21 @@ fun<A, B> Iterable<A>.forEachWith(other: B, f: (A, B) -> Unit) {
 //    }
 //    return newMap
 //}
+
+
+class HashCounter<A> {
+    val counter = ConcurrentHashMap<A, Int>()
+    fun add(item: A) {
+        counter.merge(item, 1, Int::plus)
+    }
+
+    fun addAll(items: List<A>) {
+        items.forEach { item ->
+            counter.merge(item, 1, Int::plus)
+        }
+    }
+}
+
 
 val sharedRand = JDKRandomGenerator(12941)
 

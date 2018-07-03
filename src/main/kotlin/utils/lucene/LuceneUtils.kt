@@ -53,8 +53,8 @@ fun Document.splitAndCount(field: String) =
             ?.groupingBy(::identity)
             ?.eachCount() ?: emptyMap()
 
-fun TopDocs.docs(indexSearcher: IndexSearcher): List<Pair<Document, Int>> =
-        scoreDocs.map { scoreDoc ->  indexSearcher.doc(scoreDoc.doc) to scoreDoc.doc }
+fun TopDocs.docs(indexSearcher: IndexSearcher): Sequence<Pair<Document, Int>> =
+        scoreDocs.asSequence().map { scoreDoc ->  indexSearcher.doc(scoreDoc.doc) to scoreDoc.doc }
 
 fun Document.getOrDefault(field: String, default: String = "") =
          get(field) ?: default

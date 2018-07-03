@@ -22,6 +22,8 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 
+// 0.2183
+
 /**
  * Enum: lucene.NormType
  * Description: Determines if the the values of an added feature should be normalized
@@ -66,6 +68,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
 
 
+    val useJointDist = true
     val paragraphSearcher = getIndexSearcher(paragraphIndexLoc)
     val entitySearcher: IndexSearcher = getIndexSearcher(entityIndexLoc)
     val proximitySearcher: IndexSearcher =
@@ -83,8 +86,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
-//    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = true)
-    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
+//    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
+    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant,
 //            doFiltered = paragraphQrelLoc != "")
             doFiltered = false)
@@ -99,12 +102,14 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             val (query, tops) = indexedQuery.value
             val paragraphContainers = paragraphRetriever.paragraphContainers[index]
             val entityContainers = entityRetriever.entityContainers.get(index)
+//            val entityContainers = emptyList<EntityContainer>()
 
             QueryContainer(
                     query = query,
                     tops = tops,
                     paragraphs = paragraphContainers,
                     entities = entityContainers,
+                    jointDistribution = JointDistribution.createJointDistribution(entityContainers, paragraphContainers),
                     queryData = createQueryData(query, tops, paragraphContainers, entityContainers)
             )
         }
@@ -247,6 +252,29 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 FeatureType.ENTITY_TO_PARAGRAPH    -> scoreParagraphsWithEntities(qc, sf)
                 else                  -> Unit
             }
+
+            // Turn paragraph features into entity features
+            if (featureEnum.type == FeatureType.PARAGRAPH && useJointDist) {
+                sf.paragraphScores.forEachIndexed { index, score ->
+                    qc.jointDistribution.parToEnt[index]!!
+                        .entries
+                        .forEach { (entityIndex, freq) ->
+                            sf.entityScores[entityIndex] += freq * sf.paragraphScores[index]
+                        }
+                }
+            }
+
+            // Turn entity features into paragraph features
+            if (featureEnum.type == FeatureType.ENTITY && useJointDist) {
+                sf.entityScores.forEachIndexed { index, score ->
+                    qc.jointDistribution.entToPar[index]!!
+                        .entries
+                        .forEach { (parIndex, freq) ->
+                            sf.paragraphScores[parIndex] += freq * sf.entityScores[index]
+                        }
+                }
+            }
+
             addBothScores(qc, sf, weight, normType, featureEnum)
             lock.withLock { bar.step() }
         }
@@ -282,40 +310,21 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType,
                               featureEnum: FeatureEnum) {
-//        if (featType != FeatureType.PARAGRAPH) {
+
+
         qc.entities
             .zip(sf.entityScores.run { normalizeResults(this, normType) })
             .forEach { (entity, score) ->
                 entity.queryFeatures += FeatureContainer(score, weight, featureEnum)}
-//        }
 
-//        if (featType != FeatureType.ENTITY) {
-            qc.paragraphs
-                .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
-                .forEach { (paragraph, score) ->
-                    paragraph.queryFeatures += FeatureContainer(score, weight, featureEnum)
-                }
-//        }
+        qc.paragraphs
+            .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
+            .forEach { (paragraph, score) ->
+                paragraph.queryFeatures += FeatureContainer(score, weight, featureEnum)
+            }
     }
 
 
-
-
-
-
-
-    private fun bm25(query: String, tops:TopDocs, indexSearcher: IndexSearcher): List<Double> {
-        return tops.scoreDocs.map { it.score.toDouble() }
-    }
-
-    /**
-     * Function: addBM25
-     * Description: Adds results of the BM25 lucene as a feature. Since the scores are already contained in the TopDocs,
-     *              this simply extracts them as a list of doubles.
-     * @see addFeature
-     */
-//    fun addBM25(weight: Double = 1.0, normType: NormType = NormType.NONE) =
-//            addFeature(this::bm25, weight = weight, normType = normType)
 
     /**
      * Function: rerankQueries
@@ -354,24 +363,14 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
         queryContainers
             .flatMap { queryContainer -> queryContainer.entities.map(EntityContainer::toString) + queryContainer.paragraphs.map(ParagraphContainer::toString)  }
-//            .map { (par, ent) -> par.toString() + "\n" + ent.toString() }
-//            .joinToString(separator = "\n", transform = ParagraphContainer::toString)
             .joinToString(separator = "\n")
-            .let { file.write(it + "\n"); onlyParagraph.write(it + "\n") }
+            .let { file.write(it + "\n"); }
 
-//        queryContainers.map { queryContainer -> queryContainer.query to queryContainer.entities  }
-//            .groupOfListsFlattened()
-//            .flatMap { (k,v) ->
-//                v.groupingBy { it.name }
-//                    .reduce { key, accumulator, element ->
-//                        accumulator.apply {
-//                            accumulator.score += element.score
-//                            accumulator.isRelevant = element.isRelevant || accumulator.isRelevant
-//                        }
-//                    }
-//                    .values }
-//            .joinToString(separator = "\n", transform = EntityContainer::toString)
-//            .let { file.write(it) }
+        queryContainers
+            .flatMap { queryContainer -> queryContainer.paragraphs.map(ParagraphContainer::toString)  }
+            .joinToString(separator = "\n")
+            .let { onlyParagraph.write(it + "\n"); }
+
 
         queryContainers
             .flatMap { queryContainer -> queryContainer.entities  }

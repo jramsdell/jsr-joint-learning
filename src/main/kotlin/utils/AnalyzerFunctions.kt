@@ -76,11 +76,12 @@ object AnalyzerFunctions {
     fun createQuery(query: String,
                     field: String = "text",
                     useFiltering: Boolean = false,
-                    analyzerType: AnalyzerType = AnalyzerType.ANALYZER_STANDARD): BooleanQuery {
+                    analyzerType: AnalyzerType = AnalyzerType.ANALYZER_STANDARD,
+                    must: Boolean = false): BooleanQuery {
 
         return createTokenList(query, analyzerType, useFiltering)
             .map { token -> TermQuery(Term(field, token)) }
-            .run { buildBooleanQuery(this) }
+            .run { buildBooleanQuery(this, must = must) }
     }
 
     fun createWeightedTermsQuery(terms: List<String>, field: String = "text",
@@ -113,9 +114,9 @@ object AnalyzerFunctions {
             .toList()
     }
 
-    fun buildBooleanQuery(queries: List<Query>) =
+    fun buildBooleanQuery(queries: List<Query>, must: Boolean = false) =
             queries.fold(BooleanQuery.Builder(),
-                    { builder, termQuery -> builder.add(termQuery, BooleanClause.Occur.SHOULD) })
+                    { builder, termQuery -> builder.add(termQuery, if (must) BooleanClause.Occur.MUST else BooleanClause.Occur.SHOULD) })
                 .build()
 
     fun splitSections(query: String, analyzerType: AnalyzerType = AnalyzerType.ANALYZER_STANDARD) =

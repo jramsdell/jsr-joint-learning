@@ -33,6 +33,34 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH,
             func = DocumentRankingFeatures::addCombinedBoostedGram),
 
+    DOC_JOINT_UNIGRAM_FIELD(text = "doc_joint_unigram_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addJointUnigramField),
+
+    DOC_JOINT_BIGRAM_FIELD(text = "doc_joint_bigram_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addJointBigramField),
+
+    DOC_JOINT_WINDOWED_FIELD(text = "doc_joint_windowed_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addJointWindowedField),
+
+    DOC_UNION_UNIGRAM_FIELD(text = "doc_union_unigram_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addUnionUnigramField),
+
+    DOC_UNION_BIGRAM_FIELD(text = "doc_union_bigram_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addUnionBigramField),
+
+    DOC_UNION_WINDOWED_FIELD(text = "doc_union_windowed_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addUnionWindowedField),
+
+    DOC_JOINT_ENTITIES_FIELD(text = "doc_joint_entities_field",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addJointEntityField),
+
     SHARED_LINKS(text = "shared_links",
             type = SHARED,
             func = SharedFeatures::addSharedEntityLinks),
@@ -40,6 +68,10 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     SHARED_BM25(text = "shared_bm25",
             type = SHARED,
             func = SharedFeatures::addSharedBM25Abstract),
+
+    SHARED_META(text = "shared_meta",
+            type = SHARED,
+            func = SharedFeatures::addSharedMeta),
 
     SHARED_DIRICHLET(text = "shared_dirichlet",
             type = SHARED,
@@ -76,6 +108,30 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     ENTITY_SDM(text = "entity_sdm_abstract",
             type = ENTITY,
             func = EntityRankingFeatures::addSDMAbstract),
+
+    ENTITY_INLINKS_FIELD(text = "entity_inlinks_field",
+            type = ENTITY,
+            func = EntityRankingFeatures::addInlinksField),
+
+    ENTITY_OUTLINKS_FIELD(text = "entity_outlinks_field",
+            type = ENTITY,
+            func = EntityRankingFeatures::addOutlinksField),
+
+    ENTITY_REDIRECTS_FIELD(text = "entity_redirects_field",
+            type = ENTITY,
+            func = EntityRankingFeatures::addRedirectField),
+
+    ENTITY_CATEGORIES_FIELD(text = "entity_categories_field",
+            type = ENTITY,
+            func = EntityRankingFeatures::addCategoriesField),
+
+    ENTITY_SECTIONS_FIELD(text = "entity_sections_field",
+            type = ENTITY,
+            func = EntityRankingFeatures::addSections),
+
+    ENTITY_DISAMBIG_FIELD(text = "entity_disambig_field",
+            type = ENTITY,
+            func = EntityRankingFeatures::addDisambigField),
 
     ENTITY_TOP25_FREQ(text = "entity_top25_freq",
             type = ENTITY,

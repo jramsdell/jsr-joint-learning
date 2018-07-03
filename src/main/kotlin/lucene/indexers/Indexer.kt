@@ -117,7 +117,7 @@ fun Indexer.extractEntityTextAndGrams(doc: LuceneDocumentContainer) {
     FIELD_UNIGRAM.setTextField(doc.doc, unigrams)
     FIELD_BIGRAM.setTextField(doc.doc, bigrams)
     FIELD_WINDOWED_BIGRAM.setTextField(doc.doc, windowed)
-    FIELD_TEXT.setTextField(doc.doc, text)
+//    FIELD_TEXT.setTextField(doc.doc, text)
 }
 
 fun Indexer.addEntityHeaders(doc: LuceneDocumentContainer) {
@@ -145,69 +145,3 @@ fun getGramsFromContent(content: String): List<String> =
 
 
 
-
-//abstract class Extractor(outLoc: String,
-//                         val type: ExtractorType,
-//                         val chunkSize: Int = 1000,
-//                         val debug: Boolean = false) {
-//    private val out = File("extractions/$outLoc")
-//        .apply { if (!exists()) mkdirs() }
-//        .bufferedWriter().
-//            apply { write("") }
-//
-//    private val counter = AtomicInteger()
-//
-//    private fun fromParagraphCorpus(corpusLoc: String) =
-//        File(corpusLoc)
-//            .inputStream()
-//            .buffered()
-//            .run { DeserializeData.iterParagraphs(this) }
-//            .asIterable()
-//
-//    private fun fromPageCorpus(corpusLoc: String) =
-//            File(corpusLoc)
-//                .inputStream()
-//                .buffered()
-//                .run { DeserializeData.iterableAnnotations(this) }
-//                .asIterable()
-//
-//    fun extract(corpusLoc: String) {
-//        when (type) {
-//            EXTRACT_PAGE -> fromPageCorpus(corpusLoc)
-//                .let { iterable -> doExtract(iterable, this::pageExtractor) }
-//            EXTRACT_PARAGRAPH -> fromParagraphCorpus(corpusLoc)
-//                .let { iterable -> doExtract(iterable, this::paragraphExtractor) }
-//        }
-//    }
-//
-//
-//    private fun<A> doExtract(iterable: Iterable<A>, f: (A) -> String) {
-//        iterable.forEachChunkedParallel(chunkSize) { item: A ->
-//            val parsedResult = f(item)
-//            out.append(parsedResult)
-//
-//            counter.incrementAndGet().let { iteration ->
-//                if (iteration % 10000 == 0) {
-//                    if (debug) println(iteration)
-//                    out.flush()
-//                }
-//            }
-//        }
-//    }
-//
-//
-//    open fun pageExtractor(page: Data.Page): String {
-//        return ""
-//    }
-//
-//    open fun paragraphExtractor(paragraph: Data.Paragraph): String {
-//        return ""
-//    }
-//
-//    fun close() = out.close()
-//
-//
-//
-//
-//
-//}

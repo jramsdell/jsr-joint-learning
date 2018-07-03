@@ -3,6 +3,7 @@ package lucene
 import entity.EntityData
 import entity.EntityDatabase
 import lucene.containers.EntityContainer
+import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import utils.parallel.pmap
@@ -30,14 +31,14 @@ class EntityRetriever(val db: EntityDatabase,
                 .withIndex().pmap {index ->
                 val (query, tops) = index.value
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
-                val entityNames = getCandidateEntityNames(tops, index.index)
-                val entities = getCandidateEntityData(entityNames)
-                entities.map { entity: EntityData ->
+                    val entityNames = getCandidateEntityNames(tops, index.index)
+                    val entities = getCandidateEntityData(entityNames)
+                    entities.map { entity: EntityData ->
                     EntityContainer(
                             name = entity.name,
                             qid = index.index + 1,
                             docId = entity.docId,
-                            doc = db.searcher.doc(entity.docId),
+                            searcher = db.searcher,
                             isRelevant = relevancies?.contains(query to entity.name.toLowerCase()) ?: false
                     )
                 }
@@ -59,8 +60,8 @@ class EntityRetriever(val db: EntityDatabase,
     private fun getCandidateEntityNames(tops: TopDocs, index: Int): List<String> {
         val seen = HashSet<String>()
         val entities = paragraphRetrieve
-            .paragraphContainers[index].flatMap { pC -> pC.doc.get("spotlight").split(" ") }
-//            .paragraphContainers[index].flatMap { pC -> pC.doc.getValues("spotlight").toList() }
+//            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
             .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->
 //                val doc = indexSearcher.doc(scoreDoc.doc)

@@ -8,6 +8,7 @@ import experiment.NormType.ZSCORE
 import language.GramAnalyzer
 import language.GramStatType
 import language.containers.LanguageStatContainer
+import lucene.FieldQueryFormatter
 import lucene.containers.QueryData
 import utils.AnalyzerFunctions
 import utils.lucene.explainScore
@@ -24,6 +25,7 @@ import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
 import utils.misc.PID
 import utils.stats.takeMostFrequent
+import kotlin.math.max
 
 
 data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>)
@@ -34,6 +36,8 @@ private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphLis
             val score = scoreFunction(a, b)
             sf.entityScores[entityIndex] += score
             sf.paragraphScores[paragraphIndex] += score
+//            sf.entityScores[entityIndex] = max(score, sf.entityScores[entityIndex] ?: 0.0)
+//            sf.paragraphScores[paragraphIndex] = max(score, sf.paragraphScores[paragraphIndex] ?: 0.0)
         }
     }
 }
@@ -81,7 +85,7 @@ object SharedFeatures {
     private fun sharedFeatLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphDocuments.map { doc ->
-                    doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+                    doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ")
 //                    doc.getValues("spotlight")
                         .toList()
                         .countDuplicates()
@@ -91,6 +95,34 @@ object SharedFeatures {
         scoreBoth(sf, entityFeatures, documentFeatures,
                 { entityName, docLinks ->
                     docLinks.getOrDefault(entityName, 0.0)
+                })
+    }
+
+    // Similarity based on proportion of entity links from paragraph to entity
+    private fun sharedMeta(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val documentFeatures =
+                paragraphContainers.map { container ->
+                    val unigrams = container.doc.get(IndexFields.FIELD_NEIGHBOR_UNIGRAMS.field)
+                        .run { AnalyzerFunctions.createTokenList(this) }
+
+                    val q = FieldQueryFormatter()
+                        .addWeightedQueryTokens(unigrams, IndexFields.FIELD_NAME)
+                        .addWeightedQueryTokens(unigrams, IndexFields.FIELD_CATEGORIES_UNIGRAMS)
+                        .addWeightedQueryTokens(unigrams, IndexFields.FIELD_REDIRECTS_UNIGRAMS)
+                        .addWeightedQueryTokens(unigrams, IndexFields.FIELD_INLINKS_UNIGRAMS)
+                        .createBooleanQuery()
+
+
+                    val result = entityDb.searcher.search(q, 1000)
+                        .scoreDocs
+                        .map { sc -> sc.doc to sc.score.toDouble() }
+                        .toMap()
+                    result
+                }
+        val entityFeatures = entityContainers.map { entityContainer -> entityContainer.docId }
+        scoreBoth(sf, entityFeatures, documentFeatures,
+                { entityId, scores ->
+                    scores[entityId] ?: 0.0
                 })
     }
 
@@ -387,6 +419,9 @@ object SharedFeatures {
     fun addSharedRdf(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(SHARED_RDF, wt, norm, this::sharedRdf)
 
+    fun addSharedMeta(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(SHARED_META, wt, norm, this::sharedMeta)
+
     fun addSharedUnigramLikelihood(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(SHARED_UNI_LIKE, wt, norm, this::sharedUnigramLikelihood)
 
@@ -403,6 +438,7 @@ object SharedFeatures {
 
     fun addSharedBoostedWindowed(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(SHARED_BOOSTED_WINDOWED, wt, norm) { qd, sf -> sharedBoostedGram(qd, sf, GramStatType.TYPE_BIGRAM_WINDOW) }
+
 
 
 }

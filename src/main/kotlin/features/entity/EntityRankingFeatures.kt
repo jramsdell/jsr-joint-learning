@@ -11,6 +11,7 @@ import language.GramAnalyzer
 import language.GramStatType
 import language.GramStatType.*
 import language.containers.LanguageStatContainer
+import lucene.FieldQueryFormatter
 import lucene.containers.QueryData
 import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
@@ -24,6 +25,7 @@ import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum.*
 import lucene.indexers.IndexFields
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
+import utils.lucene.docs
 
 
 object EntityRankingFeatures {
@@ -55,17 +57,47 @@ object EntityRankingFeatures {
 
 
     private fun entityTop25Freq(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        paragraphToEntity
-            .flatMap { (_, entityDistribution) ->
-                entityDistribution.map { (entityId, entityProb) ->  entityId to entityProb } }
-            .groupingBy( { it.first })
-            .fold(0.0) { acc, freq -> acc + freq.second}
-            .entries
-            .sortedByDescending(Map.Entry<Int, Double>::value)
-//            .take(100)
-            .forEach { (entity, score) -> sf.entityScores[entity] = score }
+        val counts = paragraphDocuments.flatMap { doc ->
+            doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+            .countDuplicates()
+
+        entityContainers.forEachIndexed { index, (entity, docId) ->
+            sf.entityScores[index] = (counts[entity] ?: 0).toDouble()
+
+        }
     }
 
+    private fun entityScoreTransfer(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val counts = paragraphDocuments.flatMap { doc ->
+            doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+            .countDuplicates()
+
+        entityContainers.forEachIndexed { index, (entity, docId) ->
+            sf.entityScores[index] = (counts[entity] ?: 0).toDouble()
+
+        }
+    }
+
+
+    private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
+        // Parse query and retrieve a language model for it
+//        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+//                analyzerType = ANALYZER_ENGLISH_STOPPED).joinToString(" ")
+        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+                analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val fq = FieldQueryFormatter()
+        val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+
+        val scores = entitySearcher.search(fieldQuery, 5000)
+            .scoreDocs
+            .map { sc -> sc.doc to sc.score.toDouble() }
+            .toMap()
+
+
+        entityContainers.forEachIndexed { index, container ->
+            sf.entityScores[index] = scores[container.docId] ?: 0.0
+        }
+    }
 
     private fun querySDMAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         // Parse query and retrieve a language model for it
@@ -159,5 +191,23 @@ object EntityRankingFeatures {
 
     fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_BOOSTED_WINDOW, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
+
+    fun addInlinksField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_INLINKS_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_INLINKS_UNIGRAMS) }
+
+    fun addOutlinksField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_OUTLINKS_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_OUTLINKS_UNIGRAMS) }
+
+    fun addDisambigField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_DISAMBIG_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_DISAMBIGUATIONS_UNIGRAMS) }
+
+    fun addRedirectField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_REDIRECTS_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_REDIRECTS_UNIGRAMS) }
+
+    fun addCategoriesField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_CATEGORIES_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_CATEGORIES_UNIGRAMS) }
+
+    fun addSections(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_SECTIONS_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_SECTION_UNIGRAM) }
 
 }
