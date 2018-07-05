@@ -134,7 +134,8 @@ object DocumentRankingFeatures {
         val queryCorpus = gramAnalyzer.getCorpusStatContainer(cleanQuery)
         val weights = listOf(0.9285990421606605, 0.070308081629, -0.0010928762)
 
-        paragraphDocuments.forEachIndexed { index, doc ->
+        paragraphContainers.forEachIndexed { index, container ->
+            val doc = container.doc()
             val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
             val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 2.0)
             val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]

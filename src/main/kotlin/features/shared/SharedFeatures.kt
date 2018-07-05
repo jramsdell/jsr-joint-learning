@@ -62,7 +62,8 @@ object SharedFeatures {
             doc.getValues("rdf")?.toList() ?: emptyList()
         }
         val documentFeatures =
-                paragraphDocuments.map { doc ->
+                paragraphContainers.map { container ->
+                    val doc = container.doc()
                     //                tops.scoreDocs.map { scoreDoc ->
 //                    val doc = paragraphSearcher.doc(scoreDoc.doc)
 //                    doc.getValues("spotlight")
@@ -84,7 +85,8 @@ object SharedFeatures {
     // Similarity based on proportion of entity links from paragraph to entity
     private fun sharedFeatLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
-                paragraphDocuments.map { doc ->
+                paragraphContainers.map { container ->
+                    val doc = container.doc()
                     doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ")
 //                    doc.getValues("spotlight")
                         .toList()
@@ -102,7 +104,7 @@ object SharedFeatures {
     private fun sharedMeta(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphContainers.map { container ->
-                    val unigrams = container.doc.get(IndexFields.FIELD_NEIGHBOR_UNIGRAMS.field)
+                    val unigrams = container.doc().get(IndexFields.FIELD_NEIGHBOR_UNIGRAMS.field)
                         .run { AnalyzerFunctions.createTokenList(this) }
 
                     val q = FieldQueryFormatter()
@@ -129,7 +131,8 @@ object SharedFeatures {
     // Similarity based on proportion of entity links from paragraph to entity
     private fun sharedFeatLinksSymmetric(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
-                paragraphDocuments.map { doc ->
+                paragraphContainers.map { container ->
+                    val doc = container.doc()
                     doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
 //                    doc.getValues("spotlight")
                         .toList()
@@ -148,7 +151,8 @@ object SharedFeatures {
     // Similarity based on unigram (from paragraph text to entity abstract)
     private fun sharedUnigramLikelihood(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
-                paragraphDocuments.map { doc ->
+                paragraphContainers.map { container ->
+                    val doc = container.doc()
                     doc.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
                         .normalize() }
 
@@ -182,7 +186,8 @@ object SharedFeatures {
     private fun sharedBoostedGram(qd: QueryData, sf: SharedFeature, gramStatType: GramStatType,
                                   weight: Double = 1.0): Unit = with(qd) {
          val documentFeatures =
-                 paragraphDocuments.map{ doc ->
+                 paragraphContainers.map{ container ->
+                     val doc = container.doc()
                      val docQuery = getDocumentGramQuery(doc, gramStatType)
                      val searchResult = entityDb.searcher.search(docQuery, 1000)
                          .scoreDocs
@@ -205,7 +210,7 @@ object SharedFeatures {
                                   weight: Double = 1.0): Unit = with(qd) {
         val documentToEntity =
                 paragraphContainers.map{ container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val docQuery = getDocumentGramQuery(doc, gramStatType)
                     val result = entityDb.searcher.search(docQuery, 1000)
                         .scoreDocs
@@ -216,7 +221,7 @@ object SharedFeatures {
 
         val entityToDocument =
                 entityContainers.map{ container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val docQuery = getDocumentGramQuery(doc, gramStatType)
                     val result = paragraphSearcher.search(docQuery, 1000)
                         .scoreDocs
@@ -241,7 +246,7 @@ object SharedFeatures {
                                            weight: Double = 1.0): Unit = with(qd) {
         val documentToEntity =
                 paragraphContainers.map{ container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val docQuery = getDocumentGramQuery(doc, gramStatType)
                     val result = entityDb.searcher.search(docQuery, 1000)
                         .scoreDocs
@@ -252,7 +257,7 @@ object SharedFeatures {
 
         val entityToDocument =
                 entityContainers.map{ container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val docQuery = getDocumentGramQuery(doc, gramStatType)
                     val result = paragraphSearcher.search(docQuery, 1000)
                         .scoreDocs
@@ -278,7 +283,8 @@ object SharedFeatures {
     // Similarity based on BM25 (from paragraph text to entity abstract)
     private fun sharedBM25(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
-                paragraphDocuments.map { doc ->
+                paragraphContainers.map { container ->
+                    val doc = container.doc()
                     val text = doc.get(CONTENT)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     entityDb.searcher.search(query, 1000)
@@ -296,7 +302,8 @@ object SharedFeatures {
     private fun sharedDirichlet(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         entityDb.searcher.setSimilarity(LMDirichletSimilarity(1.0f))
         val documentFeatures =
-                paragraphDocuments.map { doc ->
+                paragraphContainers.map { container ->
+                    val doc = container.doc()
                     val text = doc.get(CONTENT)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     entityDb.searcher.search(query, 1000)
@@ -316,7 +323,7 @@ object SharedFeatures {
         paragraphSearcher.setSimilarity(LMDirichletSimilarity(1.0f))
         val docToEntityFeature =
                 paragraphContainers.map { container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val text = doc.get(CONTENT)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = entityDb.searcher.search(query, 1000)
@@ -328,7 +335,7 @@ object SharedFeatures {
 
         val entityToDocFeature =
                 entityContainers.map { container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val text = doc.get(IndexFields.FIELD_TEXT.field)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = paragraphSearcher.search(query, 1000)
@@ -352,7 +359,7 @@ object SharedFeatures {
         paragraphSearcher.setSimilarity(LMDirichletSimilarity(1.0f))
         val docToEntityFeature =
                 paragraphContainers.map { container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val text = doc.get(CONTENT)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = entityDb.searcher.search(query, 1000)
@@ -364,7 +371,7 @@ object SharedFeatures {
 
         val entityToDocFeature =
                 entityContainers.map { container ->
-                    val doc = container.doc
+                    val doc = container.doc()
                     val text = doc.get(IndexFields.FIELD_TEXT.field)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     val result = paragraphSearcher.search(query, 1000)

@@ -16,8 +16,9 @@ data class EntityContainer(
         val searcher: IndexSearcher
 //        val doc: Document
 ) {
-    val doc: Document
-    get() = searcher.doc(docId)
+    fun doc(): Document = searcher.doc(docId)
+//    val doc: Document get() = searcher.doc(docId)
+//    get() = Document()
 
     // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
     fun rescoreEntity() {

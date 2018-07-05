@@ -105,9 +105,9 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = ENTITY,
             func = EntityRankingFeatures::addDirichletAbstract),
 
-    ENTITY_SDM(text = "entity_sdm_abstract",
-            type = ENTITY,
-            func = EntityRankingFeatures::addSDMAbstract),
+//    ENTITY_SDM(text = "entity_sdm_abstract",
+//            type = ENTITY,
+//            func = EntityRankingFeatures::addSDMAbstract),
 
     ENTITY_INLINKS_FIELD(text = "entity_inlinks_field",
             type = ENTITY,

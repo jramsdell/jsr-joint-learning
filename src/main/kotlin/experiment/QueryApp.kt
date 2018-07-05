@@ -92,12 +92,12 @@ class QueryApp(val resources: HashMap<String, Any>) {
         var i = 0
 
 //        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBM25Document(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        DocumentRankingFeatures.addUnionUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -112,32 +112,33 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
 //
-        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        EntityRankingFeatures.addSDMAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-
-
-        // Super awesome features
-//        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addUnionUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addUnionBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addJointUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addJointBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addSDMAbstract(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+
+        // Super awesome features
+        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addUnionUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addUnionBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addJointUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addJointBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
     }
 

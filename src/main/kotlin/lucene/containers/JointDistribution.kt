@@ -20,8 +20,8 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
             paragraphContainers.forEachIndexed { index, container ->
                 // Retrieve entities from neighborhood (and also add in own entities, increasing probability of those)
-//                val entities = container.doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ")
-                val entities = container.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+                val entities = container.doc().get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ")
+//                val entities = container.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
 
                 val baseFreqs =
                         entities.mapNotNull { id -> entIdMap[id] }

@@ -99,7 +99,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 isRelevant = relevantToQuery.contains(pid),
                 query = query,
                 docId = docId,
-                doc = doc,
+                searcher = indexSearcher,
                 score = score.toDouble(),
                 features = arrayListOf())
     }

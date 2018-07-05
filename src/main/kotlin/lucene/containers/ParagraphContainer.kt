@@ -2,6 +2,7 @@ package lucene.containers
 
 import lucene.indexers.IndexFields
 import org.apache.lucene.document.Document
+import org.apache.lucene.search.IndexSearcher
 
 /**
  * Class: ParagraphContainer
@@ -21,11 +22,13 @@ data class ParagraphContainer(val pid: String,
                               val entityFeatures: ArrayList<FeatureContainer> = ArrayList(),
                               val sharedFeatures: ArrayList<FeatureContainer> = ArrayList(),
                               val docId: Int,
-                              val doc: Document,
+                              val searcher: IndexSearcher,
+//                              val doc: Document,
                               var score: Double = 0.0,
                               val query: String) {
 
     // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
+    fun doc(): Document = searcher.doc(docId)
     fun rescoreParagraph() {
         score = queryFeatures.sumByDouble(FeatureContainer::getAdjustedScore) +
                 entityFeatures.sumByDouble(FeatureContainer::getAdjustedScore) +

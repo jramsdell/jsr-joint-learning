@@ -15,6 +15,7 @@ import utils.lucene.getIndexSearcher
 import utils.misc.CONTENT
 import utils.misc.filledArray
 import utils.parallel.forEachParallel
+import utils.parallel.forEachParallelQ
 import utils.parallel.pmap
 import utils.stats.normalize
 import java.lang.Double.sum
@@ -86,8 +87,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
-//    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
-    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
+    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
+//    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant,
 //            doFiltered = paragraphQrelLoc != "")
             doFiltered = false)
@@ -170,31 +171,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
         val tokens = AnalyzerFunctions.createTokenList(query)
 
-        val paragraphDocuments = paragraphContainers.map { it.doc }
-        val entityDocuments = entityContainers.map { it.doc }
-
-        val entityNameMap = entityContainers
-            .mapIndexed { index, entityContainer -> entityContainer.name to index  }
-            .toMap()
-
-        val entityToParMap = HashMap<Int, HashMap<Int, Double>>()
-        val parToEntityMap = HashMap<Int, HashMap<Int, Double>>()
-
-
-        paragraphContainers.forEachIndexed { paragraphIndex, paragraphContainer ->
-            val entityIndices = paragraphContainer.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
-//            val entityIndices = paragraphContainer.doc.getValues("spotlight")
-                .toList()
-                .mapNotNull { entity -> entityNameMap[entity]  }
-
-            val paragraphEntry = parToEntityMap.computeIfAbsent(paragraphIndex, { HashMap() })
-            entityIndices.forEach { entityIndex ->
-                val entityEntry = entityToParMap.computeIfAbsent(entityIndex, { HashMap() })
-                entityEntry.merge(paragraphIndex, 1.0, ::sum)
-                paragraphEntry.merge(entityIndex, 1.0, ::sum)
-            }
-        }
-
 
         val data = QueryData(
                 queryString = query,
@@ -205,10 +181,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 paragraphSearcher = paragraphSearcher,
                 entitySearcher = entitySearcher,
                 proximitySearcher = proximitySearcher,
-                paragraphDocuments = paragraphDocuments,
-                entityDocuments = entityDocuments,
-                entityToParagraph = entityToParMap.mapValues { it.value.normalize() },
-                paragraphToEntity = parToEntityMap.mapValues { it.value.normalize() },
                 entityContainers = entityContainers,
                 paragraphContainers = paragraphContainers,
                 entityDb = entityDb)
@@ -239,19 +211,13 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val curSim = paragraphSearcher.getSimilarity(true)
         val curSimEntity = entitySearcher.getSimilarity(true)
 
-        queryContainers.forEachParallel { qc ->
+        queryContainers.forEachParallelQ(10, 20) { qc ->
 
             // Apply feature and update counter
             val sf = SharedFeature(paragraphScores = filledArray(qc.paragraphs.size, 0.0),
                     entityScores = filledArray(qc.entities.size, 0.0))
             f(qc.queryData, sf)
 
-            // Update containers with scores
-            when (featureEnum.type) {
-                FeatureType.PARAGRAPH_TO_ENTITY -> scoreEntitiesWithParagraphs(qc, sf)
-                FeatureType.ENTITY_TO_PARAGRAPH    -> scoreParagraphsWithEntities(qc, sf)
-                else                  -> Unit
-            }
 
             // Turn paragraph features into entity features
             if (featureEnum.type == FeatureType.PARAGRAPH && useJointDist) {
@@ -284,29 +250,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     }
 
 
-    // Transforms a feature over entities into a feature over paragraphs
-    private fun scoreParagraphsWithEntities(qc: QueryContainer, sf: SharedFeature) {
-        val entityToPar = qc.queryData.entityToParagraph
-        sf.entityScores.forEachIndexed { index, score ->
-            entityToPar[index]?.let { paragraphDistribution ->
-                paragraphDistribution.forEach { (parIndex, parProb) ->
-                    sf.paragraphScores[parIndex] += score * parProb
-                }
-            }
-        }
-    }
-
-    // Transforms a feature over paragraphs into a feature over entities
-    private fun scoreEntitiesWithParagraphs(qc: QueryContainer, sf: SharedFeature) {
-        val parToEntity = qc.queryData.paragraphToEntity
-        sf.paragraphScores.forEachIndexed { index, score ->
-            parToEntity[index]?.let { entityDistribution ->
-                entityDistribution.forEach { (entityIndex, entityProb) ->
-                    sf.entityScores[entityIndex] += score * entityProb
-                }
-            }
-        }
-    }
 
     private fun addBothScores(qc: QueryContainer, sf: SharedFeature, weight: Double, normType: NormType,
                               featureEnum: FeatureEnum) {

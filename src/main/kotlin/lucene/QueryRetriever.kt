@@ -107,16 +107,16 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                 useFiltering = true)
         var i = 0
         val results = FieldQueryFormatter()
-//            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_UNIGRAMS, 1.0)
+            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_UNIGRAMS, 1.0)
 //            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_BIGRAMS, weights[i++])
 //            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_WINDOWED, weights[i++])
 //            .addWeightedQueryTokens(terms, IndexFields.FIELD_JOINT_UNIGRAMS, weights[i++])
 //            .addWeightedQueryTokens(terms, IndexFields.FIELD_JOINT_BIGRAMS, weights[i++])
 //            .addWeightedQueryTokens(terms, IndexFields.FIELD_JOINT_WINDOWED, weights[i++])
 //            .addWeightedQueryTokens(terms, IndexFields.FIELD_NEIGHBOR_UNIGRAMS, weights[i++])
-            .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
-            .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
-            .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
+//            .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
             .createBooleanQuery()
             .run {
                 indexSearcher.search(this, 100) }

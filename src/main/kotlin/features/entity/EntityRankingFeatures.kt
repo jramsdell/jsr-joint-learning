@@ -57,7 +57,8 @@ object EntityRankingFeatures {
 
 
     private fun entityTop25Freq(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val counts = paragraphDocuments.flatMap { doc ->
+        val counts = paragraphContainers.flatMap { container ->
+            val doc = container.doc()
             doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
             .countDuplicates()
 
@@ -67,16 +68,16 @@ object EntityRankingFeatures {
         }
     }
 
-    private fun entityScoreTransfer(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val counts = paragraphDocuments.flatMap { doc ->
-            doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
-            .countDuplicates()
-
-        entityContainers.forEachIndexed { index, (entity, docId) ->
-            sf.entityScores[index] = (counts[entity] ?: 0).toDouble()
-
-        }
-    }
+//    private fun entityScoreTransfer(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+//        val counts = paragraphDocuments.flatMap { doc ->
+//            doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+//            .countDuplicates()
+//
+//        entityContainers.forEachIndexed { index, (entity, docId) ->
+//            sf.entityScores[index] = (counts[entity] ?: 0).toDouble()
+//
+//        }
+//    }
 
 
     private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
@@ -99,23 +100,23 @@ object EntityRankingFeatures {
         }
     }
 
-    private fun querySDMAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        // Parse query and retrieve a language model for it
-        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
-                analyzerType = ANALYZER_ENGLISH_STOPPED)
-        val cleanQuery = tokens.toList().joinToString(" ")
-
-        val gramAnalyzer = GramAnalyzer(entitySearcher)
-        val queryCorpus = gramAnalyzer.getCorpusStatContainer(cleanQuery)
-        val weights = listOf(0.9285990421606605, 0.070308081629, -0.0010928762)
-
-        entityDocuments.forEachIndexed { index, doc ->
-            val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
-            val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 4.0)
-            val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
-            sf.entityScores[index] = score
-        }
-    }
+//    private fun querySDMAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+//        // Parse query and retrieve a language model for it
+//        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+//                analyzerType = ANALYZER_ENGLISH_STOPPED)
+//        val cleanQuery = tokens.toList().joinToString(" ")
+//
+//        val gramAnalyzer = GramAnalyzer(entitySearcher)
+//        val queryCorpus = gramAnalyzer.getCorpusStatContainer(cleanQuery)
+//        val weights = listOf(0.9285990421606605, 0.070308081629, -0.0010928762)
+//
+//        entityDocuments.forEachIndexed { index, doc ->
+//            val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
+//            val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 4.0)
+//            val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
+//            sf.entityScores[index] = score
+//        }
+//    }
 
     private fun entityBoostedGram(qd: QueryData, sf: SharedFeature, gramStatType: GramStatType,
                                   weight: Double = 1.0): Unit = with(qd) {
@@ -176,8 +177,8 @@ object EntityRankingFeatures {
     fun addDirichletAbstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_DIRICHLET, wt, norm, this::queryBm25Abstract)
 
-    fun addSDMAbstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(ENTITY_SDM, wt, norm, this::querySDMAbstract)
+//    fun addSDMAbstract(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+//            fmt.addFeature3(ENTITY_SDM, wt, norm, this::querySDMAbstract)
 
     fun addTop25Freq(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_TOP25_FREQ, wt, norm, this::entityTop25Freq)

@@ -39,9 +39,9 @@ class EntityRetriever(val db: EntityDatabase,
                             qid = index.index + 1,
                             docId = entity.docId,
                             searcher = db.searcher,
-                            isRelevant = relevancies?.contains(query to entity.name.toLowerCase()) ?: false
+                            isRelevant = relevancies?.contains(query.split("/").first() to entity.name.toLowerCase()) ?: false
                     )
-                }
+                }.toList()
             }
 
     private fun filterNeighbors(containers: List<EntityContainer>): List<EntityContainer> {
@@ -60,8 +60,8 @@ class EntityRetriever(val db: EntityDatabase,
     private fun getCandidateEntityNames(tops: TopDocs, index: Int): List<String> {
         val seen = HashSet<String>()
         val entities = paragraphRetrieve
-//            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
-            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
+            .paragraphContainers[index].flatMap { pC -> pC.doc().get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+//            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
             .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->
 //                val doc = indexSearcher.doc(scoreDoc.doc)
@@ -69,9 +69,10 @@ class EntityRetriever(val db: EntityDatabase,
         return entities
     }
 
-    private fun getCandidateEntityData(entities: List<String>): List<EntityData> {
+    private fun getCandidateEntityData(entities: List<String>): Sequence<EntityData> {
         val seen = HashSet<String>()
         val result = entities.toSortedSet()
+            .asSequence()
             .mapNotNull(db::getEntityDocId)
             .map(db::getEntityByID)
             .filter { doc -> seen.add(doc.name) }
