@@ -45,9 +45,9 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 val relevantToQuery = relevancies?.get(query) ?: emptySet()
                 val seen = HashSet<String>()
 
-                val containers = tops.scoreDocs.map { sc ->
-                    createParagraphContainer(sc.doc, index.index, query, relevantToQuery, sc.score) }
-                    .filter { seen.add(it.pid) }
+                val containers = tops.scoreDocs.mapIndexed { pIndex, sc ->
+                    createParagraphContainer(pIndex, sc.doc, index.index, query, relevantToQuery, sc.score) }
+//                    .filter { seen.add(it.pid) }
 
                 if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
                 else containers
@@ -72,7 +72,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                                           relevantToQuery: Set<String>): List<ParagraphContainer> {
         val missingRelevantParagraphs = relevantToQuery - containers.map { p -> p.pid }.toSet()
         val retrievedRelevantParagraphs = retrieveParagraphs(missingRelevantParagraphs.toList())
-            .map { docId -> createParagraphContainer(docId, index, query, relevantToQuery, 0.0f) }
+            .mapIndexed { pIndex, docId -> createParagraphContainer(pIndex, docId, index, query, relevantToQuery, 0.0f) }
         return containers + retrievedRelevantParagraphs
     }
 
@@ -89,7 +89,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
      *
      * @return[ParagraphContainer] Candidate paragraph document retrieved via BM25
      */
-    private fun createParagraphContainer(docId: Int, index: Int,
+    private fun createParagraphContainer(pIndex: Int, docId: Int, index: Int,
                                          query: String, relevantToQuery: Set<String>, score: Float): ParagraphContainer {
         val doc = indexSearcher.doc(docId)
         val pid = doc.get(PID)
@@ -101,6 +101,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 docId = docId,
                 searcher = indexSearcher,
                 score = score.toDouble(),
+                index = pIndex,
                 features = arrayListOf())
     }
 

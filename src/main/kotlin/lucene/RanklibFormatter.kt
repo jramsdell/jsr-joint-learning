@@ -41,7 +41,8 @@ enum class FeatureType {
     PARAGRAPH_TO_ENTITY,
     ENTITY,
     ENTITY_TO_PARAGRAPH,
-    SHARED
+    SHARED,
+    PARAGRAPH_FUNCTOR
 }
 
 /**
@@ -87,8 +88,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val entityDb = EntityDatabase(entityIndexLoc)
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
-    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
-//    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
+//    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
+    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant,
 //            doFiltered = paragraphQrelLoc != "")
             doFiltered = false)
@@ -110,7 +111,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                     tops = tops,
                     paragraphs = paragraphContainers,
                     entities = entityContainers,
-                    jointDistribution = JointDistribution.createJointDistribution(entityContainers, paragraphContainers),
                     queryData = createQueryData(query, tops, paragraphContainers, entityContainers)
             )
         }
@@ -211,11 +211,19 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val curSim = paragraphSearcher.getSimilarity(true)
         val curSimEntity = entitySearcher.getSimilarity(true)
 
-        queryContainers.forEachParallelQ(10, 20) { qc ->
+        queryContainers.forEachParallelQ(30, 50) { qc ->
 
             // Apply feature and update counter
             val sf = SharedFeature(paragraphScores = filledArray(qc.paragraphs.size, 0.0),
                     entityScores = filledArray(qc.entities.size, 0.0))
+
+
+            if (featureEnum.type == FeatureType.PARAGRAPH_FUNCTOR) {
+                qc.paragraphs.forEachIndexed { index, paragraphContainer ->
+                    sf.paragraphScores[index] = paragraphContainer.score
+                }
+            }
+
             f(qc.queryData, sf)
 
 
@@ -240,6 +248,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                         }
                 }
             }
+
+
 
             addBothScores(qc, sf, weight, normType, featureEnum)
             lock.withLock { bar.step() }

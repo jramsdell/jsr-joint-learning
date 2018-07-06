@@ -7,6 +7,7 @@ import experiment.NormType
 import features.document.DocumentRankingFeatures
 import features.entity.EntityRankingFeatures
 import features.shared.SharedFeatures
+import features.subobject.SubObjectFeatures
 
 enum class FeatureEnum(val text: String, val type: FeatureType, val func: (KotlinRanklibFormatter, Double, NormType) -> Unit) {
     DOC_BM25(text = "doc_bm25",
@@ -149,4 +150,37 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     ENTITY_BOOSTED_WINDOW(text = "entity_boosted_window",
             type = ENTITY,
             func = EntityRankingFeatures::addBM25BoostedWindowedBigram),
+
+    PFUNCTOR_UNIGRAM_UNIGRAM(text = "functor_punigram_eunigram",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToEUnigram),
+
+    PFUNCTOR_UNIGRAM_CATEGORY(text = "functor_punigram_ecategory",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToECategory),
+
+    PFUNCTOR_UNIGRAM_INLINKS(text = "functor_punigram_einlinks",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToEInlinks),
+
+    PFUNCTOR_UNIGRAM_OUTLINKS(text = "functor_punigram_eoutlinks",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToEOutlinks),
+
+    PFUNCTOR_UNIGRAM_SECTON(text = "functor_punigram_esection",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToESection),
+
+    PFUNCTOR_UNIGRAM_DISAMBIG(text = "functor_punigram_edisambig",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToEDisambig),
+
+    PFUNCTOR_UNIGRAM_REDIRECTS(text = "functor_punigram_eredirects",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToERedirects),
+
+
+    PFUNCTOR_LINK_FREQ(text = "functor_punigram_einlinks",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addLinkFreq),
 }

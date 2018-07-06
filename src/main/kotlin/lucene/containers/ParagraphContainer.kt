@@ -23,6 +23,7 @@ data class ParagraphContainer(val pid: String,
                               val sharedFeatures: ArrayList<FeatureContainer> = ArrayList(),
                               val docId: Int,
                               val searcher: IndexSearcher,
+                              val index: Int,
 //                              val doc: Document,
                               var score: Double = 0.0,
                               val query: String) {

@@ -11,6 +11,7 @@ import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import utils.lucene.getIndexSearcher
 import experiment.OptimalWeights.*
+import features.subobject.SubObjectFeatures
 
 /**
  * Class: MasterExperiment
@@ -142,6 +143,18 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
     }
 
+    fun queryFunctor(weights: List<Double>? = null) {
+        val norm = NormType.SUM
+        var i = 0
+        SubObjectFeatures.addLinkFreq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToECategory(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SubObjectFeatures.addPUnigramToEInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToERedirects(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SubObjectFeatures.addPUnigramToEDisambig(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SubObjectFeatures.addPUnigramToESection(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SubObjectFeatures.addPUnigramToEOutlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+    }
 
 
     fun doDb() {
@@ -222,26 +235,15 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         method("query", "boostPage") { queryBoostPage() }
 
 
-                        // Cur best?
-//                        method("query", "entity") { queryEntity(weights = listOf(
-//                                0.019313034650612276 , 0.16258214586942915 , 0.509287506070476 , -0.06890715290139084 , -0.16840097695062275 , 0.0715091835574691
-//                            )) }
-
-                        // Page best
-//                        method("query", "entity") { queryEntity(weights = listOf(
-//                                0.06206049130433155, 0.1374662146601575 , 0.2604290468911512 , 0.19530904360336585 , -0.3229833761680545 , 0.021751827372939462
-//                            )) }
-
 
                         method("query", "entity") { queryEntity(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights) }
                         method("train", "entity") { queryEntity() }
 
                         method("train", "boostPage") { queryBoostPage() }
 
+                        method("query", "functor") { queryFunctor(OptimalWeights.PARAGRAPH_FUNCTOR_WEIGHTS.weights) }
+                        method("train", "functor") { queryFunctor() }
 
-//                        method("train", "do_bm25") {
-//                            doBM25()
-//                        }
 
                     }
 

@@ -7,6 +7,7 @@ import java.util.ArrayList
 data class EntityContainer(
         val name: String,
         val qid: Int,
+        val index: Int,
         val docId: Int,
         var isRelevant: Boolean = false,
         val queryFeatures: ArrayList<FeatureContainer> = arrayListOf(),

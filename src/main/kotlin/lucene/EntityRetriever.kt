@@ -33,12 +33,13 @@ class EntityRetriever(val db: EntityDatabase,
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
                     val entityNames = getCandidateEntityNames(tops, index.index)
                     val entities = getCandidateEntityData(entityNames)
-                    entities.map { entity: EntityData ->
+                    entities.mapIndexed { eIndex: Int, entity: EntityData ->
                     EntityContainer(
                             name = entity.name,
                             qid = index.index + 1,
                             docId = entity.docId,
                             searcher = db.searcher,
+                            index = eIndex,
                             isRelevant = relevancies?.contains(query.split("/").first() to entity.name.toLowerCase()) ?: false
                     )
                 }.toList()

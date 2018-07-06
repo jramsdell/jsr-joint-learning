@@ -74,6 +74,7 @@ fun<A, B> Iterable<Pair<A, Iterable<B>>>.groupOfSetsFlattened(): Map<A, Set<B>> 
 }
 
 
+
 fun<A, B, C> Iterable<A>.mapOfLists(f: (A) -> Pair<B, C>): Map<B, List<C>> {
     val newMap = HashMap<B, ArrayList<C>>()
     forEach { element ->
