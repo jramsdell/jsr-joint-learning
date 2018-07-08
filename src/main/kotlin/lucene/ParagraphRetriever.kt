@@ -8,7 +8,7 @@ import utils.AnalyzerFunctions
 import utils.lucene.searchFirstOrNull
 import utils.misc.PID
 import utils.misc.groupOfSetsFlattened
-import utils.misc.mapOfSets
+import utils.misc.mapOfLists
 import utils.parallel.pmap
 import java.io.File
 import java.util.*
@@ -34,7 +34,9 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 File(qrelLoc)
                     .bufferedReader()
                     .readLines()
-                    .mapOfSets { it.split(" ").let { it[0] to it[2] } }
+//                    .mapOfSets { it.split(" ").let { it[0] to it[2] } }
+                    .mapOfLists { it.split(" ").let { it[0] to (it[2] to it[3].toInt()) } }
+                    .mapValues { it.value.toMap() }
 
 
 
@@ -42,22 +44,25 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
     val paragraphContainers =
             queries.withIndex().pmap { index ->
                 val (query, tops) = index.value
-                val relevantToQuery = relevancies?.get(query) ?: emptySet()
+//                val relevantToQuery = relevancies?.get(query) ?: emptySet()
+                val relevantToQuery = relevancies?.get(query) ?: emptyMap()
                 val seen = HashSet<String>()
 
                 val containers = tops.scoreDocs.mapIndexed { pIndex, sc ->
                     createParagraphContainer(pIndex, sc.doc, index.index, query, relevantToQuery, sc.score) }
 //                    .filter { seen.add(it.pid) }
 
-                if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
-                else containers
+                containers
+//                if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
+//                else containers
+
             }.let { result ->  if (doFiltered) result.map(this::filterNeighbors) else result }
 
 
     private fun filterNeighbors(containers: List<ParagraphContainer>): List<ParagraphContainer> {
         val nearby = HashSet<Int>()
         containers.forEachIndexed { index, paragraphContainer ->
-            if (paragraphContainer.isRelevant) {
+            if (paragraphContainer.isRelevant > 0) {
                 nearby += Math.max(index - 1, 0)
                 nearby += Math.max(index - 2, 0)
                 nearby += Math.min(index + 1, containers.size)
@@ -68,13 +73,13 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
         return containers.filterIndexed { index, paragraphContainer ->  index in nearby }
     }
 
-    private fun include(containers: List<ParagraphContainer>, index: Int, query: String,
-                                          relevantToQuery: Set<String>): List<ParagraphContainer> {
-        val missingRelevantParagraphs = relevantToQuery - containers.map { p -> p.pid }.toSet()
-        val retrievedRelevantParagraphs = retrieveParagraphs(missingRelevantParagraphs.toList())
-            .mapIndexed { pIndex, docId -> createParagraphContainer(pIndex, docId, index, query, relevantToQuery, 0.0f) }
-        return containers + retrievedRelevantParagraphs
-    }
+//    private fun include(containers: List<ParagraphContainer>, index: Int, query: String,
+//                        relevantToQuery: Map<String, Int>): List<ParagraphContainer> {
+//        val missingRelevantParagraphs = relevantToQuery - containers.map { p -> p.pid }.toSet()
+//        val retrievedRelevantParagraphs = retrieveParagraphs(missingRelevantParagraphs.toList())
+//            .mapIndexed { pIndex, docId -> createParagraphContainer(pIndex, docId, index, query, relevantToQuery, 0.0f) }
+//        return containers + retrievedRelevantParagraphs
+//    }
 
     /**
      * Func: createParagraphContainer
@@ -90,13 +95,14 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
      * @return[ParagraphContainer] Candidate paragraph document retrieved via BM25
      */
     private fun createParagraphContainer(pIndex: Int, docId: Int, index: Int,
-                                         query: String, relevantToQuery: Set<String>, score: Float): ParagraphContainer {
+                                         query: String, relevantToQuery: Map<String, Int>, score: Float): ParagraphContainer {
         val doc = indexSearcher.doc(docId)
         val pid = doc.get(PID)
         return ParagraphContainer(
                 pid = pid,
                 qid = index + 1,
-                isRelevant = relevantToQuery.contains(pid),
+//                isRelevant = relevantToQuery.contains(pid),
+                isRelevant = relevantToQuery[pid] ?: 0,
                 query = query,
                 docId = docId,
                 searcher = indexSearcher,
@@ -121,30 +127,30 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
      *
      *       Results are saved to entity_section.qrel and entity_page.qrel
      */
-    fun writeEntityQrelsUsingParagraphQrels() {
-        val relevantEntities = createRelevantEntities().toSortedMap()
-        val sectionQrelFile = File("entity_section.qrel").bufferedWriter()
-        val pageQrelFile = File("entity_page.qrel").bufferedWriter()
-
-        val pageLevel = relevantEntities
-            .entries
-            .map { (query, rels) -> query.split("/").first() to rels.toList() }
-            .groupOfSetsFlattened()
-            .toSortedMap()
-
-
-        val getFormattedString = { entityQrels: SortedMap<String, Set<String>> ->
-            entityQrels
-                .flatMap { (query: String, rels: Set<String>) ->
-                    rels.map { relEntity: String ->  "$query 0 $relEntity 1"} }
-                .joinToString("\n")
-        }
-
-        sectionQrelFile.write(getFormattedString(relevantEntities))
-        pageQrelFile.write(getFormattedString(pageLevel))
-        sectionQrelFile.close()
-        pageQrelFile.close()
-    }
+//    fun writeEntityQrelsUsingParagraphQrels() {
+//        val relevantEntities = createRelevantEntities().toSortedMap()
+//        val sectionQrelFile = File("entity_section.qrel").bufferedWriter()
+//        val pageQrelFile = File("entity_page.qrel").bufferedWriter()
+//
+//        val pageLevel = relevantEntities
+//            .entries
+//            .map { (query, rels) -> query.split("/").first() to rels.toList() }
+//            .groupOfSetsFlattened()
+//            .toSortedMap()
+//
+//
+//        val getFormattedString = { entityQrels: SortedMap<String, Set<String>> ->
+//            entityQrels
+//                .flatMap { (query: String, rels: Set<String>) ->
+//                    rels.map { relEntity: String ->  "$query 0 $relEntity 1"} }
+//                .joinToString("\n")
+//        }
+//
+//        sectionQrelFile.write(getFormattedString(relevantEntities))
+//        pageQrelFile.write(getFormattedString(pageLevel))
+//        sectionQrelFile.close()
+//        pageQrelFile.close()
+//    }
 
     /**
      * Func: createRelevantEntities
@@ -154,12 +160,12 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
      * @see relevancies (a map of queries to sets of relevant paragraphs)
      * @return[Set<String>] Set of entity IDs linked to paragraphs
      */
-    private fun createRelevantEntities(): Map<String, Set<String>> {
-        if (relevancies == null)
-            return emptyMap()
-        return relevancies.mapValues { (_, relevantParagraphs) ->
-            queryPIDS(relevantParagraphs.toList()) }
-    }
+//    private fun createRelevantEntities(): Map<String, Set<String>> {
+//        if (relevancies == null)
+//            return emptyMap()
+//        return relevancies.mapValues { (_, relevantParagraphs) ->
+//            queryPIDS(relevantParagraphs.toList()) }
+//    }
 
     /**
      * Func: queryPIDS

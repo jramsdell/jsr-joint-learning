@@ -19,6 +19,7 @@ data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: 
                           val queryData: QueryData,
                           val entities: List<EntityContainer>) {
     val jointDistribution = JointDistribution.createFromFunctor(queryData)
+//    val jointDistribution = JointDistribution.createEmpty()
 
     fun retrieveFeatures(): Sequence<ExtractedFeature> {
         val nFeatures = paragraphs.firstOrNull()?.queryFeatures?.size ?: 0

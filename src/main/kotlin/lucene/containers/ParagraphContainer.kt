@@ -16,7 +16,7 @@ import org.apache.lucene.search.IndexSearcher
  */
 data class ParagraphContainer(val pid: String,
                               val qid: Int,
-                              val isRelevant: Boolean,
+                              val isRelevant: Int,
                               val features: ArrayList<FeatureContainer>,
                               val queryFeatures: ArrayList<FeatureContainer> = ArrayList(),
                               val entityFeatures: ArrayList<FeatureContainer> = ArrayList(),
@@ -46,7 +46,8 @@ data class ParagraphContainer(val pid: String,
 
     override fun toString(): String {
         val combinedFeaures = queryFeatures + entityFeatures + sharedFeatures
-        return "${if (isRelevant) 1 else 0} qid:$qid " +
+//        return "${if (isRelevant) 1 else 0} qid:$qid " +
+                return "$isRelevant qid:$qid " +
                     (1..combinedFeaures.size).zip(combinedFeaures)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
                     " #$query#$pid"

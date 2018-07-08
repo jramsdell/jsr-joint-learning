@@ -23,7 +23,8 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 
-// 0.2183
+// .18 / .13
+// 5859
 
 /**
  * Enum: lucene.NormType
@@ -220,7 +221,15 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
             if (featureEnum.type == FeatureType.PARAGRAPH_FUNCTOR) {
                 qc.paragraphs.forEachIndexed { index, paragraphContainer ->
-                    sf.paragraphScores[index] = paragraphContainer.score
+//                    sf.paragraphScores[index] = paragraphContainer.score
+//                    sf.paragraphScores[index] = if (paragraphContainer.isRelevant) 1.0 else 0.0
+                    sf.paragraphScores[index] = paragraphContainer.isRelevant.toDouble()
+                }
+
+                qc.entities.forEachIndexed { index, entityContainer ->
+                    //                    sf.paragraphScores[index] = paragraphContainer.score
+//                    sf.entityScores[index] = if (entityContainer.isRelevant) 1.0 else 0.0
+                    sf.entityScores[index] = entityContainer.isRelevant.toDouble()
                 }
             }
 

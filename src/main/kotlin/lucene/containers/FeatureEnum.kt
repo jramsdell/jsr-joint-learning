@@ -179,6 +179,27 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH_FUNCTOR,
             func = SubObjectFeatures::addPUnigramToERedirects),
 
+    PFUNCTOR_JOINTUNIGRAM_UNIGRAM(text = "functor_pjointunigram_unigram",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPJointUnigramToEUnigram),
+
+    PFUNCTOR_JOINTBIGRAM_BIGRAM(text = "functor_pjointbigram_bigram",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPJointBigramToEBigram),
+
+    PFUNCTOR_JOINTWINDOWED_WINDOWED(text = "functor_pjointwindowed_windowed",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPJointWindowedToEWindowed),
+
+    PFUNCTOR_BIGRAM_BIGRAM(text = "functor_pbigram_ebigram",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPBigramToEBigram),
+
+    PFUNCTOR_WINDOWED_WINDOWED(text = "functor_pwindowed_ewindowed",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPWindowedToEWindowed),
+
+
 
     PFUNCTOR_LINK_FREQ(text = "functor_punigram_einlinks",
             type = PARAGRAPH_FUNCTOR,

@@ -15,6 +15,7 @@ fun buildParser(): ArgumentParser {
     DebugApp.addExperiments(subparsers)
     RanklibReaderApp.addExperiments(subparsers)
     ExtractorApp.addExperiments(subparsers)
+    GroundTruthApp.addExperiments(subparsers)
 
     return mainParser
 }

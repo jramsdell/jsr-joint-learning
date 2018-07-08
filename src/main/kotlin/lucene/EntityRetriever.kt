@@ -6,6 +6,7 @@ import lucene.containers.EntityContainer
 import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
+import utils.misc.mapOfLists
 import utils.parallel.pmap
 import java.io.File
 
@@ -21,8 +22,9 @@ class EntityRetriever(val db: EntityDatabase,
                 File(qrelLoc)
                     .bufferedReader()
                     .readLines()
-                    .map { it.split(" ").let { it[0] to cleanQrelEntry(it[2]) } }
-                    .toSet()
+                    .mapOfLists { it.split(" ").let { it[0] to (cleanQrelEntry(it[2]) to it[3].toInt()) } }
+                    .mapValues { it.value.toMap() }
+//                    .toSet()
 
 
 
@@ -40,22 +42,23 @@ class EntityRetriever(val db: EntityDatabase,
                             docId = entity.docId,
                             searcher = db.searcher,
                             index = eIndex,
-                            isRelevant = relevancies?.contains(query.split("/").first() to entity.name.toLowerCase()) ?: false
+//                            isRelevant = relevancies?.contains(query.split("/").first() to entity.name.toLowerCase()) ?: false
+                            isRelevant = relevancies?.get(query.split("/").first())?.get(entity.name.toLowerCase()) ?: 0
                     )
                 }.toList()
             }
 
-    private fun filterNeighbors(containers: List<EntityContainer>): List<EntityContainer> {
-        val nearby = HashSet<Int>()
-        containers.forEachIndexed { index, entityContainer ->
-            if (entityContainer.isRelevant) {
-                nearby += Math.max(index - 1, 0)
-                nearby += Math.min(index + 1, containers.size)
-                nearby += index
-            }
-        }
-        return containers.filterIndexed { index, paragraphContainer ->  index in nearby }
-    }
+//    private fun filterNeighbors(containers: List<EntityContainer>): List<EntityContainer> {
+//        val nearby = HashSet<Int>()
+//        containers.forEachIndexed { index, entityContainer ->
+//            if (entityContainer.isRelevant) {
+//                nearby += Math.max(index - 1, 0)
+//                nearby += Math.min(index + 1, containers.size)
+//                nearby += index
+//            }
+//        }
+//        return containers.filterIndexed { index, paragraphContainer ->  index in nearby }
+//    }
 
 
     private fun getCandidateEntityNames(tops: TopDocs, index: Int): List<String> {
