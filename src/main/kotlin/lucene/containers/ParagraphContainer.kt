@@ -50,8 +50,8 @@ data class ParagraphContainer(val pid: String,
                 return "$isRelevant qid:$qid " +
                     (1..combinedFeaures.size).zip(combinedFeaures)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    " #$query#$pid"
-//        " #$query#$pid#${doc.get(IndexFields.FIELD_TEXT.field).replace("\n", " ")}"
+//                    " #$query#$pid"
+        " #$query#$pid#${doc().get(IndexFields.FIELD_TEXT.field).replace("\n", " ")}"
     }
 
 }

@@ -18,7 +18,8 @@ data class ExtractedFeature(val name: String,
 data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
                           val queryData: QueryData,
                           val entities: List<EntityContainer>) {
-    val jointDistribution = JointDistribution.createFromFunctor(queryData)
+    val jointDistribution = JointDistribution.createJointDistribution(queryData.entityContainers, queryData.paragraphContainers)
+//    val jointDistribution = JointDistribution.createFromFunctor(queryData)
 //    val jointDistribution = JointDistribution.createEmpty()
 
     fun retrieveFeatures(): Sequence<ExtractedFeature> {

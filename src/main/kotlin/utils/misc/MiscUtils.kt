@@ -84,6 +84,12 @@ fun<A, B, C> Iterable<A>.mapOfLists(f: (A) -> Pair<B, C>): Map<B, List<C>> {
     return newMap
 }
 
+fun <A, B> Iterable<Pair<A, B>>.toHashMap(): HashMap<A, B> {
+    val hashMap = HashMap<A, B>()
+    forEach { (k,v) -> hashMap[k] = v }
+    return hashMap
+}
+
 
 
 

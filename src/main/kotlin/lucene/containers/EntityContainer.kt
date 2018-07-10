@@ -32,6 +32,7 @@ data class EntityContainer(
         val combinedFeaures = queryFeatures + documentFeatures + sharedFeatures
 //        return "${if (isRelevant) 1 else 0} qid:${qid + 1000} " +
                 return "$isRelevant qid:${qid + 1000} " +
+//                        return "$isRelevant qid:${qid} " +
 //                return "${if (isRelevant) 1 else 0} qid:${qid} " +
                 (1..combinedFeaures.size).zip(combinedFeaures)
                     .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } + " # entity"

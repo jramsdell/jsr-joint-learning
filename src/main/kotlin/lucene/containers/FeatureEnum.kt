@@ -199,6 +199,14 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH_FUNCTOR,
             func = SubObjectFeatures::addPWindowedToEWindowed),
 
+    PFUNCTOR_ENTITY_OUTLINKS(text = "functor_entity_outlinks",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPEntityToOutlinks),
+
+    PFUNCTOR_ENTITY_INLINKS(text = "functor_entity_inlinks",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPEntityToInlinks),
+
 
 
     PFUNCTOR_LINK_FREQ(text = "functor_punigram_einlinks",
