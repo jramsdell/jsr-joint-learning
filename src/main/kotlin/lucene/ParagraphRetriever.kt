@@ -2,6 +2,8 @@ package lucene
 
 import lucene.containers.DocContainer
 import lucene.containers.IndexType.*
+import lucene.containers.ParagraphSearcher
+import lucene.containers.pid
 import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
@@ -22,7 +24,7 @@ import java.util.*
  * @param[queries] A paired list of query strings and of [TopDocs] retrieves via BM25 search.
  * @param[qrelLoc] Location of .qrel file (optional): used to determine if paragraphs are relevant to query
  */
-class ParagraphRetriever(val indexSearcher: IndexSearcher,
+class ParagraphRetriever(val paragraphSearcher: ParagraphSearcher,
                          queries: List<Pair<String, TopDocs>>,
                          qrelLoc: String, includeRelevant: Boolean = false,
                          doFiltered: Boolean = false) {
@@ -48,9 +50,14 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 val relevantToQuery = relevancies?.get(query) ?: emptyMap()
                 val seen = HashSet<String>()
 
-                val containers = tops.scoreDocs.mapIndexed { pIndex, sc ->
+                val containers = tops.scoreDocs
+                    .filter { sc ->
+                        val doc = paragraphSearcher.getIndexDoc(sc.doc)
+                        seen.add(doc.pid())
+                    }
+                    .mapIndexed { pIndex, sc ->
                     createParagraphContainer(pIndex, sc.doc, index.index, query, relevantToQuery, sc.score) }
-//                    .filter { seen.add(it.pid) }
+//                    .filter { seen.add(it.name) }
 
                 containers
 //                if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
@@ -97,7 +104,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
     private fun createParagraphContainer(pIndex: Int, docId: Int, index: Int,
                                          query: String, relevantToQuery: Map<String, Int>, score: Float)
             : DocContainer<PARAGRAPH> {
-        val doc = indexSearcher.doc(docId)
+        val doc = paragraphSearcher.doc(docId)
         val pid = doc.get(PID)
         return DocContainer.createDocumentContainer(
                 name = pid,
@@ -106,7 +113,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 isRelevant = relevantToQuery[pid] ?: 0,
                 query = query,
                 docId = docId,
-                searcher = indexSearcher,
+                searcher = paragraphSearcher,
                 score = score.toDouble(),
                 index = pIndex)
     }
@@ -114,7 +121,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
     private fun retrieveParagraphs(pids: List<String>): List<Int> =
             pids.mapNotNull { pid ->
                 val query = AnalyzerFunctions.createQuery(pid, field = PID)
-                indexSearcher.search(query, 1)
+                paragraphSearcher.search(query, 1)
                     .scoreDocs
                     .firstOrNull()
                     ?.doc
@@ -179,11 +186,11 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 // Retrieve paragraph document IDs from index based on their PIDs
                 .mapNotNull { pid: String ->
                     val query = AnalyzerFunctions.createQuery(pid, field = IndexFields.FIELD_PID.field)
-                    indexSearcher.searchFirstOrNull(query)?.doc }
+                    paragraphSearcher.searchFirstOrNull(query)?.doc }
 
                 // Retrieve document from index and get spotlight/tagme entities
                 .flatMap {  docId: Int ->
-                    val doc = indexSearcher.doc(docId)
+                    val doc = paragraphSearcher.doc(docId)
                     doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
                 //    doc.getValues(IndexFields.FIELD_ENTITIES.field).toList() }
                 .toSet()

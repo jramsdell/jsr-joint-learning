@@ -1,57 +1,13 @@
 package lucene
 
+import features.shared.SharedFeature
 import lucene.containers.ExtractedFeature
 import lucene.containers.FeatureEnum
 import lucene.containers.QueryContainer
-import org.mapdb.BTreeMap
-import org.mapdb.DBMaker
-import org.mapdb.Serializer
-import org.mapdb.serializer.SerializerArrayTuple
+import utils.misc.toArrayList
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
-
-class FeatureDatabase {
-    val db = DBMaker
-        .fileDB("features.db")
-        .fileMmapEnable()
-        .closeOnJvmShutdown()
-        .concurrencyScale(60)
-        .make()
-
-
-    val memoizedFeatureMaps = ConcurrentHashMap<String, BTreeMap<Array<Any>, Double>>()
-
-    fun getFeatureMap(name: String) =
-                db.treeMap(name)
-                    .keySerializer(SerializerArrayTuple(Serializer.STRING, Serializer.STRING))
-                    .valueSerializer(Serializer.DOUBLE)
-                    .createOrOpen()
-
-//    fun writeFeatures(qc: QueryContainer) {
-//        qc.retrieveFeatures().forEach { (name, paragraphScores, entityScores) ->
-//            val paragraphMap = getFeatureMap("${name}_paragraph")
-//            val entityMap = getFeatureMap("${name}_entity")
-//
-//            paragraphScores.forEach { (id, score) -> paragraphMap[arrayOf(qc.query,  id)] = score }
-//            entityScores.forEach { (id, score) -> entityMap[arrayOf(qc.query, id)] = score }
-//        }
-//    }
-
-    fun aggregateFeature(featureMap: BTreeMap<Array<Any>, Double>, query: String) =
-        featureMap.prefixSubMap(arrayOf(query)).entries.map { entry ->
-            val id = entry.key[1] as String
-            id to entry.value
-        }
-
-//    fun retrieveFeature(name: String, query: String): ExtractedFeature {
-//        val paragraphMap = getFeatureMap("${name}_paragraph")
-//        val entityMap = getFeatureMap("${name}_entity")
-//        val paragraphScores = aggregateFeature(paragraphMap, query)
-//        val entityScores = aggregateFeature(paragraphMap, query)
-//        return ExtractedFeature(name, paragraphs = paragraphScores, entities = entityScores)
-//    }
-}
 
 
 private class LineFeature(val query: String, val qid: Int, val id: String, val score: Double) {
@@ -68,15 +24,36 @@ private class LineFeature(val query: String, val qid: Int, val id: String, val s
     }
 }
 
+data class FeatureSet( val features: Map<String, SharedFeature> )
+
+
 class FeatureDatabase2() {
     val featuresPath = "features/"
     val featuresDir = File(featuresPath).apply { if(!exists()) mkdirs() }
+    private val featureStore = ConcurrentHashMap<String, ConcurrentHashMap<String, SharedFeature>>()
+
+    fun storeFeature(query: String, featureType: FeatureEnum, sf: SharedFeature) {
+        featureStore.computeIfAbsent(featureType.text, { ConcurrentHashMap() }).put(query, sf)
+    }
+
+
 
     fun writeFeatures(queryContainers: List<QueryContainer>) {
         queryContainers.flatMap { qc -> qc.retrieveFeatures().toList() }
             .groupBy { it.name }
             .values.forEachIndexed(this::writeFeatureResults)
     }
+
+//    private fun createFeatureSet(lines: List<LineFeature>): FeatureSet {
+//        val features =
+//                lines
+//                    .groupBy { line -> line.query }
+//                    .mapValues { (_, featuresByQuery) ->
+//                        featuresByQuery.map { feature -> feature.id to feature.score }.toMap() }
+//                    .toMap()
+//
+//        return FeatureSet(features)
+//    }
 
     fun writeFeatureResults(qid: Int, featureList: List<ExtractedFeature>) {
         val name = featureList.first().name
@@ -94,17 +71,50 @@ class FeatureDatabase2() {
         featuresFile.close()
     }
 
-    private fun getFeature(featureEnum: FeatureEnum) =
-            getLineFeatures(featuresPath + featureEnum.text)
+    fun writeSharedFeatures() {
+        featureStore.forEach { (fName, features) ->
+            val featuresFile = File(featuresPath + fName + ".txt").bufferedWriter()
 
-    private fun getFeatures(featureEnums: List<FeatureEnum>) {
-        val features = featureEnums.flatMap(this::getFeature)
+            val result = features.map { (query, feature) ->
+                val fPar = feature.paragraphScores.joinToString(" ")
+                val fEnt = feature.entityScores.joinToString(" ")
+                val fSec = feature.sectionScores.joinToString(" ")
+                "$query\t$fPar\t$fEnt\t$fSec" }
+                .joinToString("\n")
+
+            featuresFile.write(result)
+            featuresFile.close()
+        }
+
+
     }
 
-    private fun getLineFeatures(filename: String) =
-        File(filename).bufferedReader()
-            .readLines()
-            .map(LineFeature.Companion::createLineFeature)
+    fun getFeature(featureEnum: FeatureEnum): Map<String, SharedFeature> {
+        val fPath = featuresPath + featureEnum.text + ".txt"
+        val sharedFeatures = getSharedFeatures(filename = fPath)
+        return sharedFeatures
+    }
+
+//    private fun getFeatures(featureEnums: List<FeatureEnum>) {
+//        val features = featureEnums.flatMap(this::getFeature)
+//    }
+
+    private fun getSharedFeatures(filename: String) =
+            File(filename).bufferedReader()
+                .readLines()
+                .map { line ->
+                    val elements = line.split("\t")
+                    val query = elements[0]
+                    val features = elements
+                        .drop(1)
+                        .map { it.split(" ").map(String::toDouble) }
+
+                    val sf = SharedFeature(
+                            paragraphScores = features[0].toArrayList(),
+                            entityScores = features[1].toArrayList(),
+                            sectionScores = features[2].toArrayList())
+                    query to sf
+                }.toMap()
 
 
 }

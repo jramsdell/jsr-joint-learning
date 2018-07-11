@@ -41,7 +41,7 @@ class DocContainer<out A: IndexType>(val name: String,
                 return "$isRelevant qid:$qid " +
                     (1..features.size).zip(features)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    " #$query#${docType.typeName}"
+                    "#$name #${docType.typeName.split("$").last()}"
     }
 
     companion object {

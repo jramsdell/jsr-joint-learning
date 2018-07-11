@@ -6,6 +6,7 @@ import experiment.KotlinRanklibFormatter
 import experiment.NormType
 import features.document.DocumentRankingFeatures
 import features.entity.EntityRankingFeatures
+import features.section.SectionRankingFeatures
 import features.shared.SharedFeatures
 import features.subobject.SubObjectFeatures
 
@@ -216,4 +217,17 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     PFUNCTOR_LINK_FREQ(text = "functor_punigram_einlinks",
             type = PARAGRAPH_FUNCTOR,
             func = SubObjectFeatures::addLinkFreq),
+
+    SECTION_UNIGRAMS(text = "section_unigrams",
+            type = SECTION,
+            func = SectionRankingFeatures::addUnigrams),
+
+    SECTION_BIGRAMS(text = "section_bigrams",
+            type = SECTION,
+            func = SectionRankingFeatures::addBigrams),
+
+    SECTION_HEADING(text = "section_heading",
+            type = SECTION,
+            func = SectionRankingFeatures::addHeading),
+
 }

@@ -38,7 +38,7 @@ class EntityRetriever(val entitySearcher: EntitySearcher,
                         .mapIndexed { eIndex: Int, (name, docId) ->
                     DocContainer.createDocumentContainer<IndexType.ENTITY>(
                             name = name,
-                            qid = index.index + 1,
+                            qid = index.index + 1001,
                             docId = docId,
                             searcher = entitySearcher,
                             index = eIndex,

@@ -30,18 +30,21 @@ fun getSections(cur: Data.Section): List<String> {
             else header + cur.childSections.flatMap { child -> getSections(child) }
 }
 
-private fun foldOverSection(f: (Data.Section, List<Data.Paragraph>) -> Unit, cur: Data.Section) {
+private fun foldOverSection(f: (String, Data.Section, List<Data.Paragraph>) -> Unit, cur: Data.Section, path: String) {
     if (cur.heading !in sectionsToIgnore) {
         val content = cur.children
             .filterIsInstance<Data.Para>()
             .map { it.paragraph }
-        f(cur, content)
-        cur.childSections.forEach { child -> foldOverSection(f, child) }
+            .filter { p -> p.textOnly.length > 100 &&
+                    !p.textOnly.contains(":") && !p.textOnly.contains("•") }
+        if (content.isNotEmpty())
+            f(path, cur, content)
+        cur.childSections.forEach { child -> foldOverSection(f, child, path + "/" + child.heading) }
     }
 }
 
-fun Data.Page.foldOverSection(f: (Data.Section, List<Data.Paragraph>) -> Unit) {
-    childSections.forEach { section -> foldOverSection(f, section) }
+fun Data.Page.foldOverSection(f: (String, Data.Section, List<Data.Paragraph>) -> Unit) {
+    childSections.forEach { section -> foldOverSection(f, section, section.heading) }
 }
 
 fun Data.Page.getSectionLevels() =

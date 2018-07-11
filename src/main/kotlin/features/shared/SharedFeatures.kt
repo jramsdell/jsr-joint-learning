@@ -24,11 +24,19 @@ import org.apache.lucene.document.Document
 import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
 import utils.misc.PID
+import utils.misc.toArrayList
 import utils.stats.takeMostFrequent
 import kotlin.math.max
 
 
-data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>, val sectionScore: ArrayList<Double>)
+data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>, val sectionScores: ArrayList<Double>) {
+    fun makeCopy(): SharedFeature {
+        val pScores = paragraphScores.map { it }.toArrayList()
+        val eScores = entityScores.map { it }.toArrayList()
+        val sScores = sectionScores.map { it }.toArrayList()
+        return SharedFeature(pScores, eScores, sScores)
+    }
+}
 private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphList: List<B>,
                             scoreFunction: (A, B) -> Double) {
     entityList.mapIndexed { entityIndex, a ->
@@ -40,6 +48,7 @@ private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphLis
 //            sf.paragraphScores[paragraphIndex] = max(score, sf.paragraphScores[paragraphIndex] ?: 0.0)
         }
     }
+
 }
 
 private fun<A, B> scoreBothSeparate(sf: SharedFeature, entityList: List<A>, paragraphList: List<B>,

@@ -106,6 +106,9 @@ fun<A, B> Iterable<A>.forEachWith(other: B, f: (A, B) -> Unit) {
     forEach { item -> f(item, other) }
 }
 
+fun<A> List<A>.toArrayList() = ArrayList(this)
+
+
 //fun<A, B, C> Iterable<A>.mapOfMaps(f: (A) -> Pair<B, C>): Map<A, Map<B, C>> {
 //    val newMap = HashMap<A, HashMap<B, C>>()
 //    forEach { element ->

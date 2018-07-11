@@ -11,6 +11,7 @@ import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import utils.lucene.getIndexSearcher
 import experiment.OptimalWeights.*
+import features.section.SectionRankingFeatures
 import features.subobject.SubObjectFeatures
 
 /**
@@ -98,7 +99,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
         // Super awesome features
-        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addUnionUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addUnionBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addJointUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -106,12 +107,17 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
         EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+        SectionRankingFeatures.addUnigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SectionRankingFeatures.addBigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SectionRankingFeatures.addHeading(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
 
     }
 
@@ -121,7 +127,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
         SubObjectFeatures.addLinkFreq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToECategory(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         SubObjectFeatures.addPUnigramToEInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SubObjectFeatures.addPUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SubObjectFeatures.addPUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToERedirects(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToEDisambig(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 

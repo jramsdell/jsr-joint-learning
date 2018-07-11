@@ -55,6 +55,7 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
         val entityQrels = HashMap<String, List<Pair<String, Int>>>()
         val paragraphQrels = HashMap<String, List<Pair<String, Int>>>()
         val sectionQrels = HashMap<String, List<Pair<String, Int>>>()
+        val seenSections = HashSet<String>()
         DeserializeData.iterableAnnotations(input)
             .forEach { page ->
 
@@ -65,10 +66,10 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
                 val sList = ArrayList<Pair<String, Int>>()
                 val seenEntities = HashSet<String>()
 
-                page.foldOverSection { section, paragraphs ->
+                page.foldOverSection { path, section, paragraphs ->
                     val relParagraphs = paragraphs
                         .asSequence()
-                        .filter { p -> p.textOnly.length > 100 && !p.textOnly.contains(":") && !p.textOnly.contains("•") }
+//                        .filter { p -> p.textOnly.length > 100 && !p.textOnly.contains(":") && !p.textOnly.contains("•") }
                         .map { paragraph -> paragraph.paraId to paragraph.entitiesOnly.map(this::cleanEntity) }
                         .onEach { it.second.forEach { entity -> seenEntities.add(entity) } }
                         .map { (parId, parEntities) ->
@@ -77,9 +78,10 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
 //                        .sortedByDescending { it.second }
 
 //                    paragraphQrels[id]!!.addAll(relParagraphs.distinctBy { it.first })
+                    val sectionId = path.replace(" ","_")
                     pList.addAll(relParagraphs)
-                    sList.add(section.headingId to relParagraphs.sumBy { it.second })
-//                    entityQrels[id]!!.addAll(pageScores.toList().sortedByDescending { it.second }.distinctBy { it.first })
+                    if (relParagraphs.isNotEmpty() and seenSections.add(sectionId))
+                        sList.add(sectionId to relParagraphs.sumBy { it.second })
                 }
 
                 paragraphQrels[id] = pList.distinctBy { it.first }.sortedByDescending { it.second }

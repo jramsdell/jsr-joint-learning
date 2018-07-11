@@ -69,6 +69,7 @@ enum class IndexFields(val field: String) {
     FIELD_NEIGHBOR_SECTIONS("neighbor_sections"),
     FIELD_SECTION_ID("section_id"),
     FIELD_SECTION_HEADING("section_heading"),
+    FIELD_SECTION_PATH("section_heading"),
     FIELD_CHILDREN_IDS("children_ids")
 //    FIELD_PARAGRAPH_OUTLINKS("paragraph_outlinks")
 

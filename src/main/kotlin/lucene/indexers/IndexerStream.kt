@@ -124,7 +124,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 //            .joinToString(" ")
 //            .run { convertToUnigrams(this) }
 
-        page.foldOverSection { section: Data.Section, paragraphs: List<Data.Paragraph> ->
+        page.foldOverSection { path: String, section: Data.Section, paragraphs: List<Data.Paragraph> ->
             val heading = section.heading
 
             val tokens = AnalyzerFunctions.createTokenList(heading, ANALYZER_ENGLISH_STOPPED)
@@ -200,7 +200,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 //            .joinToString(" ")
 //            .run { convertToUnigrams(this) }
 
-        page.foldOverSection { section: Data.Section, paragraphs: List<Data.Paragraph> ->
+        page.foldOverSection { path: String, section: Data.Section, paragraphs: List<Data.Paragraph> ->
             paragraphs
                 .asSequence()
                 .filter { p -> p.textOnly.length > 100 && !p.textOnly.contains(":") && !p.textOnly.contains("•") }
@@ -285,7 +285,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 //                .joinToString(" ")
 
     fun processParagraphs(page: Data.Page) {
-        page.foldOverSection { section, paragraphs ->
+        page.foldOverSection { path, section, paragraphs ->
             val pData = paragraphs.map(this::buildParagraphData)
             val allEntities = pData.map { p -> p.entities }.joinToString(" ")
             val allUnigrams = pData.map { p -> p.unigrams }.joinToString(" ")
@@ -372,23 +372,24 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 
 
     fun processSections(page: Data.Page) {
-        page.foldOverSection { section, paragraphs ->
+        page.foldOverSection { path, section, paragraphs ->
             val doc = Document()
-            IndexFields.FIELD_SECTION_ID.setTextField(doc, section.headingId)
+            IndexFields.FIELD_SECTION_ID.setTextField(doc, path.replace(" ", "_"))
             val filteredHeading = AnalyzerFunctions.createTokenList(section.heading, ANALYZER_ENGLISH_STOPPED)
                 .joinToString(" ")
+            val filteredPath = AnalyzerFunctions.createTokenList(path, ANALYZER_ENGLISH_STOPPED)
+                .joinToString(" ")
             IndexFields.FIELD_SECTION_HEADING.setTextField(doc, filteredHeading)
+            IndexFields.FIELD_SECTION_PATH.setTextField(doc, filteredPath)
             val text = paragraphs.joinToString("\n") { it.textOnly + "\n" }
             val (unigrams, bigrams, windowed) = getGramsFromContent(text)
             val childrenIds = paragraphs.joinToString(" "){ it.paraId }
             IndexFields.FIELD_UNIGRAM.setTextField(doc, unigrams)
-//            IndexFields.FIELD_NEIGHBOR_UNIGRAMS.setTextField(doc,
-//                    AnalyzerFunctions.createTokenList(text, ANALYZER_ENGLISH_STOPPED).joinToString(" ")
-//                    )
             IndexFields.FIELD_BIGRAM.setTextField(doc, bigrams)
             IndexFields.FIELD_WINDOWED_BIGRAM.setTextField(doc, windowed)
             IndexFields.FIELD_CHILDREN_IDS.setTextField(doc, childrenIds)
-            sectionIndex.addDocument(doc)
+            if (paragraphs.isNotEmpty())
+                sectionIndex.addDocument(doc)
         }
 
     }

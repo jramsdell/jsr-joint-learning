@@ -17,6 +17,7 @@ data class QueryData(
 
         val entityContainers: List<EntityContainer>,
         val paragraphContainers: List<ParagraphContainer>,
+        val sectionContainers: List<SectionContainer>,
 //        val containers: TypedMapCollection<ArrayList<Any>>,
         val isJoint: Boolean,
         val tops: TopDocs,

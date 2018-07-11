@@ -38,11 +38,12 @@ class SectionRetriever(val sectionSearcher: IndexSearcher,
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
                     val entityNames = getCandidateEntityNames(tops, index.index)
                     val sections = getCandidateEntityData(entityNames).toList()
+                        .filter { it.second != "" }
                     sections
                         .mapIndexed { eIndex: Int, (docId, sectionId) ->
                             DocContainer.createDocumentContainer<IndexType.SECTION>(
                                     name = sectionId,
-                                    qid = index.index + 1,
+                                    qid = index.index + 5001,
                                     docId = docId,
                                     searcher = sectionSearcher,
                                     index = eIndex,

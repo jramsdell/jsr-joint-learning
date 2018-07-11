@@ -4,7 +4,9 @@ package lucene
 import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import lucene.containers.EntityContainer
+import lucene.containers.ParagraphContainer
 import lucene.containers.QueryContainer
+import lucene.containers.SectionContainer
 import lucene.indexers.IndexFields
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.search.*
@@ -129,8 +131,8 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
      * Description: Writes formatted lucene results to a file (for use with trec_eval)
      */
     private fun writeRankingsToFile(tops: TopDocs, queryId: String, writer: BufferedWriter, queryNumber: Int) {
-        val seen = HashSet<String>()
         (0 until tops.scoreDocs.size).forEach { index ->
+            val seen = HashSet<String>()
             val sd = tops.scoreDocs[index]
             val doc = indexSearcher.doc(sd.doc)
             val paragraphid = doc.get(PID)
@@ -157,8 +159,8 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
 
     fun writeEntitiesToFile(queries: List<QueryContainer>) {
         val writer = File("entity_results.run").bufferedWriter()
-        val seen = HashSet<String>()
         queries.forEach { container ->
+            val seen = HashSet<String>()
             val query = container.query
             container.entities.forEach(EntityContainer::rescore)
             container.entities
@@ -167,6 +169,40 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
                 .forEachIndexed { index, entity ->
                     val id = "enwiki:" + entity.name.replace("_", "%20")
                     writer.write("${query} Q0 $id ${index + 1} ${entity.score} Entity\n")
+                }
+        }
+        writer.flush()
+        writer.close()
+    }
+
+    fun writeParagraphsToFile(queries: List<QueryContainer>) {
+        val writer = File("paragraph_results.run").bufferedWriter()
+        queries.forEach { container ->
+            val seen = HashSet<String>()
+            val query = container.query
+            container.paragraphs.forEach(ParagraphContainer::rescore)
+            container.paragraphs
+                .filter { paragraph -> seen.add(paragraph.name) }
+                .sortedByDescending(ParagraphContainer::score)
+                .forEachIndexed { index, paragraph ->
+                    writer.write("${query} Q0 ${paragraph.name} ${index + 1} ${paragraph.score} Paragraph\n")
+                }
+        }
+        writer.flush()
+        writer.close()
+    }
+
+    fun writeSectionsToFile(queries: List<QueryContainer>) {
+        val writer = File("section_results.run").bufferedWriter()
+        queries.forEach { container ->
+            val seen = HashSet<String>()
+            val query = container.query
+            container.sections.forEach(SectionContainer::rescore)
+            container.sections
+                .filter { section -> seen.add(section.name) }
+                .sortedByDescending(SectionContainer::score)
+                .forEachIndexed { index, section ->
+                    writer.write("${query} Q0 ${section.name} ${index + 1} ${section.score} Section\n")
                 }
         }
         writer.flush()
