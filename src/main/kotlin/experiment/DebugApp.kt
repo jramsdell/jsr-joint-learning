@@ -37,9 +37,11 @@ class DebugApp(resources: HashMap<String, Any>) {
 //            if (text.length > 100 && !text.contains(":") && !text.contains("•")) { println(text + "\n"); println(text2 + "\n") }
 //        }
 
-        val searcher = getIndexSearcher("/speedy/jsc57/extractions2/entity_context")
+//        val searcher = getIndexSearcher("/speedy/jsc57/extractions2/entity_context")
 //        val searcher = getIndexSearcher("/speedy/jsc57/extractions2/section_context")
-        ContextMerger(searcher, searcher).run4()
+
+//        ContextMerger(searcher, searcher).run4()
+
 //        runtest()
 //        val searcher = getIndexSearcher("/speedy/jsc57/complete_entity_context/")
 //        val searcher = getIndexSearcher("/speedy/jsc57/extractions2/entity_context/")

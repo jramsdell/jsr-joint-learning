@@ -1,13 +1,13 @@
 package lucene
 
+import lucene.containers.DocContainer
+import lucene.containers.IndexType.*
 import lucene.indexers.IndexFields
-import lucene.containers.ParagraphContainer
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import utils.AnalyzerFunctions
 import utils.lucene.searchFirstOrNull
 import utils.misc.PID
-import utils.misc.groupOfSetsFlattened
 import utils.misc.mapOfLists
 import utils.parallel.pmap
 import java.io.File
@@ -59,7 +59,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
             }.let { result ->  if (doFiltered) result.map(this::filterNeighbors) else result }
 
 
-    private fun filterNeighbors(containers: List<ParagraphContainer>): List<ParagraphContainer> {
+    private fun filterNeighbors(containers: List<DocContainer<PARAGRAPH>>): List<DocContainer<PARAGRAPH>> {
         val nearby = HashSet<Int>()
         containers.forEachIndexed { index, paragraphContainer ->
             if (paragraphContainer.isRelevant > 0) {
@@ -95,11 +95,12 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
      * @return[ParagraphContainer] Candidate paragraph document retrieved via BM25
      */
     private fun createParagraphContainer(pIndex: Int, docId: Int, index: Int,
-                                         query: String, relevantToQuery: Map<String, Int>, score: Float): ParagraphContainer {
+                                         query: String, relevantToQuery: Map<String, Int>, score: Float)
+            : DocContainer<PARAGRAPH> {
         val doc = indexSearcher.doc(docId)
         val pid = doc.get(PID)
-        return ParagraphContainer(
-                pid = pid,
+        return DocContainer.createDocumentContainer(
+                name = pid,
                 qid = index + 1,
 //                isRelevant = relevantToQuery.contains(pid),
                 isRelevant = relevantToQuery[pid] ?: 0,
@@ -107,8 +108,7 @@ class ParagraphRetriever(val indexSearcher: IndexSearcher,
                 docId = docId,
                 searcher = indexSearcher,
                 score = score.toDouble(),
-                index = pIndex,
-                features = arrayListOf())
+                index = pIndex)
     }
 
     private fun retrieveParagraphs(pids: List<String>): List<Int> =

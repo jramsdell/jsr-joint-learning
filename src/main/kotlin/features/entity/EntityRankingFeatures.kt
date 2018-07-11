@@ -62,8 +62,8 @@ object EntityRankingFeatures {
             doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
             .countDuplicates()
 
-        entityContainers.forEachIndexed { index, (entity, docId) ->
-            sf.entityScores[index] = (counts[entity] ?: 0).toDouble()
+        entityContainers.forEachIndexed { index, eContainer ->
+            sf.entityScores[index] = (counts[eContainer.name] ?: 0).toDouble()
 
         }
     }

@@ -2,7 +2,7 @@ package lucene
 
 import entity.EntityData
 import entity.EntityDatabase
-import lucene.containers.EntityContainer
+import lucene.containers.*
 import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
@@ -11,8 +11,8 @@ import utils.parallel.pmap
 import java.io.File
 
 
-class EntityRetriever(val db: EntityDatabase,
-                      val indexSearcher: IndexSearcher,
+class EntityRetriever(val entitySearcher: EntitySearcher,
+                      val paragraphSearcher: ParagraphSearcher,
                       queries: List<Pair<String, TopDocs>>,
                       qrelLoc: String, val paragraphRetrieve: ParagraphRetriever) {
 
@@ -34,23 +34,17 @@ class EntityRetriever(val db: EntityDatabase,
                 val (query, tops) = index.value
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
                     val entityNames = getCandidateEntityNames(tops, index.index)
-                    val entities = getCandidateEntityData(entityNames)
-                    val seen = HashSet<String>()
-                    entities
-                        .filter {
-                            val name = db.getDocumentById(it.docId).get(IndexFields.FIELD_NAME.field)
-                            seen.add(name)
-
-                        }
-                        .mapIndexed { eIndex: Int, entity: EntityData ->
-                    EntityContainer(
-                            name = entity.name,
+                    getCandidateEntityData(entityNames)
+                        .mapIndexed { eIndex: Int, (name, docId) ->
+                    DocContainer.createDocumentContainer<IndexType.ENTITY>(
+                            name = name,
                             qid = index.index + 1,
-                            docId = entity.docId,
-                            searcher = db.searcher,
+                            docId = docId,
+                            searcher = entitySearcher,
                             index = eIndex,
+                            query = query,
 //                            isRelevant = relevancies?.contains(query.split("/").first() to entity.name.toLowerCase()) ?: false
-                            isRelevant = relevancies?.get(query.split("/").first())?.get(entity.name.toLowerCase()) ?: 0
+                            isRelevant = relevancies?.get(query.split("/").first())?.get(name.toLowerCase()) ?: 0
                     )
                 }.toList()
             }
@@ -71,7 +65,8 @@ class EntityRetriever(val db: EntityDatabase,
     private fun getCandidateEntityNames(tops: TopDocs, index: Int): List<String> {
         val seen = HashSet<String>()
         val entities = paragraphRetrieve
-            .paragraphContainers[index].flatMap { pC -> pC.doc().get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+//            .paragraphContainers[index].flatMap { pC -> pC.doc().get(IndexFields.FIELD_ENTITIES.field).split(" ") }
+            .paragraphContainers[index].flatMap { pC -> pC.doc().neighborEntities().split(" ") }
 //            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
             .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->
@@ -80,21 +75,21 @@ class EntityRetriever(val db: EntityDatabase,
         return entities
     }
 
-    private fun getCandidateEntityData(entities: List<String>): Sequence<EntityData> {
+    private fun getCandidateEntityData(entities: List<String>): Sequence<Pair<String, Int>> {
         val seen = HashSet<String>()
         val result = entities.toSortedSet()
             .asSequence()
-            .mapNotNull(db::getEntityDocId)
-            .map(db::getEntityByID)
-            .filter { doc -> seen.add(doc.name) }
+            .mapNotNull { entitySearcher.getDocumentByField(it) }
+            .map { it.name() to it.docId }
+            .filter { (name, _) -> seen.add(name) }
         return result
 
     }
 
-    private fun getCandidatesFromQuery(query: String) =
-        db.getEntityDocuments(query, 5)
-            .map { doc -> doc.get("abstract") }
-
+//    private fun getCandidatesFromQuery(query: String) =
+//        db.getEntityDocuments(query, 5)
+//            .map { doc -> doc.get("abstract") }
+//
     private fun cleanQrelEntry(entry: String) =
             entry.replace("enwiki:", "")
                 .replace("%20", "_")

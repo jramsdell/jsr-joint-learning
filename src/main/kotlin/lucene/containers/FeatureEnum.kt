@@ -14,9 +14,9 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH,
             func = DocumentRankingFeatures::addBM25Document),
 
-    DOC_SDM(text = "doc_sdm",
-            type = PARAGRAPH,
-            func = DocumentRankingFeatures::addSDMDocument),
+//    DOC_SDM(text = "doc_sdm",
+//            type = PARAGRAPH,
+//            func = DocumentRankingFeatures::addSDMDocument),
 
     DOC_BOOSTED_UNIGRAM(text = "doc_boosted_unigram",
             type = PARAGRAPH,
@@ -61,6 +61,10 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     DOC_JOINT_ENTITIES_FIELD(text = "doc_joint_entities_field",
             type = PARAGRAPH,
             func = DocumentRankingFeatures::addJointEntityField),
+
+//    DOC_DIST_SCORE(text = "dist_score",
+//            type = PARAGRAPH,
+//            func = DocumentRankingFeatures::addDistScore),
 
     SHARED_LINKS(text = "shared_links",
             type = SHARED,

@@ -160,7 +160,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
         val seen = HashSet<String>()
         queries.forEach { container ->
             val query = container.query
-            container.entities.forEach(EntityContainer::rescoreEntity)
+            container.entities.forEach(EntityContainer::rescore)
             container.entities
                 .filter { entity -> seen.add(entity.name) }
                 .sortedByDescending(EntityContainer::score)

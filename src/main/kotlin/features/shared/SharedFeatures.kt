@@ -28,7 +28,7 @@ import utils.stats.takeMostFrequent
 import kotlin.math.max
 
 
-data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>)
+data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>, val sectionScore: ArrayList<Double>)
 private fun<A, B> scoreBoth(sf: SharedFeature, entityList: List<A>, paragraphList: List<B>,
                             scoreFunction: (A, B) -> Double) {
     entityList.mapIndexed { entityIndex, a ->
@@ -153,7 +153,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphContainers.map { container ->
                     val doc = container.doc()
-                    doc.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
+                    doc.doc.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
                         .normalize() }
 
         val entityFeatures = entityContainers.map { entityContainer ->
@@ -188,7 +188,7 @@ object SharedFeatures {
          val documentFeatures =
                  paragraphContainers.map{ container ->
                      val doc = container.doc()
-                     val docQuery = getDocumentGramQuery(doc, gramStatType)
+                     val docQuery = getDocumentGramQuery(doc.doc, gramStatType)
                      val searchResult = entityDb.searcher.search(docQuery, 1000)
                          .scoreDocs
                      searchResult
@@ -211,7 +211,7 @@ object SharedFeatures {
         val documentToEntity =
                 paragraphContainers.map{ container ->
                     val doc = container.doc()
-                    val docQuery = getDocumentGramQuery(doc, gramStatType)
+                    val docQuery = getDocumentGramQuery(doc.doc, gramStatType)
                     val result = entityDb.searcher.search(docQuery, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -222,7 +222,7 @@ object SharedFeatures {
         val entityToDocument =
                 entityContainers.map{ container ->
                     val doc = container.doc()
-                    val docQuery = getDocumentGramQuery(doc, gramStatType)
+                    val docQuery = getDocumentGramQuery(doc.doc, gramStatType)
                     val result = paragraphSearcher.search(docQuery, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -247,7 +247,7 @@ object SharedFeatures {
         val documentToEntity =
                 paragraphContainers.map{ container ->
                     val doc = container.doc()
-                    val docQuery = getDocumentGramQuery(doc, gramStatType)
+                    val docQuery = getDocumentGramQuery(doc.doc, gramStatType)
                     val result = entityDb.searcher.search(docQuery, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }
@@ -258,7 +258,7 @@ object SharedFeatures {
         val entityToDocument =
                 entityContainers.map{ container ->
                     val doc = container.doc()
-                    val docQuery = getDocumentGramQuery(doc, gramStatType)
+                    val docQuery = getDocumentGramQuery(doc.doc, gramStatType)
                     val result = paragraphSearcher.search(docQuery, 1000)
                         .scoreDocs
                         .map { sc -> sc.doc to sc.score.toDouble() }

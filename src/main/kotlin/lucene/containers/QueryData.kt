@@ -1,7 +1,6 @@
 package lucene.containers
 
 import entity.EntityDatabase
-import org.apache.lucene.document.Document
 import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
@@ -14,9 +13,30 @@ data class QueryData(
 
         val paragraphSearcher: IndexSearcher,
         val entitySearcher: IndexSearcher,
-        val proximitySearcher: IndexSearcher,
+        val sectionSearcher: IndexSearcher,
 
         val entityContainers: List<EntityContainer>,
         val paragraphContainers: List<ParagraphContainer>,
+//        val containers: TypedMapCollection<ArrayList<Any>>,
+        val isJoint: Boolean,
         val tops: TopDocs,
-        val entityDb: EntityDatabase )
+        val entityDb: EntityDatabase ) {
+
+//    val paragraphContainers: List<ParagraphContainer> get() {
+//        val def = containers[DocumentContainerType.TYPE_PARAGRAPH] ?: emptyList()
+//        @Suppress("UNCHECKED_CAST")
+//        return def as List<ParagraphContainer>
+//    }
+//
+//    val entityContainers: List<EntityContainer> get() {
+//        val def = containers[DocumentContainerType.TYPE_ENTITY] ?: emptyList()
+//        @Suppress("UNCHECKED_CAST")
+//        return def as List<EntityContainer>
+//    }
+//
+//    val sectionContainers: List<SectionContainer> get() {
+//        val def = containers[DocumentContainerType.TYPE_SECTION] ?: emptyList()
+//        @Suppress("UNCHECKED_CAST")
+//        return def as List<SectionContainer>
+//    }
+}

@@ -4,7 +4,6 @@ import entity.EntityDatabase
 import features.shared.SharedFeature
 import lucene.*
 import lucene.containers.*
-import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
 import java.io.File
@@ -12,13 +11,11 @@ import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
 import utils.*
 import utils.lucene.getIndexSearcher
+import utils.lucene.getTypedSearcher
 import utils.misc.CONTENT
 import utils.misc.filledArray
-import utils.parallel.forEachParallel
 import utils.parallel.forEachParallelQ
 import utils.parallel.pmap
-import utils.stats.normalize
-import java.lang.Double.sum
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -31,8 +28,12 @@ import kotlin.concurrent.withLock
 // 1777 / 1301
 
 
-//MAP on training data: 0.4345
-//MAP on validation data: 0.3569
+// 0.6618 / 0.4096
+
+// MAP on training data: 0.3231
+//MAP on validation data: 0.3105
+
+// 0.2390 / 0.1692
 
 
 /**
@@ -68,9 +69,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                              paragraphQrelLoc: String,
                              entityIndexLoc: String,
                              entityQrelLoc: String = "",
-                             proximityIndexLoc: String = "",
-                             entityQueryLoc: String = "",
-                             includeRelevant: Boolean = false
+                             sectionIndexLoc: String = "",
+                             sectionQrelLoc: String =""
                              ) {
 
     /**
@@ -80,12 +80,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
 
 
-    val useJointDist = true
-    val paragraphSearcher = getIndexSearcher(paragraphIndexLoc)
-    val entitySearcher: IndexSearcher = getIndexSearcher(entityIndexLoc)
-    val proximitySearcher: IndexSearcher =
-            if (proximityIndexLoc == "") paragraphSearcher
-            else getIndexSearcher(proximityIndexLoc)
+    val useJointDist = false
+    val paragraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>(paragraphIndexLoc)
+    val entitySearcher = getTypedSearcher<IndexType.ENTITY>(entityIndexLoc)
+    val sectionSearcher  =
+//            if ( sectionIndexLoc == "") paragraphSearcher
+             getTypedSearcher<IndexType.SECTION>(sectionIndexLoc)
 
 
 //    val qrelCreator = QrelCreator(paragraphQrelLoc,
@@ -100,10 +100,11 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
 //    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
     val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
-    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, includeRelevant,
+    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, false,
 //            doFiltered = paragraphQrelLoc != "")
             doFiltered = false)
-    val entityRetriever = EntityRetriever(entityDb, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
+    val entityRetriever = EntityRetriever(entitySearcher, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
+    val sectionRetriever = SectionRetriever(sectionSearcher, paragraphSearcher, queries, sectionQrelLoc, paragraphRetrieve = paragraphRetriever)
     val featureDatabase = FeatureDatabase2()
 
 
@@ -114,6 +115,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             val (query, tops) = indexedQuery.value
             val paragraphContainers = paragraphRetriever.paragraphContainers[index]
             val entityContainers = entityRetriever.entityContainers.get(index)
+            val sectionContainers = sectionRetriever.sectionContainers.get(index)
 //            val entityContainers = emptyList<EntityContainer>()
 
             QueryContainer(
@@ -121,7 +123,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                     tops = tops,
                     paragraphs = paragraphContainers,
                     entities = entityContainers,
-                    queryData = createQueryData(query, tops, paragraphContainers, entityContainers)
+                    sections = sectionContainers,
+                    queryData = createQueryData(query, tops, paragraphContainers, entityContainers, useJointDist)
             )
         }
 
@@ -176,10 +179,16 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     private fun createQueryData(query: String, tops: TopDocs,
                                 paragraphContainers: List<ParagraphContainer>,
-                                entityContainers: List<EntityContainer>): QueryData {
+                                entityContainers: List<EntityContainer>, isJoint: Boolean): QueryData {
         val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
         val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
         val tokens = AnalyzerFunctions.createTokenList(query)
+        val typedMap = TypedMapCollection { ArrayList<Any>() }
+//        typedMap.put(entityContainers.toMutableList())
+//        typedMap.put(paragraphContainers.toMutableList())
+//        val containers = HashMap<DocumentContainerType, List<DocContainer>>()
+//        containers[DocumentContainerType.TYPE_PARAGRAPH] = paragraphContainers
+//        containers[DocumentContainerType.TYPE_ENTITY] = entityContainers
 
 
         val data = QueryData(
@@ -190,9 +199,10 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 queryTokens = tokens,
                 paragraphSearcher = paragraphSearcher,
                 entitySearcher = entitySearcher,
-                proximitySearcher = proximitySearcher,
-                entityContainers = entityContainers,
+                sectionSearcher = sectionSearcher,
                 paragraphContainers = paragraphContainers,
+                entityContainers = entityContainers,
+                isJoint = isJoint,
                 entityDb = entityDb)
         return data
     }
@@ -221,11 +231,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val curSim = paragraphSearcher.getSimilarity(true)
         val curSimEntity = entitySearcher.getSimilarity(true)
 
-        queryContainers.forEachParallelQ(30, 50) { qc ->
+        queryContainers.forEachParallelQ(60, 80) { qc ->
 
             // Apply feature and update counter
             val sf = SharedFeature(paragraphScores = filledArray(qc.paragraphs.size, 0.0),
-                    entityScores = filledArray(qc.entities.size, 0.0))
+                    entityScores = filledArray(qc.entities.size, 0.0),
+                    sectionScore = filledArray(qc.sections.size, 0.0))
 
 
             if (featureEnum.type == FeatureType.PARAGRAPH_FUNCTOR) {
@@ -286,12 +297,12 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         qc.entities
             .zip(sf.entityScores.run { normalizeResults(this, normType) })
             .forEach { (entity, score) ->
-                entity.queryFeatures += FeatureContainer(score, weight, featureEnum)}
+                entity.features += FeatureContainer(score, weight, featureEnum)}
 
         qc.paragraphs
             .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
             .forEach { (paragraph, score) ->
-                paragraph.queryFeatures += FeatureContainer(score, weight, featureEnum)
+                paragraph.features += FeatureContainer(score, weight, featureEnum)
             }
     }
 
@@ -305,7 +316,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     fun rerankQueries() =
         queryContainers.forEach { queryContainer ->
             queryContainer.paragraphs
-                .onEach(ParagraphContainer::rescoreParagraph)
+                .onEach(ParagraphContainer::rescore)
                 .sortedByDescending(ParagraphContainer::score)
                 .forEachIndexed { index, paragraph ->
                     queryContainer.tops.scoreDocs[index].doc = paragraph.docId
@@ -313,7 +324,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 }
 
             queryContainer.entities
-                .onEach(EntityContainer::rescoreEntity)
+                .onEach(EntityContainer::rescore)
         }
 
 

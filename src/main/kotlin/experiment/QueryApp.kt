@@ -23,11 +23,14 @@ class QueryApp(val resources: HashMap<String, Any>) {
     val qrelPath: String by resources
     val queryPath: String by resources
     val entityIndex: String by resources
+    val sectionIndex: String by resources
     val entityQrel: String by resources
+    val sectionQrel: String by resources
 
     val out: String by resources
 
-    val formatter = KotlinRanklibFormatter(queryPath, indexPath, qrelPath, entityIndex, entityQrel)
+    val formatter = KotlinRanklibFormatter(queryPath, indexPath, qrelPath, entityIndex, entityQrel, sectionIndexLoc = sectionIndex,
+            sectionQrelLoc = sectionQrel )
     val indexer = getIndexSearcher(indexPath)
 
 
@@ -113,17 +116,18 @@ class QueryApp(val resources: HashMap<String, Any>) {
     }
 
     fun queryFunctor(weights: List<Double>? = null) {
-        val norm = NormType.ZSCORE
+        val norm = NormType.SUM
         var i = 0
         SubObjectFeatures.addLinkFreq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToECategory(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         SubObjectFeatures.addPUnigramToEInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SubObjectFeatures.addPUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SubObjectFeatures.addPUnigramToERedirects(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToERedirects(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToEDisambig(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SubObjectFeatures.addPUnigramToESection(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SubObjectFeatures.addPUnigramToEOutlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
+//        SubObjectFeatures.addPUnigramToESection(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToEOutlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//
 //        SubObjectFeatures.addPJointUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPBigramToEBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPJointBigramToEBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -131,7 +135,11 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //        SubObjectFeatures.addPJointWindowedToEWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPEntityToInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPEntityToOutlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//
+    }
+
+    fun queryScorer(weights: List<Double>? = null) {
+        val norm = NormType.NONE
+//        DocumentRankingFeatures.addDistScore(formatter, norm = norm)
     }
 
 
@@ -221,6 +229,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
                         method("query", "functor") { queryFunctor(OptimalWeights.PARAGRAPH_FUNCTOR_WEIGHTS.weights) }
                         method("train", "functor") { queryFunctor() }
+                        method("train", "scorer") { queryScorer() }
 
 
                     }
@@ -239,8 +248,18 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         default = ""
                     }
 
+                    resource("sectionIndex") {
+                        help = "Location to section Lucene index."
+                        default = ""
+                    }
+
                     resource("entityQrel") {
                         help = "Location to entity qrel file."
+                        default = ""
+                    }
+
+                    resource("sectionQrel") {
+                        help = "Location to section qrel file."
                         default = ""
                     }
 

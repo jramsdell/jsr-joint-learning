@@ -1,6 +1,7 @@
 package lucene.indexers
 
 import language.GramStatType
+import lucene.containers.IndexDoc
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
 import org.apache.lucene.document.StringField
@@ -9,9 +10,13 @@ import org.apache.lucene.index.Term
 import org.apache.lucene.search.BoostQuery
 import org.apache.lucene.search.TermQuery
 
-fun IndexFields.getString(doc: Document) = doc.get(field)
+fun IndexFields.getString(doc: Document) = doc.get(field) ?: ""
 fun IndexFields.getDouble(doc: Document) = doc.get(field).toDouble()
 fun IndexFields.getList(doc: Document) = doc.get(field).split(" ")
+
+fun IndexFields.getString(doc: IndexDoc<*>) = doc.get(field) ?: ""
+fun IndexFields.getDouble(doc: IndexDoc<*>) = doc.get(field).toDouble()
+fun IndexFields.getList(doc: IndexDoc<*>) = doc.get(field).split(" ")
 
 fun IndexFields.setTextField(doc: Document, fieldValue: String) =
         doc.add(TextField(field, fieldValue, Field.Store.YES))
@@ -61,7 +66,10 @@ enum class IndexFields(val field: String) {
     FIELD_JOINT_UNIGRAMS("joint_unigrams"),
     FIELD_JOINT_BIGRAMS("joint_bigrams"),
     FIELD_JOINT_WINDOWED("joint_windowed"),
-    FIELD_NEIGHBOR_SECTIONS("neighbor_sections")
+    FIELD_NEIGHBOR_SECTIONS("neighbor_sections"),
+    FIELD_SECTION_ID("section_id"),
+    FIELD_SECTION_HEADING("section_heading"),
+    FIELD_CHILDREN_IDS("children_ids")
 //    FIELD_PARAGRAPH_OUTLINKS("paragraph_outlinks")
 
 }

@@ -71,6 +71,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
     val paragraphCounter = AtomicInteger()
     val speedy = "/speedy/jsc57/"
     val pageIndex = getIndexWriter("${speedy}extractions/page", mode = IndexWriterConfig.OpenMode.CREATE)
+    val sectionIndex = getIndexWriter("${speedy}extractions/section", mode = IndexWriterConfig.OpenMode.CREATE)
     val paragraphIndex = getIndexWriter("${speedy}extractions/paragraph", mode = IndexWriterConfig.OpenMode.CREATE)
     val entityContextIndex = getIndexWriter("${speedy}extractions/entity_context", mode = IndexWriterConfig.OpenMode.CREATE)
     val sectionContextIndex = getIndexWriter("${speedy}extractions/section_context", mode = IndexWriterConfig.OpenMode.CREATE)
@@ -370,6 +371,29 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 //    }
 
 
+    fun processSections(page: Data.Page) {
+        page.foldOverSection { section, paragraphs ->
+            val doc = Document()
+            IndexFields.FIELD_SECTION_ID.setTextField(doc, section.headingId)
+            val filteredHeading = AnalyzerFunctions.createTokenList(section.heading, ANALYZER_ENGLISH_STOPPED)
+                .joinToString(" ")
+            IndexFields.FIELD_SECTION_HEADING.setTextField(doc, filteredHeading)
+            val text = paragraphs.joinToString("\n") { it.textOnly + "\n" }
+            val (unigrams, bigrams, windowed) = getGramsFromContent(text)
+            val childrenIds = paragraphs.joinToString(" "){ it.paraId }
+            IndexFields.FIELD_UNIGRAM.setTextField(doc, unigrams)
+//            IndexFields.FIELD_NEIGHBOR_UNIGRAMS.setTextField(doc,
+//                    AnalyzerFunctions.createTokenList(text, ANALYZER_ENGLISH_STOPPED).joinToString(" ")
+//                    )
+            IndexFields.FIELD_BIGRAM.setTextField(doc, bigrams)
+            IndexFields.FIELD_WINDOWED_BIGRAM.setTextField(doc, windowed)
+            IndexFields.FIELD_CHILDREN_IDS.setTextField(doc, childrenIds)
+            sectionIndex.addDocument(doc)
+        }
+
+    }
+
+
 
 
     fun run() {
@@ -380,13 +404,15 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 //                    processSectionContext(page)
 //                    processEntityContext(page)
 
-                    processPageIndexers(page)
+//                    processPageIndexers(page)
+                    processSections(page)
 //                    processParagraphs(page)
                     val result = pageCounter.incrementAndGet()
                     if (result % 10000 == 0) {
                         println(result)
                         paragraphIndex.commit()
                         pageIndex.commit()
+                        sectionIndex.commit()
                         sectionContextIndex.commit()
                         entityContextIndex.commit()
                     }
@@ -396,10 +422,12 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
         pageIndex.commit()
         sectionContextIndex.commit()
         entityContextIndex.commit()
+        sectionIndex.commit()
         paragraphIndex.close()
         pageIndex.close()
         sectionContextIndex.close()
         entityContextIndex.close()
+        sectionIndex.close()
     }
 
 }
