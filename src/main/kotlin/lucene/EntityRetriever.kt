@@ -69,6 +69,7 @@ class EntityRetriever(val entitySearcher: EntitySearcher,
         val entities = paragraphRetrieve
 //            .paragraphContainers[index].flatMap { pC -> pC.doc().get(IndexFields.FIELD_ENTITIES.field).split(" ") }
             .paragraphContainers[index].flatMap { pC -> pC.doc().entities().split(" ") }
+//            .paragraphContainers[index].flatMap { pC -> pC.doc().neighborEntities().split(" ") }
 //            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
             .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->

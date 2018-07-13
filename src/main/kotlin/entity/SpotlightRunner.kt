@@ -22,7 +22,7 @@ class SpotlightRunner(private val serverLocation: String) {
         beginDownloads()
 
         // run server
-        processBuilder = ProcessBuilder("java", "-jar", "$serverLocation/spotlight.jar",
+        processBuilder = ProcessBuilder("java", "-Xmx120G", "-Dthreads.max=120", "-Dthreads.core=120", "-Dpost.size.max=10485760",  "-jar", "$serverLocation/spotlight.jar",
                 "$serverLocation/en_2+2/", "http://localhost:9310/jsr-spotlight")
 
         // Gotta eat the process's output, otherwise it seems to stall when the buffer's full

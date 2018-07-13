@@ -30,8 +30,10 @@ object AnalyzerFunctions {
     private val standardAnalyzer = StandardAnalyzer()
     private val englishAnalyzer = EnglishAnalyzer()
     private val englishStopped = EnglishAnalyzer(buildStopWords())
+    private val standardAnalyzerStopped = StandardAnalyzer(buildStopWords())
 
-    enum class AnalyzerType { ANALYZER_STANDARD, ANALYZER_ENGLISH, ANALYZER_ENGLISH_STOPPED }
+    enum class AnalyzerType { ANALYZER_STANDARD, ANALYZER_ENGLISH, ANALYZER_ENGLISH_STOPPED,
+    ANALYZER_STANDARD_STOPPED}
 
     /**
      * Class: createTokenSequence
@@ -48,6 +50,7 @@ object AnalyzerFunctions {
             AnalyzerType.ANALYZER_STANDARD -> standardAnalyzer
             AnalyzerType.ANALYZER_ENGLISH  -> englishAnalyzer
             AnalyzerType.ANALYZER_ENGLISH_STOPPED  -> englishStopped
+            AnalyzerType.ANALYZER_STANDARD_STOPPED  -> standardAnalyzerStopped
         }
 
         val replaceNumbers = """(\d+|enwiki:)""".toRegex()

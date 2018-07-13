@@ -331,7 +331,61 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
         }
 
         fun createEmpty() = JointDistribution(emptyMap(), emptyMap())
+
+        fun createMonoidDistribution(query: String, qd: QueryData): JointDistribution {
+            val tokens = AnalyzerFunctions.createTokenList(query, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+//                .flatMap { it.windowed(2) }
+                .countDuplicates()
+                .normalize()
+
+            val secToPar = qd.sectionContainers.map { it.index to emptyMap<Int, Double>() }.toHashMap()
+            val parToEnt = qd.paragraphContainers.map { it.index to emptyMap<Int, Double>() }.toHashMap()
+            val parToSec = qd.paragraphContainers.map { it.index to HashMap<Int, Double>() }.toMap()
+            val entToPar = qd.entityContainers.map { it.index to HashMap<Int, Double>() }.toMap()
+
+
+            qd.sectionContainers.forEach { sContainer ->
+                val newMap = tokens.mapNotNull { (token, freq) ->
+                    sContainer.dist[token]?.times(freq)?.to(token) }
+
+
+                val condMap = qd.paragraphContainers.map { pContainer ->
+//                    val score1 = newMap.sumByDouble { (freq, unigram) ->
+//                        pContainer.dist[unigram]?.times(freq) ?: 0.0 }
+
+                    val score2 =sContainer.dist.entries.sumByDouble { (unigram, freq) ->
+                        pContainer.dist[unigram]?.times(freq) ?: 0.0 }
+                    val score = score2
+
+
+
+                    parToSec[pContainer.index]!!.merge(sContainer.index, score, ::sum)
+                    pContainer.index to score }
+                    .toMap()
+
+                secToPar[sContainer.index] = condMap
+            }
+
+            qd.paragraphContainers.forEach { pContainer ->
+                val newMap = tokens.mapNotNull { (token, freq) ->
+                    pContainer.dist[token]?.times(freq)?.to(token) }
+
+
+                val condMap = qd.entityContainers.map { eContainer ->
+                    val score = newMap.sumByDouble { (freq, unigram) ->
+                        eContainer.dist[unigram]?.times(freq) ?: 0.0 }
+                    entToPar[eContainer.index]!!.merge(pContainer.index, score, ::sum)
+                    eContainer.index to score }
+                    .toMap()
+
+                parToEnt[pContainer.index] = condMap
+            }
+
+            return JointDistribution(parToEnt = parToEnt, entToPar = entToPar, secToPar = secToPar,
+                    parToSec = parToSec)
+        }
     }
+
 
 }
 

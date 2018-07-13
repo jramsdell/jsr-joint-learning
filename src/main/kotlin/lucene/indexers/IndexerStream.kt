@@ -19,6 +19,7 @@ import java.util.stream.StreamSupport
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.UnicodeString
 import edu.unh.cs.treccar_v2.read_data.CborListWithHeaderIterator
+import entity.SpotlightEntityLinker
 import language.GramAnalyzer
 import lucene.indexers.*
 import org.apache.lucene.document.Document
@@ -29,6 +30,8 @@ import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
 import utils.lucene.*
 import lucene.indexers.IndexFields.*
+import org.apache.lucene.analysis.StopwordAnalyzerBase
+import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_STANDARD_STOPPED
 import utils.stats.countDuplicates
 import utils.stats.takeMostFrequent
 
@@ -63,6 +66,8 @@ import utils.stats.takeMostFrequent
 
 
 class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
+    val linker = SpotlightEntityLinker("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
+        .apply { (0 until 100).forEach { queryServer("Test") }   }
     val pageIndexers = ArrayList<Indexer>()
     val paragraphIndexers = ArrayList<Indexer>()
     val entityContextIndexers = ArrayList<Indexer>()
@@ -285,6 +290,8 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 //                .joinToString(" ")
 
     fun processParagraphs(page: Data.Page) {
+        val outlinkSet = page.outlinks()
+        val inlinkSet = page.filteredInlinks().toSet()
         page.foldOverSection { path, section, paragraphs ->
             val pData = paragraphs.map(this::buildParagraphData)
             val allEntities = pData.map { p -> p.entities }.joinToString(" ")
@@ -301,52 +308,68 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                 .asSequence()
                 .filter { p -> p.content.length > 100 && !p.content.contains(":") && !p.content.contains("•") }
                 .forEach { p ->
-                val doc = Document()
-                FIELD_PID.setTextField(doc, p.pid)
-                FIELD_TEXT.setTextField(doc, p.content)
-                FIELD_ENTITIES.setTextField(doc, p.entities)
-                FIELD_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(p.entities))
-                FIELD_UNIGRAM.setTextField(doc, p.unigrams)
-                FIELD_BIGRAM.setTextField(doc, p.bigrams)
-                FIELD_WINDOWED_BIGRAM.setTextField(doc, p.windowed)
-                FIELD_NEIGHBOR_ENTITIES.setTextField(doc, allEntities)
-                FIELD_NEIGHBOR_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(allEntities))
-                FIELD_NEIGHBOR_UNIGRAMS.setTextField(doc, allUnigrams)
-                FIELD_NEIGHBOR_BIGRAMS.setTextField(doc, allBigrams)
-                FIELD_NEIGHBOR_WINDOWED.setTextField(doc, allWindowed)
+                    val doc = Document()
+                    FIELD_PID.setTextField(doc, p.pid)
+                    FIELD_TEXT.setTextField(doc, p.content)
+                    FIELD_ENTITIES.setTextField(doc, p.entities)
+                    FIELD_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(p.entities))
+                    FIELD_UNIGRAM.setTextField(doc, p.unigrams)
+                    FIELD_BIGRAM.setTextField(doc, p.bigrams)
+                    FIELD_WINDOWED_BIGRAM.setTextField(doc, p.windowed)
+                    FIELD_NEIGHBOR_ENTITIES.setTextField(doc, allEntities)
+                    FIELD_NEIGHBOR_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(allEntities))
+                    FIELD_NEIGHBOR_UNIGRAMS.setTextField(doc, allUnigrams)
+                    FIELD_NEIGHBOR_BIGRAMS.setTextField(doc, allBigrams)
+                    FIELD_NEIGHBOR_WINDOWED.setTextField(doc, allWindowed)
 
-                val jointEntities = p.entities.split(" ").toSet().let { set ->
-                    entitySets.flatMap { other ->
-                        if (other == set) emptyList()
-                        else other.intersect(set).toList() }
-                }.joinToString(" ")
+//                    val annotations = linker.queryServer(p.content) + p.entities
+                    val fContent = AnalyzerFunctions.createTokenList(p.content, ANALYZER_STANDARD_STOPPED)
+                        .joinToString(" ")
+                    val annotations = linker.queryServer(fContent) + p.entities
+                    val anOutlink = annotations.filter { it in outlinkSet }.toSet().toList()
+                        .joinToString(" ")
 
-                val jointUnigrams = p.unigrams.split(" ").toSet().let { set ->
-                    unigramSets.flatMap { other ->
-                        if (other == set) emptyList()
-                        else other.intersect(set).toList() }
-                }.joinToString(" ")
+                    val anInlink = annotations.filter { it in inlinkSet }.toSet().toList()
+                        .filter { it in inlinkSet }
+                        .run { (this + p.entities).toSet().toList() }.joinToString(" ")
 
-                val jointBigrams = p.bigrams.split(" ").toSet().let { set ->
-                    bigramSets.flatMap { other ->
-                        if (other == set) emptyList()
-                        else other.intersect(set).toList() }
-                }.joinToString(" ")
+                    FIELD_ENTITIES_EXTENDED.setTextField(doc, anOutlink)
+                    FIELD_ENTITIES_INLINKS.setTextField(doc, anInlink)
 
-                val jointWindowed = p.windowed.split(" ").toSet().let { set ->
-                    windowedSets.flatMap { other ->
-                        if (other == set) emptyList()
-                        else other.intersect(set).toList() }
-                }.joinToString(" ")
 
-                FIELD_JOINT_UNIGRAMS.setTextField(doc, jointUnigrams)
-                FIELD_JOINT_BIGRAMS.setTextField(doc, jointBigrams)
-                FIELD_JOINT_WINDOWED.setTextField(doc, jointWindowed)
-                FIELD_JOINT_ENTITIES.setTextField(doc, jointEntities)
-                FIELD_JOINT_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(jointEntities))
 
-                paragraphIndex.addDocument(doc)
-            }
+                    val jointEntities = p.entities.split(" ").toSet().let { set ->
+                        entitySets.flatMap { other ->
+                            if (other == set) emptyList()
+                            else other.intersect(set).toList() }
+                    }.joinToString(" ")
+
+                    val jointUnigrams = p.unigrams.split(" ").toSet().let { set ->
+                        unigramSets.flatMap { other ->
+                            if (other == set) emptyList()
+                            else other.intersect(set).toList() }
+                    }.joinToString(" ")
+
+                    val jointBigrams = p.bigrams.split(" ").toSet().let { set ->
+                        bigramSets.flatMap { other ->
+                            if (other == set) emptyList()
+                            else other.intersect(set).toList() }
+                    }.joinToString(" ")
+
+                    val jointWindowed = p.windowed.split(" ").toSet().let { set ->
+                        windowedSets.flatMap { other ->
+                            if (other == set) emptyList()
+                            else other.intersect(set).toList() }
+                    }.joinToString(" ")
+
+                    FIELD_JOINT_UNIGRAMS.setTextField(doc, jointUnigrams)
+                    FIELD_JOINT_BIGRAMS.setTextField(doc, jointBigrams)
+                    FIELD_JOINT_WINDOWED.setTextField(doc, jointWindowed)
+                    FIELD_JOINT_ENTITIES.setTextField(doc, jointEntities)
+                    FIELD_JOINT_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(jointEntities))
+
+                    paragraphIndex.addDocument(doc)
+                }
         }
     }
 
@@ -401,14 +424,15 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
         corpusStreams.forEach { corpusStream ->
             DeserializeData.iterableAnnotations(corpusStream)
 //                .take(1000)
-                .forEachParallelQ(1000, 60) { page: Data.Page ->
+                .forEachParallelQ(1000, 120) { page: Data.Page ->
 //                    processSectionContext(page)
 //                    processEntityContext(page)
 
 //                    processPageIndexers(page)
-                    processSections(page)
-//                    processParagraphs(page)
+//                    processSections(page)
+                    processParagraphs(page)
                     val result = pageCounter.incrementAndGet()
+                    println(result)
                     if (result % 10000 == 0) {
                         println(result)
                         paragraphIndex.commit()

@@ -4,6 +4,7 @@ import entity.EntityDatabase
 import features.shared.SharedFeature
 import lucene.*
 import lucene.containers.*
+import lucene.indexers.IndexFields
 import org.apache.lucene.search.TopDocs
 import java.io.File
 import me.tongfei.progressbar.ProgressBar
@@ -14,7 +15,10 @@ import utils.misc.CONTENT
 import utils.misc.filledArray
 import utils.parallel.forEachParallelQ
 import utils.parallel.pmap
+import utils.stats.countDuplicates
 import utils.stats.defaultWhenNotFinite
+import utils.stats.normalize
+import java.lang.Double.sum
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -106,7 +110,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             doFiltered = false)
     val entityRetriever = EntityRetriever(entitySearcher, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
     val sectionRetriever = SectionRetriever(sectionSearcher, paragraphSearcher, queries, sectionQrelLoc, paragraphRetrieve = paragraphRetriever)
-        .apply { paragraphRetriever.updateParagraphContainers(this) }
+//        .apply { paragraphRetriever.updateParagraphContainers(this) }
     val featureDatabase = FeatureDatabase2()
 
 
@@ -374,22 +378,22 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * Description: Sums current weighted features together and reranks documents according to their new scores.
      * @see addFeature
      */
-    fun rerankQueries() =
-        queryContainers.forEach { queryContainer ->
-            queryContainer.paragraphs
-                .onEach(ParagraphContainer::rescore)
-                .sortedByDescending(ParagraphContainer::score)
-                .forEachIndexed { index, paragraph ->
-                    queryContainer.tops.scoreDocs[index].doc = paragraph.docId
-                    queryContainer.tops.scoreDocs[index].score = paragraph.score.toFloat()
-                }
-
-            queryContainer.entities
-                .onEach(EntityContainer::rescore)
-
-            queryContainer.paragraphs
-                .onEach(ParagraphContainer::rescore)
-        }
+//    fun rerankQueries() =
+//        queryContainers.forEach { queryContainer ->
+//            queryContainer.paragraphs
+//                .onEach(ParagraphContainer::rescore)
+//                .sortedByDescending(ParagraphContainer::score)
+//                .forEachIndexed { index, paragraph ->
+//                    queryContainer.tops.scoreDocs[index].doc = paragraph.docId
+//                    queryContainer.tops.scoreDocs[index].score = paragraph.score.toFloat()
+//                }
+//
+//            queryContainer.entities
+//                .onEach(EntityContainer::rescore)
+//
+//            queryContainer.paragraphs
+//                .onEach(ParagraphContainer::rescore)
+//        }
 
 
     /**
@@ -410,7 +414,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
         queryContainers
             .flatMap { queryContainer ->
-                queryContainer.entities.map(EntityContainer::toString)  +
+//                queryContainer.entities.map(EntityContainer::toString)  +
                         queryContainer.paragraphs.map(ParagraphContainer::toString) +
             queryContainer.sections.map(SectionContainer::toString)
             }
@@ -455,6 +459,70 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         queryRetriever.writeParagraphsToFile(queryContainers)
         queryRetriever.writeEntitiesToFile(queryContainers)
         queryRetriever.writeSectionsToFile(queryContainers)
+    }
+
+    fun doJointDistribution() {
+//        if (!useJointDist)
+//            return
+
+        queryContainers.forEach { qContainer ->
+//                val jointDistribution = JointDistribution.createFromFunctor(qContainer.queryData)
+//                val jointDistribution =  JointDistribution.createJointDistribution(qContainer.queryData)
+            val jointDistribution =  JointDistribution.createMonoidDistribution(qContainer.query, qContainer.queryData)
+            qContainer.jointDistribution = jointDistribution
+        }
+    }
+
+
+    fun doPullback(field: IndexFields) {
+//        queryContainers.forEach { qContainer ->
+//            qContainer.entities.forEach { eContainer ->
+//                val unigrams = eContainer.doc().unigrams().split(" ")
+//                    .flatMap { it.windowed(2) }
+//                val umap = unigrams.countDuplicates().mapValues { it.value.toDouble() }
+//                umap.forEach { (unigram, freq) -> eContainer.dist.merge(unigram, freq, ::sum) }
+//            }
+
+            queryContainers.forEach { qContainer ->
+                qContainer.paragraphs.forEach { pContainer ->
+                    val unigrams = pContainer.doc().unigrams().split(" ")
+//                        .flatMap { it.windowed(2) }
+                    val umap = unigrams.countDuplicates().mapValues { it.value.toDouble() }
+                    umap.forEach { (unigram, freq) -> pContainer.dist.merge(unigram, freq, ::sum) }
+                }
+
+            val eIds = qContainer.entities.mapIndexed { index, docContainer -> docContainer.name to index  }
+                .toMap()
+
+            val pIds = qContainer.paragraphs.mapIndexed { index, docContainer -> docContainer.name to index  }
+                .toMap()
+
+//            val sIds = qContainer.sections.mapIndexed { index, docContainer -> docContainer.name to index  }
+//                .toMap()
+
+//            qContainer.paragraphs.forEach { pContainer ->
+//                val entities = pContainer.doc().entities().split(" ")
+//                    entities.mapNotNull { entity -> eIds[entity] }
+//                        .map { eIndex ->
+//                            val entity = qContainer.entities[eIndex]
+//                            entity.dist.forEach { (unigram, freq) -> pContainer.dist.merge(unigram, freq, ::sum) }
+//                        }
+//            }
+
+            qContainer.sections.forEach { sContainer: SectionContainer ->
+                val paragraphs = sContainer.doc().paragraphs().split(" ")
+                paragraphs.mapNotNull { paragraph: String -> pIds[paragraph] }
+                    .map { pIndex: Int ->
+                        val paragraph = qContainer.paragraphs[pIndex]
+                        paragraph.dist.forEach { (unigram, freq) -> sContainer.dist.merge(unigram, freq, ::sum) }
+                    }
+            }
+        }
+    }
+
+    fun initialize() {
+        doPullback(IndexFields.FIELD_UNIGRAM)
+        doJointDistribution()
     }
 }
 

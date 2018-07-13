@@ -60,6 +60,8 @@ enum class IndexFields(val field: String) {
     FIELD_NEIGHBOR_BIGRAMS("neighbor_bigrams"),
     FIELD_NEIGHBOR_WINDOWED("neighbor_windowed"),
     FIELD_ENTITIES("spotlight"),
+    FIELD_ENTITIES_EXTENDED("entities_extended"),
+    FIELD_ENTITIES_INLINKS("entities_inlinks"),
     FIELD_ENTITIES_UNIGRAMS("spotlight_unigrams"),
     FIELD_JOINT_ENTITIES("joint_entities"),
     FIELD_JOINT_ENTITIES_UNIGRAMS("joint_entities_unigrams"),

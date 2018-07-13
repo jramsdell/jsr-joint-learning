@@ -218,7 +218,7 @@ class ParagraphRetriever(val paragraphSearcher: ParagraphSearcher,
                         paragraphSearcher.search(q, 1).scoreDocs.firstOrNull()?.to(paragraph) }
                         .forEach { (sc, pid) ->
                             val relevant = relevancies?.get(query) ?: emptyMap()
-                            val p = createParagraphContainer(curIndex++, sc.doc, qIndex, query, relevant, 0.0f)
+                            val p = createParagraphContainer(++curIndex, sc.doc, qIndex, query, relevant, 0.0f)
                             pContainers.add(p)
                         }
                 }

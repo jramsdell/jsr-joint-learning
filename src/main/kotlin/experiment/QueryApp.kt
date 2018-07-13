@@ -32,6 +32,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
     val formatter = KotlinRanklibFormatter(queryPath, indexPath, qrelPath, entityIndex, entityQrel, sectionIndexLoc = sectionIndex,
             sectionQrelLoc = sectionQrel )
+        .apply { initialize() }
     val indexer = getIndexSearcher(indexPath)
 
 
@@ -100,8 +101,8 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
         // Super awesome features
 
-        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addQueryDist(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //        DocumentRankingFeatures.addSectionFreq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -121,13 +122,13 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //
-        SectionRankingFeatures.addUnigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SectionRankingFeatures.addUnigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addBigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addHeading(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addPath(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addConstantScore(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SectionRankingFeatures.addQueryDist(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SectionRankingFeatures.addQueryDist(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 
     }
@@ -205,9 +206,10 @@ class QueryApp(val resources: HashMap<String, Any>) {
                 val method = dispatcher.methodContainer!! as MethodContainer<QueryApp>
                 method.getMethod(methodType, methodName)?.invoke(instance)
 
+
                 if (methodType == "query") {
                     instance.formatter
-                        .apply { rerankQueries() }
+//                        .apply { rerankQueries() }
                         .writeQueriesToFile(instance.out)
                 } else {
                     instance.formatter.writeToRankLibFile("ranklib_results.txt")

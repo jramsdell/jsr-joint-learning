@@ -15,9 +15,11 @@ fun Data.Page.paragraphs() =
 fun Data.Page.outlinks() =
         paragraphs()
             .flatMap(Data.Paragraph::getEntitiesOnly)
-            .map { entity -> entity.replace(" ", "_") }
+            .map { entity -> entity.replace(" ", "_").replace("%20", "_").replace("enwiki:", "") }
             .toSet()
 
+fun Data.Page.filteredInlinks() =
+        this.pageMetadata.inlinkIds.map { it.replace("enwiki:", "").replace("%20", "_").replace(" ","_") }
 
 private val sectionsToIgnore = setOf(
         "See also", "References", "External links", "Further reading", "Notes"

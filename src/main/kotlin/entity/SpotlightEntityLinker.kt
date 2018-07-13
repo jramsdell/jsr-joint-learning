@@ -29,7 +29,7 @@ class SpotlightEntityLinker(serverLocation: String) {
      */
     private fun retrieveEntities(content: String): List<String> {
 
-//        return EntityStats.retrieveSpotlightEntities(content, url)
+        return EntityStats.retrieveSpotlightEntities(content, url)
         // Retrieve html file from the Spotlight server
         val jsoupDoc = Jsoup.connect(url)
                 .data("text", content)

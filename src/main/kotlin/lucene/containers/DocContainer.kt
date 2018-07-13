@@ -16,6 +16,7 @@ class DocContainer<out A: IndexType>(val name: String,
                                      val index: Int,
                                      var score: Double = 0.0,
                                      val query: String,
+                                     var dist: HashMap<String, Double> = HashMap(),
                                      private val docType: Class<A>) {
     val features = ArrayList<FeatureContainer>()
 
