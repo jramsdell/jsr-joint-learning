@@ -15,9 +15,21 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH,
             func = DocumentRankingFeatures::addBM25Document),
 
-//    DOC_SDM(text = "doc_sdm",
-//            type = PARAGRAPH,
-//            func = DocumentRankingFeatures::addSDMDocument),
+    DOC_SDM(text = "doc_sdm",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addSDMDocument),
+
+    DOC_QUERY_DIST(text = "doc_query_dist",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addQueryDist),
+
+    DOC_CONSTANT_SCORE(text = "doc_constant_score",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addConstantScore),
+
+    DOC_SECTION_FREQ(text = "doc_section_freq",
+            type = PARAGRAPH,
+            func = DocumentRankingFeatures::addSectionFreq),
 
     DOC_BOOSTED_UNIGRAM(text = "doc_boosted_unigram",
             type = PARAGRAPH,
@@ -229,5 +241,21 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     SECTION_HEADING(text = "section_heading",
             type = SECTION,
             func = SectionRankingFeatures::addHeading),
+
+    SECTION_WINDOWED(text = "section_windowed",
+            type = SECTION,
+            func = SectionRankingFeatures::addWindowed),
+
+    SECTION_PATH(text = "section_path",
+            type = SECTION,
+            func = SectionRankingFeatures::addPath),
+
+    SECTION_CONSTANT_SCORE(text = "section_constant_score",
+            type = SECTION,
+            func = SectionRankingFeatures::addConstantScore),
+
+    SECTION_QUERY_DIST(text = "section_query_dist",
+            type = SECTION,
+            func = SectionRankingFeatures::addQueryDist),
 
 }

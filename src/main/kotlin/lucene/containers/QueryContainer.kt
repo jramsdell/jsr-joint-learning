@@ -19,9 +19,9 @@ data class ExtractedFeature(val name: String,
 data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
                           val queryData: QueryData,
                           val entities: List<EntityContainer>, val sections: List<SectionContainer>) {
-//    val jointDistribution = JointDistribution.createJointDistribution(queryData.entityContainers, queryData.paragraphContainers)
-    val jointDistribution = if (queryData.isJoint) JointDistribution.createFromFunctor(queryData)
-//    val jointDistribution = if (queryData.isJoint) JointDistribution.createJointDistribution(queryData.entityContainers, queryData.paragraphContainers)
+//    val jointDistribution = if (queryData.isJoint) JointDistribution.createFromFunctor(queryData)
+    val jointDistribution = if (queryData.isJoint) JointDistribution.createJointDistribution(queryData)
+//    val jointDistribution = if (queryData.isJoint) JointDistribution.createExperimental(queryData)
     else JointDistribution.createEmpty()
 
     fun retrieveFeatures(): Sequence<ExtractedFeature> {

@@ -132,10 +132,10 @@ fun Indexer.addEntityHeaders(doc: LuceneDocumentContainer) {
 
 
 
-fun getGramsFromContent(content: String): List<String> =
+fun getGramsFromContent(content: String, maxGrams: Int = 20): List<String> =
     getGrams(content).toList()
         .map { grams ->
-            val top20 = grams.countDuplicates().entries.sortedByDescending { it.value }.take(20)
+            val top20 = grams.countDuplicates().entries.sortedByDescending { it.value }.take(maxGrams)
             top20.map { (gram, count) -> (gram + " ").repeat(count) }
         }
         .map { it.joinToString(" ") }

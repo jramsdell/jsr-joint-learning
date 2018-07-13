@@ -186,7 +186,7 @@ object SubObjectFeatures {
     }
 
     fun scoreByEntityLinks(qd: QueryData): (ParagraphContainer, EntityContainer) -> Double {
-        val joint = JointDistribution.createJointDistribution(qd.entityContainers, qd.paragraphContainers)
+        val joint = JointDistribution.createJointDistribution(qd)
 //        val conditionFunction = createConditionFunctionUsingScores(joint.parToEnt)
         val scoreByIndex =
                 { pContainer: ParagraphContainer, eContainer: EntityContainer ->

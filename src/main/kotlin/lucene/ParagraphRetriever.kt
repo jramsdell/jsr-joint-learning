@@ -3,6 +3,7 @@ package lucene
 import lucene.containers.DocContainer
 import lucene.containers.IndexType.*
 import lucene.containers.ParagraphSearcher
+import lucene.containers.paragraphs
 import lucene.containers.pid
 import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
@@ -11,6 +12,7 @@ import utils.AnalyzerFunctions
 import utils.lucene.searchFirstOrNull
 import utils.misc.PID
 import utils.misc.mapOfLists
+import utils.misc.toArrayList
 import utils.parallel.pmap
 import java.io.File
 import java.util.*
@@ -59,11 +61,12 @@ class ParagraphRetriever(val paragraphSearcher: ParagraphSearcher,
                     createParagraphContainer(pIndex, sc.doc, index.index, query, relevantToQuery, sc.score) }
 //                    .filter { seen.add(it.name) }
 
-                containers
+                containers.toArrayList()
 //                if (includeRelevant && relevancies != null) include(containers, index.index, query,  relevantToQuery)
 //                else containers
 
-            }.let { result ->  if (doFiltered) result.map(this::filterNeighbors) else result }
+//            }.let { result ->  if (doFiltered) result.map(this::filterNeighbors) else result }
+                }
 
 
     private fun filterNeighbors(containers: List<DocContainer<PARAGRAPH>>): List<DocContainer<PARAGRAPH>> {
@@ -196,6 +199,31 @@ class ParagraphRetriever(val paragraphSearcher: ParagraphSearcher,
                 .toSet()
 
 
+
+    fun updateParagraphContainers(sectionRetriever: SectionRetriever) {
+        sectionRetriever.sectionContainers
+            .zip(paragraphContainers)
+            .forEachIndexed { qIndex, (sContainers, pContainers) ->
+                val currentPids = pContainers.map { it.name }.toSet()
+                var curIndex = pContainers.lastIndex
+                val query = pContainers.firstOrNull()?.query ?: ""
+                sContainers.forEach { section ->
+                    val filteredParagraphs = section.doc()
+                        .paragraphs()
+                        .split(" ")
+                        .filter { paragraph -> paragraph !in currentPids }
+
+                    filteredParagraphs.mapNotNull { paragraph ->
+                        val q = AnalyzerFunctions.createQuery(paragraph, IndexFields.FIELD_PID.field)
+                        paragraphSearcher.search(q, 1).scoreDocs.firstOrNull()?.to(paragraph) }
+                        .forEach { (sc, pid) ->
+                            val relevant = relevancies?.get(query) ?: emptyMap()
+                            val p = createParagraphContainer(curIndex++, sc.doc, qIndex, query, relevant, 0.0f)
+                            pContainers.add(p)
+                        }
+                }
+            }
+    }
 
 
 }

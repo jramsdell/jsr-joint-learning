@@ -55,6 +55,7 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
         val entityQrels = HashMap<String, List<Pair<String, Int>>>()
         val paragraphQrels = HashMap<String, List<Pair<String, Int>>>()
         val sectionQrels = HashMap<String, List<Pair<String, Int>>>()
+        val unbiasedSectionQrels = HashMap<String, List<Pair<String, Int>>>()
         val seenSections = HashSet<String>()
         DeserializeData.iterableAnnotations(input)
             .forEach { page ->
@@ -64,6 +65,7 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
                 val pageScores = entityScores[queryStr] ?: emptyMap()
                 val pList = ArrayList<Pair<String, Int>>()
                 val sList = ArrayList<Pair<String, Int>>()
+                val unbiasedSList = ArrayList<Pair<String, Int>>()
                 val seenEntities = HashSet<String>()
 
                 page.foldOverSection { path, section, paragraphs ->
@@ -82,11 +84,14 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
                     pList.addAll(relParagraphs)
                     if (relParagraphs.isNotEmpty() and seenSections.add(sectionId))
                         sList.add(sectionId to relParagraphs.sumBy { it.second })
+                    unbiasedSList.add(sectionId to 1)
+
                 }
 
                 paragraphQrels[id] = pList.distinctBy { it.first }.sortedByDescending { it.second }
                 entityQrels[id] = pageScores.toList().filter { it.first in seenEntities }.distinctBy { it.first }.sortedByDescending { it.second }
                 sectionQrels[id] = sList
+                unbiasedSectionQrels[id] = unbiasedSList.distinctBy { it.first }
 
 
 //                println(queryStr)
@@ -100,6 +105,7 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
         val entityWriter = File("entity_qrels.qrels").bufferedWriter()
         val paragraphWriter = File("paragraph_qrels.qrels").bufferedWriter()
         val sectionWriter = File("section_qrels.qrels").bufferedWriter()
+        val unbiasedSectionWriter = File("unbiased_section_qrels.qrels").bufferedWriter()
 
         entityQrels
             .filter { it.value.isNotEmpty() }
@@ -125,9 +131,26 @@ class GroundTruthGenerator(clickStreamLoc: String, val cborOutlineLoc: String) {
                     .apply { sectionWriter.write(this.trim() + "\n") }
             }
 
+        sectionQrels
+            .filter { it.value.isNotEmpty() }
+            .forEach { (id, qrels) ->
+                qrels.map { (pid, score) -> "$id 0 $pid $score" }
+                    .joinToString("\n")
+                    .apply { sectionWriter.write(this.trim() + "\n") }
+            }
+
+        unbiasedSectionQrels
+            .filter { it.value.isNotEmpty() }
+            .forEach { (id, qrels) ->
+                qrels.map { (pid, score) -> "$id 0 $pid $score" }
+                    .joinToString("\n")
+                    .apply { unbiasedSectionWriter.write(this.trim() + "\n") }
+            }
+
         entityWriter.close()
         paragraphWriter.close()
         sectionWriter.close()
+        unbiasedSectionWriter.close()
 
     }
 

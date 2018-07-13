@@ -1,9 +1,6 @@
 package lucene
 
-import lucene.containers.DocContainer
-import lucene.containers.EntityContainer
-import lucene.containers.IndexType
-import lucene.containers.SectionContainer
+import lucene.containers.*
 import lucene.indexers.IndexFields
 import lucene.indexers.getString
 import org.apache.lucene.search.IndexSearcher
@@ -14,7 +11,7 @@ import utils.parallel.pmap
 import java.io.File
 
 
-class SectionRetriever(val sectionSearcher: IndexSearcher,
+class SectionRetriever(val sectionSearcher: SectionSearcher,
                        val indexSearcher: IndexSearcher,
                        queries: List<Pair<String, TopDocs>>,
                        qrelLoc: String, val paragraphRetrieve: ParagraphRetriever) {
@@ -35,10 +32,11 @@ class SectionRetriever(val sectionSearcher: IndexSearcher,
             queries
                 .withIndex().pmap {index ->
                 val (query, tops) = index.value
-//                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
-                    val entityNames = getCandidateEntityNames(tops, index.index)
+                    val seen = HashSet<Int>()
+                    val entityNames = (getCandidateEntityNames(tops, index.index) )
+//                            doSectionQuery(query))
                     val sections = getCandidateEntityData(entityNames).toList()
-                        .filter { it.second != "" }
+                        .filter { it.second != "" && seen.add(it.first) }
                     sections
                         .mapIndexed { eIndex: Int, (docId, sectionId) ->
                             DocContainer.createDocumentContainer<IndexType.SECTION>(
@@ -78,10 +76,21 @@ class SectionRetriever(val sectionSearcher: IndexSearcher,
             .asSequence()
             .mapNotNull { pid ->
                 val q = AnalyzerFunctions.createQuery(pid, field = IndexFields.FIELD_CHILDREN_IDS.field)
-                sectionSearcher.search(q, 1).scoreDocs.firstOrNull() }
+                val secDocs = sectionSearcher.search(q, 1).scoreDocs
+                if (secDocs.size > 1) println("Uh oh: ${secDocs.size}")
+                secDocs.firstOrNull()
+            }
             .map { it.doc to IndexFields.FIELD_SECTION_ID.getString(sectionSearcher.doc(it.doc)) }
         return result
+    }
 
+    private fun doSectionQuery(query: String): List<String> {
+        val q = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field,
+                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
+                useFiltering = true)
+
+        val results = sectionSearcher.search(q, 20)
+        return results.scoreDocs.map { sectionSearcher.getIndexDoc(it.doc).id() }
     }
 
 

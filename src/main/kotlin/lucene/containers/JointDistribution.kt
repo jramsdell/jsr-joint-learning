@@ -3,6 +3,7 @@ package lucene.containers
 import features.subobject.SubObjectFeatures
 import lucene.indexers.IndexFields
 import lucene.indexers.getList
+import utils.AnalyzerFunctions
 import utils.misc.groupOfSets
 import utils.misc.identity
 import utils.misc.mapOfLists
@@ -32,53 +33,208 @@ fun getSubMap(paragraphContainers: List<ParagraphContainer>, entityContainers: L
 }
 
 
-class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: Map<Int, Map<Int, Double>>) {
+class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: Map<Int, Map<Int, Double>>,
+                        val secToPar: Map<Int, Map<Int, Double>> = emptyMap(),
+                        val parToSec: Map<Int, Map<Int, Double>> = emptyMap(),
+                        val secToEnt: Map<Int, Map<Int, Double>> = emptyMap(),
+                        val entToSec: Map<Int, Map<Int, Double>> = emptyMap()) {
     companion object {
-        fun createJointDistribution(entityContainers: List<EntityContainer>, paragraphContainers: List<ParagraphContainer>): JointDistribution {
+
+        fun createExperimental(qd: QueryData): JointDistribution {
+
+            val secToPar = HashMap<Int, Map<Int, Double>>()
+            val parToSec = qd.paragraphContainers.mapIndexed { index, pContainer ->
+                index to HashMap<Int, Double>() }
+                .toMap()
+            val parToEnt = HashMap<Int, Map<Int, Double>>()
+            val entToPar = qd.entityContainers.mapIndexed { index, eContainer ->
+                index to HashMap<Int, Double>() }
+                .toMap()
+
+            val totalParagraphs = qd.paragraphContainers.map { pContainer ->
+                val text = pContainer.doc().text()
+                val dist = AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+                    .countDuplicates()
+                pContainer.index to dist
+            }
+
+            val totalEntities = qd.entityContainers.map { eContainer ->
+//                val inlinks = eContainer.doc().inlinks().split(" ")
+//                val outlinks = eContainer.doc().outlinks().split(" ")
+                val outlinks = eContainer.doc().unigrams().split(" ")
+                val dist = (outlinks)
+                    .countDuplicates()
+                    .toMap()
+                eContainer.index to dist
+            }
+
+            qd.sectionContainers.forEach { section ->
+                val pSet = section.doc().paragraphs().split(" ").toSet()
+                val children = qd.paragraphContainers.filter { it.name in pSet }
+                    .map { paragraph ->
+                        val text = paragraph.doc().text()
+                        val tokens = AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+                            .toList()
+                        paragraph.index to tokens
+                    }
+
+
+                val sTotal = children.flatMap { it.second }
+                    .countDuplicates()
+                    .toList()
+                    .sortedByDescending { it.second }
+                    .take(15)
+                    .toMap()
+
+
+                val sCond = totalParagraphs.map { (child, dist) ->
+                    child to dist.entries.sumBy { (token, freq) -> (sTotal[token] ?: 0) * freq }.toDouble() }
+                    .toMap()
+
+
+                secToPar[section.index] = sCond.normalize()
+                sCond.forEach { (pIndex, freq) -> parToSec[pIndex]!!.merge(section.index, freq, ::sum)  }
+            }
+
+            qd.paragraphContainers.forEach { paragraph ->
+                val eSet = paragraph.doc().entities().split(" ").toSet()
+                val children = qd.entityContainers.filter { it.name in eSet }
+                    .map { totalEntities[it.index]!! }
+
+
+                val sTotal = children.flatMap { it.second.map { (link, freq) -> link to freq } }
+                    .groupBy { it.first }
+                    .mapValues { it.value.sumBy { it.second } }
+                    .toList()
+                    .sortedByDescending { it.second }
+                    .take(15)
+                    .toMap()
+
+                val sCond = totalEntities.map { (child, dist) ->
+                    child to dist.entries.sumBy { (token, freq) -> (sTotal[token] ?: 0) * freq }.toDouble() }
+                    .toMap()
+
+                parToEnt[paragraph.index] = sCond.normalize()
+                sCond.forEach { (eIndex: Int, freq: Double) -> entToPar[eIndex]!!.merge(paragraph.index, freq, ::sum)  }
+            }
+
+
+            return JointDistribution(
+                    parToSec = parToSec.map { it.key to it.value.normalize() }.toMap(),
+                    secToPar = secToPar,
+                    secToEnt = qd.sectionContainers.map { it.index to emptyMap<Int, Double>() }.toMap(),
+                    entToSec = qd.entityContainers.map { it.index to emptyMap<Int, Double>() }.toMap(),
+                    parToEnt = parToEnt,
+                    entToPar = entToPar.map { it.key to it.value.normalize() }.toMap()
+            )
+        }
+
+
+        fun createJointDistribution(qd: QueryData): JointDistribution {
+
+            val entityContainers = qd.entityContainers
+            val paragraphContainers = qd.paragraphContainers
+            val sectionContainers = qd.sectionContainers
+
             val entIdMap = entityContainers.mapIndexed { index, container -> container.name to index }.toMap()
+            val parIdMap = paragraphContainers.mapIndexed { index, container -> container.name to index }.toMap()
             val inverseMaps =
                     entityContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }
                         .toMap()
 
+            val paragraphInverseMap =
+                    paragraphContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }
+                        .toMap()
+
             val parFreqMap = HashMap<Int, Map<Int, Double>>()
+            val secToParMap = HashMap<Int, Map<Int, Double>>()
             val smoothingFactor = 0.0
 
 //            val (ptoE, etoP) = getSubMap(paragraphContainers, entityContainers)
 
 
             paragraphContainers.forEachIndexed { index, container ->
-                // Retrieve entities from neighborhood (and also add in own entities, increasing probability of those)
-                val entities = container.doc().get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ")
-//                val entities = container.doc().get(IndexFields.FIELD_ENTITIES.field).split(" ")
-//                val entities = container.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+                val entities = container.doc().neighborEntities().split(" ")
+                val uniform = entityContainers.mapIndexed { i, _ -> i to 0.1  }
 
                 val baseFreqs =
                         entities.mapNotNull { id -> entIdMap[id] }
-                            .countDuplicates()
-                            .normalize()
-                            .map { it.key to it.value * (1.0 - smoothingFactor) } // Smoothing part
+                            .map { it to 1.0 }
+//                            .normalize()
+//                            .map { it.key to it.value * (1.0 - smoothingFactor) } // Smoothing part
 
-                val otherFreqs =
-                        entIdMap.values.map { it to (1.0 / entIdMap.size.toDouble()) * (smoothingFactor) }
+                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
+                    .toMap()
+
+//                val otherFreqs =
+//                        entIdMap.values.map { it to (1.0 / entIdMap.size.toDouble()) * (smoothingFactor) }
 
                 // Since frequencies can contain duplicates, merge them all together so there's exactly one freq
                 // for each of the entities in our pool.
-                val freqMap = (baseFreqs + otherFreqs)
-                    .groupingBy { (entityId, _) -> entityId }
-                    .fold(0.0) { acc, (_, freq) -> acc + freq }
+//                val freqMap = (baseFreqs + otherFreqs)
+//                    .groupingBy { (entityId, _) -> entityId }
+//                    .fold(0.0) { acc, (_, freq) -> acc + freq }
 
-                freqMap.forEach { (entityId, freq) ->
-                    inverseMaps[entityId]!!.merge(index, freq, ::sum)
+                combined.forEach { (entityIndex, freq) ->
+                    inverseMaps[entityIndex]!!.merge(index, freq, ::sum)
                 }
 
-                parFreqMap[index] = freqMap
+
+                parFreqMap[index] = combined
             }
 
-            val entFreqMap = inverseMaps.mapValues { it.value.normalize() }
-//            val entFreqMap = inverseMaps.mapValues { it.value }
+            sectionContainers.forEachIndexed { index, container ->
+                val paragraphs = container.doc().paragraphs().split(" ")
+                val uniform = paragraphContainers.mapIndexed { i, _ -> i to 0.1  }
+
+                val baseFreqs =
+                        paragraphs.mapNotNull { id -> parIdMap[id]  }
+                            .map { it to 1.0 }
+
+                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
+                    .toMap()
+
+                combined.forEach { (parIndex, freq) ->
+                    paragraphInverseMap[parIndex]!!.merge(index, freq, ::sum)
+                }
+
+                secToParMap[index] = combined
+            }
+
+
+
+            val entFreqMap = inverseMaps.mapValues { it.value }
+            val parToSecMap = paragraphInverseMap.mapValues { it.value }
+
+//            val secToEnt = secToParMap.flatMap { (secIndex, secMapToPar) ->
+//                secMapToPar.flatMap { (parIndex, parFreq) ->
+//                    parFreqMap[parIndex]!!.map { (entityIndex, entFreq) ->
+//                        secIndex to (entityIndex to entFreq * parFreq)
+//                    }
+//                }
+//            }.groupBy { (secIndex, _) -> secIndex }
+//                .mapValues { it.value.map { it.second }.toMap() }
+//
+//            val entToSec = inverseMaps.flatMap { (entityIndex, entToParMap) ->
+//                entToParMap.flatMap { (parIndex, parFreq) ->
+//                    parToSecMap[parIndex]!!.map { (secIndex, secFreq) ->
+//                        entityIndex to (secIndex to secFreq * parFreq)
+//                    }
+//                }
+//            }.groupBy { (entIndex, _) -> entIndex }
+//                .mapValues { it.value.map { it.second }.toMap() }
+
+
+
+
+
             return JointDistribution(
                     entToPar = entFreqMap,
-                    parToEnt = parFreqMap as Map<Int, Map<Int, Double>>
+                    parToEnt = parFreqMap as Map<Int, Map<Int, Double>>,
+                    parToSec = parToSecMap,
+                    secToPar = secToParMap
+//                    secToEnt = secToEnt,
+//                    entToSec = entToSec
 //                            entToPar = etoP.map { it.key to it.value.map { it to 1.0 }.toMap() }.toMap(),
 //                    parToEnt = ptoE.map { it.key to it.value.map { it to 1.0 }.toMap() }.toMap()
             )

@@ -6,6 +6,7 @@ import lucene.containers.*
 import lucene.indexers.IndexFields
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
+import utils.AnalyzerFunctions
 import utils.misc.mapOfLists
 import utils.parallel.pmap
 import java.io.File
@@ -33,7 +34,8 @@ class EntityRetriever(val entitySearcher: EntitySearcher,
                 .withIndex().pmap {index ->
                 val (query, tops) = index.value
 //                val entityNames = getCandidatesFromQuery(query) + getCandidateEntityNames(tops) // skip query for now
-                    val entityNames = getCandidateEntityNames(tops, index.index)
+                    val entityNames = (getCandidateEntityNames(tops, index.index) )
+//                            doEntityQuery(query)).toSet().toList()
                     getCandidateEntityData(entityNames)
                         .mapIndexed { eIndex: Int, (name, docId) ->
                     DocContainer.createDocumentContainer<IndexType.ENTITY>(
@@ -66,7 +68,7 @@ class EntityRetriever(val entitySearcher: EntitySearcher,
         val seen = HashSet<String>()
         val entities = paragraphRetrieve
 //            .paragraphContainers[index].flatMap { pC -> pC.doc().get(IndexFields.FIELD_ENTITIES.field).split(" ") }
-            .paragraphContainers[index].flatMap { pC -> pC.doc().neighborEntities().split(" ") }
+            .paragraphContainers[index].flatMap { pC -> pC.doc().entities().split(" ") }
 //            .paragraphContainers[index].flatMap { pC -> pC.doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
             .filter { entity -> seen.add(entity.toUpperCase()) }
 //            tops.scoreDocs.flatMap {  scoreDoc ->
@@ -89,6 +91,16 @@ class EntityRetriever(val entitySearcher: EntitySearcher,
 //    private fun getCandidatesFromQuery(query: String) =
 //        db.getEntityDocuments(query, 5)
 //            .map { doc -> doc.get("abstract") }
+
+private fun doEntityQuery(query: String): List<String> {
+    val q = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field,
+            analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
+            useFiltering = true)
+
+    val results = entitySearcher.search(q, 100)
+    return results.scoreDocs.map { entitySearcher.getIndexDoc(it.doc).name() }
+}
+
 //
     private fun cleanQrelEntry(entry: String) =
             entry.replace("enwiki:", "")

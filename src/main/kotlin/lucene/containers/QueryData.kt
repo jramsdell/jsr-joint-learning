@@ -11,9 +11,9 @@ data class QueryData(
         val queryBoolean: BooleanQuery,
         val queryBooleanTokens: List<Any>,
 
-        val paragraphSearcher: IndexSearcher,
-        val entitySearcher: IndexSearcher,
-        val sectionSearcher: IndexSearcher,
+        val paragraphSearcher: ParagraphSearcher,
+        val entitySearcher: EntitySearcher,
+        val sectionSearcher: SectionSearcher,
 
         val entityContainers: List<EntityContainer>,
         val paragraphContainers: List<ParagraphContainer>,

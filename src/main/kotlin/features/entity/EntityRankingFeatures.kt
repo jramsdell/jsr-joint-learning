@@ -59,7 +59,8 @@ object EntityRankingFeatures {
     private fun entityTop25Freq(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val counts = paragraphContainers.flatMap { container ->
             val doc = container.doc()
-            doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+//            doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
+        doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
             .countDuplicates()
 
         entityContainers.forEachIndexed { index, eContainer ->

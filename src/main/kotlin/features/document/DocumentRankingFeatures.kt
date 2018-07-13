@@ -17,7 +17,11 @@ import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
 import utils.lucene.explainScore
 import utils.stats.takeMostFrequent
 import lucene.containers.FeatureEnum.*
+import lucene.containers.paragraphs
+import lucene.containers.text
 import lucene.indexers.getList
+import org.apache.lucene.index.Term
+import utils.stats.countDuplicates
 import utils.stats.normalize
 
 
@@ -88,6 +92,27 @@ object DocumentRankingFeatures {
         }
     }
 
+    private fun queryDist(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val qDist = AnalyzerFunctions.createTokenList(queryString, ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+            .countDuplicates()
+            .normalize()
+
+        paragraphContainers.forEach { container ->
+            val cDist = AnalyzerFunctions.createTokenList(container.doc().text(),
+                    ANALYZER_ENGLISH_STOPPED)
+                .countDuplicates()
+                .toList()
+                .sortedByDescending { it.second }
+                .take(15)
+                .toMap()
+                .normalize()
+
+            val score = qDist.entries.sumByDouble { (token, freq) ->
+                (cDist[token] ?: 0.000) * freq * paragraphSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / paragraphSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field)  }
+            sf.paragraphScores[container.index] = score
+        }
+    }
+
     private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
         // Parse query and retrieve a language model for it
         val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
@@ -127,46 +152,44 @@ object DocumentRankingFeatures {
 //    }
 
 
-//    private fun querySDMDocument(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-//        // Parse query and retrieve a language model for it
-//        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
-//                analyzerType = ANALYZER_ENGLISH_STOPPED)
-//        val cleanQuery = tokens.toList().joinToString(" ")
-//        val gramAnalyzer = GramAnalyzer(paragraphSearcher)
-//        val queryCorpus = gramAnalyzer.getCorpusStatContainer(cleanQuery)
-//        val weights = listOf(0.9285990421606605, 0.070308081629, -0.0010928762)
-//
-//        paragraphContainers.forEachIndexed { index, container ->
-//            val doc = container.doc()
-//            val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
-//            val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 2.0)
-//            val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
-//            sf.paragraphScores[index] = score
-//        }
-//    }
+    private fun querySDMDocument(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        // Parse query and retrieve a language model for it
+        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+                analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val cleanQuery = tokens.toList().joinToString(" ")
+        val gramAnalyzer = GramAnalyzer(paragraphSearcher)
+        val queryCorpus = gramAnalyzer.getCorpusStatContainer(cleanQuery)
+        val weights = listOf(0.9285990421606605, 0.070308081629, -0.0010928762)
 
-//    private fun distributeByScore(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-//        val pScores = qd.paragraphContainers.mapIndexed { pIndex, pContainer ->
-//            val fieldTokens = pCon
-//            val fieldQuery = FieldQueryFormatter()
-//                .addWeightedQueryTokens(fieldTokens, IndexFields.FIELD_INLINKS_UNIGRAMS, 1.0)
-//                .createBooleanQuery()
-//            val searchResult = qd.entitySearcher.search(fieldQuery, 2000)
-//
-//            val parToEntScores =
-//                    searchResult.scoreDocs.map { sc -> sc.doc to sc.score.toDouble() }
-//            pContainer.docId to parToEntScores.toMap()
-//        }.toMap()
+        paragraphContainers.forEachIndexed { index, container ->
+            val doc = container.doc()
+            val docStat = LanguageStatContainer.createLanguageStatContainer(doc.doc)
+            val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 2.0)
+            val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
+            sf.paragraphScores[index] = score
+        }
+    }
 
-//        qd.paragraphContainers.forEachIndexed { index, pContainer ->
-//            val scores = pScores[pContainer.docId]!!
-//            val nScore = entityContainers.map { eContainer -> eContainer to (scores[eContainer.docId] ?: 0.0) }
-//                .toMap()
-//                .normalize()
-//                .forEach { (entity, prob) -> sf.paragraphScores[index] += prob * entity.isRelevant.toDouble()   }
-//        }
-//
-//    }
+
+    private fun constantScore(qd: QueryData, sf: SharedFeature, constant: Double): Unit = with(qd) {
+        sf.paragraphScores.fill(constant)
+    }
+
+    private fun scoreBySectionLinks(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val sectionLinks = sectionContainers
+            .flatMap { sContainer -> sContainer.doc().paragraphs().split(" ") }
+            .countDuplicates()
+
+        paragraphContainers.forEachIndexed { index, pContainer ->
+            sf.paragraphScores[index] = sectionLinks[pContainer.name]?.toDouble() ?: 0.0
+        }
+    }
+
+    fun addConstantScore(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_CONSTANT_SCORE, wt, norm, { qd, sf -> constantScore(qd, sf, 1.0) })
+
+    fun addSectionFreq(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_SECTION_FREQ, wt, norm, this::scoreBySectionLinks)
 
     fun addBM25Document(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
         fmt.addFeature3(DOC_BM25, wt, norm, this::queryBM25Document)
@@ -206,6 +229,12 @@ object DocumentRankingFeatures {
 
     fun addJointEntityField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_JOINT_ENTITIES_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_NEIGHBOR_ENTITIES_UNIGRAMS) }
+
+    fun addSDMDocument(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_SDM, wt, norm) { qd, sf -> querySDMDocument(qd, sf) }
+
+    fun addQueryDist(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_QUERY_DIST, wt, norm, this::queryDist)
 
 //    fun addDistScore(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
 //            fmt.addFeature3(DOC_JOINT_ENTITIES_FIELD, wt, norm, this::distributeByScore)

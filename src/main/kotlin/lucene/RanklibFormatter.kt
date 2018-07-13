@@ -14,6 +14,7 @@ import utils.misc.CONTENT
 import utils.misc.filledArray
 import utils.parallel.forEachParallelQ
 import utils.parallel.pmap
+import utils.stats.defaultWhenNotFinite
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -99,12 +100,13 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     val queryRetriever = QueryRetriever(paragraphSearcher, false)
 //    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
-    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = true)
+    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
     val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, false,
 //            doFiltered = paragraphQrelLoc != "")
             doFiltered = false)
     val entityRetriever = EntityRetriever(entitySearcher, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
     val sectionRetriever = SectionRetriever(sectionSearcher, paragraphSearcher, queries, sectionQrelLoc, paragraphRetrieve = paragraphRetriever)
+        .apply { paragraphRetriever.updateParagraphContainers(this) }
     val featureDatabase = FeatureDatabase2()
 
 
@@ -179,7 +181,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             NormType.SUM    -> normSum(values)
             NormType.ZSCORE -> normZscore(values)
             NormType.LINEAR -> normLinear(values)
-        }
+        }.map { it.defaultWhenNotFinite(0.0) }
     }
 
     private fun createQueryData(query: String, tops: TopDocs,
@@ -275,7 +277,40 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                         .forEach { (entityIndex, freq) ->
                             sf.entityScores[entityIndex] += freq * sf.paragraphScores[index]
                         }
+
+                    qc.jointDistribution.parToSec[index]!!
+                        .entries
+                        .forEach { (secIndex, freq) ->
+                            sf.sectionScores[secIndex] += freq * sf.paragraphScores[index]
+                        }
                 }
+
+            }
+
+            // Turn section features into other features
+            if (featureEnum.type == FeatureType.SECTION && useJointDist) {
+                val tempScores = sf.sectionScores.map { it }
+//                sf.sectionScores.fill(0.0)
+
+                sf.sectionScores.forEachIndexed { index, score ->
+                    qc.jointDistribution.secToPar[index]!!
+                        .entries
+                        .forEach { (parIndex, freq) ->
+                            sf.paragraphScores[parIndex] += freq * sf.sectionScores[index]
+                        }
+
+                }
+
+                sf.paragraphScores.forEachIndexed { index, score ->
+                    qc.jointDistribution.parToEnt[index]!!
+                        .entries
+                        .forEach { (entityIndex, freq) ->
+                            sf.entityScores[entityIndex] += freq * sf.paragraphScores[index]
+                        }
+                }
+
+
+
             }
 
             // Turn entity features into paragraph features
@@ -287,6 +322,15 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                             sf.paragraphScores[parIndex] += freq * sf.entityScores[index]
                         }
                 }
+
+                sf.paragraphScores.forEachIndexed { index, score ->
+                    qc.jointDistribution.parToSec[index]!!
+                        .entries
+                        .forEach { (secIndex, freq) ->
+                            sf.sectionScores[secIndex] += freq * sf.paragraphScores[index]
+                        }
+                }
+
             }
 
 
@@ -365,8 +409,11 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //                .let { file.write(it + "\n"); onlyParagraph.write(it + "\n") }
 
         queryContainers
-            .flatMap { queryContainer -> queryContainer.entities.map(EntityContainer::toString) + queryContainer.paragraphs.map(ParagraphContainer::toString)}
-//            queryContainer.sections.map(SectionContainer::toString)}
+            .flatMap { queryContainer ->
+                queryContainer.entities.map(EntityContainer::toString)  +
+                        queryContainer.paragraphs.map(ParagraphContainer::toString) +
+            queryContainer.sections.map(SectionContainer::toString)
+            }
             .joinToString(separator = "\n")
             .let { file.write(it + "\n"); }
 

@@ -382,7 +382,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
             IndexFields.FIELD_SECTION_HEADING.setTextField(doc, filteredHeading)
             IndexFields.FIELD_SECTION_PATH.setTextField(doc, filteredPath)
             val text = paragraphs.joinToString("\n") { it.textOnly + "\n" }
-            val (unigrams, bigrams, windowed) = getGramsFromContent(text)
+            val (unigrams, bigrams, windowed) = getGramsFromContent(text, 60)
             val childrenIds = paragraphs.joinToString(" "){ it.paraId }
             IndexFields.FIELD_UNIGRAM.setTextField(doc, unigrams)
             IndexFields.FIELD_BIGRAM.setTextField(doc, bigrams)
