@@ -18,7 +18,7 @@ class DocContainer<out A: IndexType>(val name: String,
                                      val query: String,
                                      var dist: HashMap<String, Double> = HashMap(),
                                      private val docType: Class<A>) {
-    val features = ArrayList<FeatureContainer>()
+    var features = ArrayList<FeatureContainer>()
 
     // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
 //    fun doc(): Document = searcher.doc(docId)

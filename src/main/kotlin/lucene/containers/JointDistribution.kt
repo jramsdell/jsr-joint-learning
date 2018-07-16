@@ -9,8 +9,11 @@ import utils.misc.identity
 import utils.misc.mapOfLists
 import utils.misc.toHashMap
 import utils.stats.countDuplicates
+import utils.stats.defaultWhenNotFinite
 import utils.stats.normalize
 import java.lang.Double.sum
+import java.lang.Math.log
+import kotlin.math.pow
 
 fun getSubMap(paragraphContainers: List<ParagraphContainer>, entityContainers: List<EntityContainer>): Pair<Map<Int, HashSet<Int>>, Map<Int, HashSet<Int>>> {
     val parToEntity = paragraphContainers.map { it.index to HashSet<Int>() }.toMap()
@@ -154,8 +157,9 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
 
             paragraphContainers.forEachIndexed { index, container ->
-                val entities = container.doc().neighborEntities().split(" ")
-                val uniform = entityContainers.mapIndexed { i, _ -> i to 0.1  }
+//                val entities = container.doc().neighborEntities().split(" ")
+                val entities = container.doc().spotlightEntities().split(" ")
+//                val uniform = entityContainers.mapIndexed { i, _ -> i to 0.1  }
 
                 val baseFreqs =
                         entities.mapNotNull { id -> entIdMap[id] }
@@ -163,8 +167,9 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 //                            .normalize()
 //                            .map { it.key to it.value * (1.0 - smoothingFactor) } // Smoothing part
 
-                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
-                    .toMap()
+//                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
+//                    .toMap()
+                val combined = baseFreqs.toMap()
 
 //                val otherFreqs =
 //                        entIdMap.values.map { it to (1.0 / entIdMap.size.toDouble()) * (smoothingFactor) }
@@ -185,14 +190,15 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
             sectionContainers.forEachIndexed { index, container ->
                 val paragraphs = container.doc().paragraphs().split(" ")
-                val uniform = paragraphContainers.mapIndexed { i, _ -> i to 0.1  }
+//                val uniform = paragraphContainers.mapIndexed { i, _ -> i to 0.1  }
 
                 val baseFreqs =
                         paragraphs.mapNotNull { id -> parIdMap[id]  }
                             .map { it to 1.0 }
 
-                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
-                    .toMap()
+//                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
+//                    .toMap()
+                val combined = baseFreqs.toMap()
 
                 combined.forEach { (parIndex, freq) ->
                     paragraphInverseMap[parIndex]!!.merge(index, freq, ::sum)
@@ -336,7 +342,6 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
             val tokens = AnalyzerFunctions.createTokenList(query, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED, useFiltering = true)
 //                .flatMap { it.windowed(2) }
                 .countDuplicates()
-                .normalize()
 
             val secToPar = qd.sectionContainers.map { it.index to emptyMap<Int, Double>() }.toHashMap()
             val parToEnt = qd.paragraphContainers.map { it.index to emptyMap<Int, Double>() }.toHashMap()
@@ -351,13 +356,20 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
                 val condMap = qd.paragraphContainers.map { pContainer ->
 //                    val score1 = newMap.sumByDouble { (freq, unigram) ->
-//                        pContainer.dist[unigram]?.times(freq) ?: 0.0 }
+//                        pContainer.dist[unigram]?.times(freq) ?: 0.1 }
 
-                    val score2 =sContainer.dist.entries.sumByDouble { (unigram, freq) ->
-                        pContainer.dist[unigram]?.times(freq) ?: 0.0 }
+                    val pnorm = pContainer.dist.normalize()
+                    val snorm = sContainer.dist.normalize()
+
+                    val score2 = snorm.entries.sumByDouble { (unigram, freq) ->
+                        log((pContainer.dist[unigram] ?: 0.1) * freq ).defaultWhenNotFinite(0.0)
+//                        (pnorm[unigram] ?: 0.0) * freq
+                    }
+
+//                    val self =  Math.sqrt( snorm.values.sumByDouble { it.pow(2.0) })
+//                    val self2 = Math.sqrt( pnorm.values.sumByDouble { it.pow(2.0) })
+//                    val score = score2 / (self * self2)
                     val score = score2
-
-
 
                     parToSec[pContainer.index]!!.merge(sContainer.index, score, ::sum)
                     pContainer.index to score }
@@ -366,20 +378,7 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
                 secToPar[sContainer.index] = condMap
             }
 
-            qd.paragraphContainers.forEach { pContainer ->
-                val newMap = tokens.mapNotNull { (token, freq) ->
-                    pContainer.dist[token]?.times(freq)?.to(token) }
 
-
-                val condMap = qd.entityContainers.map { eContainer ->
-                    val score = newMap.sumByDouble { (freq, unigram) ->
-                        eContainer.dist[unigram]?.times(freq) ?: 0.0 }
-                    entToPar[eContainer.index]!!.merge(pContainer.index, score, ::sum)
-                    eContainer.index to score }
-                    .toMap()
-
-                parToEnt[pContainer.index] = condMap
-            }
 
             return JointDistribution(parToEnt = parToEnt, entToPar = entToPar, secToPar = secToPar,
                     parToSec = parToSec)
@@ -415,4 +414,108 @@ private fun getEntityConditionMap(qd: QueryData, uniform: List<Pair<Int, Double>
         eContainer.index to baseMap.normalize()
     }.toMap()
     return parFreqMap
+}
+
+
+fun analyzeStuff(qd: QueryData) {
+    val q = "diet"
+    val tokens = AnalyzerFunctions.createTokenList(q, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+        .countDuplicates()
+        .toMap()
+        .mapValues { it.value.toDouble() }
+
+    fun getMostCommon(children: List<ParagraphContainer>): Map<String, Double> {
+        val all = children.flatMap { it.dist.keys }.toSet()
+        return all.map { term ->
+            var timesSeen = children.count { child -> term in child.dist }
+            term to timesSeen
+        }.toMap().normalize()
+    }
+
+    qd.sectionContainers.forEach { sContainer ->
+        val children = sContainer.doc().paragraphs().split(" ").toSet()
+            .run { qd.paragraphContainers.filter { it.name in this } }
+
+        val mCommon = getMostCommon(children)
+
+        val sDist = sContainer.dist.normalize()
+        val scores = children.map { pContainer ->
+            val likelihood = pContainer.dist.entries.sumByDouble { (k,v) ->
+                log(sContainer.dist[k]!! * v).defaultWhenNotFinite(0.0)
+            }
+
+            val rareness = children.filter { it.name != pContainer.name }
+                .sumByDouble { other ->
+                    val oDist = other.dist.normalize()
+                    pContainer.dist.normalize().entries.sumByDouble { (k, v) ->
+                        log((oDist[k] ?: 0.1) * v * sDist[k]!!).defaultWhenNotFinite(0.0)
+//                    }
+                    }}
+//                } / Math.max(1.0, other.dist.values.sum())
+//                } / sContainer.dist.values.sum()
+
+//            pContainer to likelihood / rareness.defaultWhenNotFinite(0.001) }
+        pContainer to -rareness }
+            .sortedByDescending { it.second }
+
+        println("====${sContainer.name}====")
+        val scoreDist = scores.mapIndexed { index, (_, score) -> index to score}
+            .toMap()
+            .normalize()
+
+        val lengthDist = scores.mapIndexed { index, (child, _) ->
+            index to child.doc().text().length.toDouble() }
+            .toMap()
+            .normalize()
+
+        scores.forEachIndexed { index, (child, score) ->
+//            val t = AnalyzerFunctions.createTokenList(child.doc().text(), AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+//                .countDuplicates()
+//                .toSortedMap()
+
+//            println("$score [${scoreDist[index]}] : ${child.doc().text().length} [${lengthDist[index]}] :  ${Math.exp(score)} : ${child.doc().text()}")
+            val others = children.filter { it.name != child.name }
+            val inCommon = child.dist.entries.sumByDouble { (k,v) ->
+                others.sumByDouble { other -> (other.dist[k] ?: 0.0) * v } }
+
+            val inCommon2 = child.dist.entries.sumByDouble { (k, v) ->
+                (mCommon[k] ?: 0.0) * v
+            }
+            println("$inCommon : $inCommon2 : $score [${scoreDist[index]}] : ${child.doc().text().length} [${lengthDist[index]}] :  ${Math.exp(score)} : ${child.doc().text()}")
+        }
+        println()
+
+
+    }
+
+
+//    qd.sectionContainers.map { sContainer ->
+//
+//        val self =  Math.sqrt( sContainer.dist.entries.sumByDouble { (k,v) ->
+//            log((v * (tokens[k] ?: 0.5)).pow(2.0)) }
+//        )
+//
+//        val result = qd.paragraphContainers.map { pContainer ->
+//            val self2 = Math.sqrt( pContainer.dist.entries.sumByDouble { (k,v) ->
+//                log((v * (tokens[k] ?: 0.5)).pow(2.0)) })
+//
+//            val goodness = tokens.entries.sumByDouble { (k,v) ->
+//                ((pContainer.dist[k] ?: 0.1) * (sContainer.dist[k] ?: 0.1) * v).defaultWhenNotFinite(0.0)
+//            } / (pContainer.dist.size.toDouble() * sContainer.dist.size)
+//
+//            val jointScore = sContainer.dist.entries
+//                .sumByDouble { (k,v) ->
+//                    log((pContainer.dist[k]?: 0.1) * v).defaultWhenNotFinite(0.0)
+//                } / (pContainer.dist.size.toDouble() )
+////            val normed = (jointScore/(self * self2)).defaultWhenNotFinite(0.0)
+//            val normed = jointScore * (-log(goodness)).defaultWhenNotFinite(1.0)
+//            pContainer to normed
+//        }.maxBy { it.second }!!
+////            ?.run { println("${sContainer.name} (${this.second}) : ${this.first.doc().text()}")}
+//        sContainer to result
+//    }.sortedBy { it.second.second }
+//        .forEach { (sContainer, result) ->
+//            println("${sContainer.name} (${result.second}) : ${result.first.doc().text()}")
+//            println()
+//        }
 }

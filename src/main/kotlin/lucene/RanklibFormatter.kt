@@ -1,5 +1,8 @@
 package experiment
 
+import browser.BrowserPage
+import browser.BrowserParagraph
+import browser.BrowserSection
 import entity.EntityDatabase
 import features.shared.SharedFeature
 import lucene.*
@@ -13,6 +16,8 @@ import utils.*
 import utils.lucene.getTypedSearcher
 import utils.misc.CONTENT
 import utils.misc.filledArray
+import utils.misc.sharedRand
+import utils.misc.toHashMap
 import utils.parallel.forEachParallelQ
 import utils.parallel.pmap
 import utils.stats.countDuplicates
@@ -86,6 +91,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     val useJointDist = true
     val useSavedFeatures = false
+    var limit: Int? = null
+    val isHomogenous = false
     val paragraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>(paragraphIndexLoc)
     val entitySearcher = getTypedSearcher<IndexType.ENTITY>(entityIndexLoc)
     val sectionSearcher  =
@@ -93,52 +100,64 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
              getTypedSearcher<IndexType.SECTION>(sectionIndexLoc)
 
 
-//    val qrelCreator = QrelCreator(paragraphQrelLoc,
-//            "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-hierarchical.entity.qrels change this",
-//            indexSearcher =  paragraphSearcher)
-//        .apply { writeEntityQrelsUsingParagraphQrels() }
-//        .apply { System.exit(0) }
+    val queryContainers = createQueryContainers( paragraphQueryLoc, paragraphQrelLoc, entityQrelLoc, sectionQrelLoc, isHomogenous)
 
 
-    val entityDb = EntityDatabase(entityIndexLoc)
 
-    val queryRetriever = QueryRetriever(paragraphSearcher, false)
+//    val queryRetriever = QueryRetriever(paragraphSearcher, false, limit = limit)
 //    val queries = queryRetriever.getSectionQueries(paragraphQueryLoc, doBoostedQuery = false)
-    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
-    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, false,
-//            doFiltered = paragraphQrelLoc != "")
-            doFiltered = false)
-    val entityRetriever = EntityRetriever(entitySearcher, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
-    val sectionRetriever = SectionRetriever(sectionSearcher, paragraphSearcher, queries, sectionQrelLoc, paragraphRetrieve = paragraphRetriever)
+//    val queries = queryRetriever.getPageQueries(paragraphQueryLoc, doBoostedQuery = false)
+//    val paragraphRetriever = ParagraphRetriever(paragraphSearcher, queries, paragraphQrelLoc, false,
+////            doFiltered = paragraphQrelLoc != "")
+//            doFiltered = false)
+//    val entityRetriever = EntityRetriever(entitySearcher, paragraphSearcher, queries, entityQrelLoc, paragraphRetrieve = paragraphRetriever)
+//    val sectionRetriever = SectionRetriever(sectionSearcher, paragraphSearcher, queries, sectionQrelLoc, paragraphRetrieve = paragraphRetriever)
 //        .apply { paragraphRetriever.updateParagraphContainers(this) }
     val featureDatabase = FeatureDatabase2()
 
 
 
-    private val queryContainers =
-        queries.withIndex().pmap { indexedQuery ->
+//    private val queryContainers =
+//        queries.withIndex().pmap { indexedQuery ->
+//
+//            val index = indexedQuery.index
+//            val (query, tops) = indexedQuery.value
+//            val paragraphContainers = paragraphRetriever.paragraphContainers[index]
+//            val entityContainers = entityRetriever.entityContainers.get(index)
+//            val sectionContainers = sectionRetriever.sectionContainers.get(index)
+////            val entityContainers = emptyList<EntityContainer>()
+//
+//            QueryContainer(
+//                    query = query,
+//                    paragraphs = paragraphContainers,
+//                    entities = entityContainers,
+//                    sections = sectionContainers,
+//                    queryData = createQueryData(query, tops,
+//                            paragraphContainers = paragraphContainers,
+//                            entityContainers = entityContainers,
+//                            isJoint = useJointDist,
+//                            sectionContainers = sectionContainers)
+//            )
+//        }
 
-            val index = indexedQuery.index
-            val (query, tops) = indexedQuery.value
-            val paragraphContainers = paragraphRetriever.paragraphContainers[index]
-            val entityContainers = entityRetriever.entityContainers.get(index)
-            val sectionContainers = sectionRetriever.sectionContainers.get(index)
-//            val entityContainers = emptyList<EntityContainer>()
 
-            QueryContainer(
-                    query = query,
-                    tops = tops,
-                    paragraphs = paragraphContainers,
-                    entities = entityContainers,
-                    sections = sectionContainers,
-                    queryData = createQueryData(query, tops,
-                            paragraphContainers = paragraphContainers,
-                            entityContainers = entityContainers,
-                            isJoint = useJointDist,
-                            sectionContainers = sectionContainers)
-            )
-        }
 
+    private fun createQueryContainers(queryLocation: String,
+                                      paragraphQrelLoc: String, entityQrelLoc: String, sectionQrelLoc: String,
+                                      isHomogenous: Boolean): List<QueryContainer> {
+        val retriever = CombinedRetriever(
+                paragraphSearcher = paragraphSearcher,
+                sectionSearcher = sectionSearcher,
+                entitySearcher = entitySearcher,
+                limit = limit,
+                entityQrelLoc = entityQrelLoc,
+                paragraphQrelLoc = paragraphQrelLoc,
+                sectionQrelLoc = sectionQrelLoc,
+                isHomogenous = isHomogenous
+        )
+
+        return retriever.createQueryContainers(queryLocation)
+    }
 
 
     /**
@@ -205,18 +224,13 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
         val data = QueryData(
                 queryString = query,
-                tops = tops,
-                queryBoolean = booleanQuery,
-                queryBooleanTokens = booleanQueryTokens,
-                queryTokens = tokens,
                 paragraphSearcher = paragraphSearcher,
                 entitySearcher = entitySearcher,
                 sectionSearcher = sectionSearcher,
                 paragraphContainers = paragraphContainers,
                 entityContainers = entityContainers,
                 sectionContainers = sectionContainers,
-                isJoint = isJoint,
-                entityDb = entityDb)
+                isJoint = isJoint)
         return data
     }
 
@@ -353,47 +367,48 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                               featureEnum: FeatureEnum) {
 
 
-        qc.entities
-            .zip(sf.entityScores.run { normalizeResults(this, normType) })
-            .forEach { (entity, score) ->
-                entity.features += FeatureContainer(score, weight, featureEnum)}
+        val normEntities = normalizeResults(sf.entityScores, normType)
+        val normParagraphs = normalizeResults(sf.paragraphScores, normType)
+        val normSection = normalizeResults(sf.sectionScores, normType)
 
-        qc.paragraphs
-            .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
-            .forEach { (paragraph, score) ->
-                paragraph.features += FeatureContainer(score, weight, featureEnum)
-            }
+        qc.entities.forEachIndexed { index, eContainer ->
+            val score = normEntities[index]
+            val unnormalizedScore = sf.entityScores[index]
+            eContainer.features.add(FeatureContainer(score, unnormalizedScore, weight, featureEnum))
+        }
 
-        qc.sections
-            .zip(sf.sectionScores.run { normalizeResults(this, normType) })
-            .forEach { (section, score) ->
-                section.features += FeatureContainer(score, weight, featureEnum)
-            }
+        qc.paragraphs.forEachIndexed { index, pContainer ->
+            val score = normParagraphs[index]
+            val unnormalizedScore = sf.paragraphScores[index]
+            pContainer.features.add(FeatureContainer(score, unnormalizedScore, weight, featureEnum))
+        }
+
+        qc.sections.forEachIndexed { index, sContainer ->
+            val score = normSection[index]
+            val unnormalizedScore = sf.sectionScores[index]
+            sContainer.features.add(FeatureContainer(score, unnormalizedScore, weight, featureEnum))
+        }
+
+//        qc.entities
+//            .zip(sf.entityScores.run { normalizeResults(this, normType) })
+//            .forEach { (entity, score) ->
+//                entity.features += FeatureContainer(score, 0.0, weight, featureEnum)}
+//
+//        qc.paragraphs
+//            .zip(sf.paragraphScores.run { normalizeResults(this, normType) })
+//            .forEach { (paragraph, score) ->
+//                paragraph.features += FeatureContainer(score, 0.0, weight, featureEnum)
+//            }
+//
+//        qc.sections
+//            .zip(sf.sectionScores.run { normalizeResults(this, normType) })
+//            .forEach { (section, score) ->
+//                section.features += FeatureContainer(score, 0.0, weight, featureEnum)
+//            }
     }
 
 
 
-    /**
-     * Function: rerankQueries
-     * Description: Sums current weighted features together and reranks documents according to their new scores.
-     * @see addFeature
-     */
-//    fun rerankQueries() =
-//        queryContainers.forEach { queryContainer ->
-//            queryContainer.paragraphs
-//                .onEach(ParagraphContainer::rescore)
-//                .sortedByDescending(ParagraphContainer::score)
-//                .forEachIndexed { index, paragraph ->
-//                    queryContainer.tops.scoreDocs[index].doc = paragraph.docId
-//                    queryContainer.tops.scoreDocs[index].score = paragraph.score.toFloat()
-//                }
-//
-//            queryContainer.entities
-//                .onEach(EntityContainer::rescore)
-//
-//            queryContainer.paragraphs
-//                .onEach(ParagraphContainer::rescore)
-//        }
 
 
     /**
@@ -407,32 +422,39 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val onlyEntity = File("ony_entity.txt").bufferedWriter()
         val onlySection = File("ony_section.txt").bufferedWriter()
 
-//        queryContainers
-//                .flatMap { queryContainer -> queryContainer.paragraphs  }
-//                .joinToString(separator = "\n", transform = ParagraphContainer::toString)
-//                .let { file.write(it + "\n"); onlyParagraph.write(it + "\n") }
 
-        queryContainers
+        queryContainers.shuffled(sharedRand)
             .flatMap { queryContainer ->
-//                queryContainer.entities.map(EntityContainer::toString)  +
-                        queryContainer.paragraphs.map(ParagraphContainer::toString) +
-            queryContainer.sections.map(SectionContainer::toString)
+//                val combined = queryContainer.entities.map(EntityContainer::toString)  +
+//                        queryContainer.paragraphs.map(ParagraphContainer::toString) +
+//            queryContainer.sections.map(SectionContainer::toString)
+//                if (isHomogenous) combined.shuffled() else combined
+//                (queryContainer.transformFeatures() + queryContainer.entities)
+//                    .map(EntityContainer::toString)
+//                    .shuffled()
+                val (pars, secs, ents) = queryContainer.transformFeatures()
+                val combined = pars + secs + ents
+                renormalizeFeatures(combined)
+                combined.shuffled()
+                    .map(EntityContainer::toString)
+
+
             }
             .joinToString(separator = "\n")
             .let { file.write(it + "\n"); }
 
-        queryContainers
+        queryContainers.shuffled(sharedRand)
             .flatMap { queryContainer -> queryContainer.paragraphs.map(ParagraphContainer::toString)  }
             .joinToString(separator = "\n")
             .let { onlyParagraph.write(it + "\n"); }
 
 
-        queryContainers
+        queryContainers.shuffled(sharedRand)
             .flatMap { queryContainer -> queryContainer.entities  }
             .joinToString(separator = "\n", transform = EntityContainer::toString)
             .let { onlyEntity.write(it) }
 
-        queryContainers
+        queryContainers.shuffled(sharedRand)
             .flatMap { queryContainer -> queryContainer.sections  }
             .joinToString(separator = "\n", transform = SectionContainer::toString)
             .let { onlySection.write(it) }
@@ -455,21 +477,35 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * @param outName: Name of the file to write the results to.
      */
     fun writeQueriesToFile(outName: String) {
-//        queryRetriever.writeQueriesToFile(queries, outName)
-        queryRetriever.writeParagraphsToFile(queryContainers)
-        queryRetriever.writeEntitiesToFile(queryContainers)
-        queryRetriever.writeSectionsToFile(queryContainers)
+        queryContainers.forEach { qContainer ->
+            val (pars, secs, ents) = qContainer.transformFeatures()
+            val combined = pars + secs + ents
+            renormalizeFeatures(combined)
+//            renormalizeFeatures(secs)
+            secs.forEach { sec ->
+                qContainer.sections[sec.index].features = sec.features
+            }
+            pars.forEach { par ->
+                qContainer.paragraphs[par.index].features = par.features
+            }
+
+        }
+
+        writeParagraphsToFile(queryContainers)
+        writeEntitiesToFile(queryContainers)
+        writeSectionsToFile(queryContainers)
     }
 
     fun doJointDistribution() {
-//        if (!useJointDist)
-//            return
+        if (!useJointDist)
+            return
 
         queryContainers.forEach { qContainer ->
-//                val jointDistribution = JointDistribution.createFromFunctor(qContainer.queryData)
-//                val jointDistribution =  JointDistribution.createJointDistribution(qContainer.queryData)
-            val jointDistribution =  JointDistribution.createMonoidDistribution(qContainer.query, qContainer.queryData)
+            //                val jointDistribution = JointDistribution.createFromFunctor(qContainer.queryData)
+                val jointDistribution =  JointDistribution.createJointDistribution(qContainer.queryData)
+//            val jointDistribution =  JointDistribution.createMonoidDistribution(qContainer.query, qContainer.queryData)
             qContainer.jointDistribution = jointDistribution
+//            analyzeStuff(qContainer.queryData)
         }
     }
 
@@ -483,13 +519,14 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //                umap.forEach { (unigram, freq) -> eContainer.dist.merge(unigram, freq, ::sum) }
 //            }
 
-            queryContainers.forEach { qContainer ->
-                qContainer.paragraphs.forEach { pContainer ->
-                    val unigrams = pContainer.doc().unigrams().split(" ")
-//                        .flatMap { it.windowed(2) }
-                    val umap = unigrams.countDuplicates().mapValues { it.value.toDouble() }
-                    umap.forEach { (unigram, freq) -> pContainer.dist.merge(unigram, freq, ::sum) }
-                }
+        queryContainers.forEach { qContainer ->
+            qContainer.paragraphs.forEach { pContainer ->
+//                val unigrams = pContainer.doc().unigrams().split(" ")
+                val text = pContainer.doc().text()
+                val unigrams = AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+                val umap = unigrams.countDuplicates().mapValues { it.value.toDouble() }
+                umap.forEach { (unigram, freq) -> pContainer.dist.merge(unigram, freq, ::sum) }
+            }
 
             val eIds = qContainer.entities.mapIndexed { index, docContainer -> docContainer.name to index  }
                 .toMap()
@@ -517,13 +554,124 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                         paragraph.dist.forEach { (unigram, freq) -> sContainer.dist.merge(unigram, freq, ::sum) }
                     }
             }
+
+//            qContainer.sections.forEach { sContainer ->
+//                sContainer.dist = sContainer.dist.normalize().toList().toHashMap()
+//            }
+//
+//            qContainer.paragraphs.forEach { sContainer ->
+//                sContainer.dist = sContainer.dist.normalize().toList().toHashMap()
+//            }
+
+
         }
     }
 
     fun initialize() {
-        doPullback(IndexFields.FIELD_UNIGRAM)
+//        doPullback(IndexFields.FIELD_UNIGRAM)
         doJointDistribution()
     }
+
+    fun writeHtml() {
+        queryContainers.forEachIndexed { qIndex, qContainer ->
+            qContainer.sections.forEach(SectionContainer::rescore)
+            qContainer.paragraphs.forEach(ParagraphContainer::rescore)
+            val topSections = qContainer
+                .sections
+                .sortedByDescending(SectionContainer::score)
+                .take(5)
+
+            val seen = HashSet<Int>()
+
+            val browserSections = topSections.mapIndexed { index, section ->
+                val sIndex = section.index
+                val results = qContainer.paragraphs.map { it to it.score * (qContainer.jointDistribution.parToSec[it.index]?.get(sIndex) ?: 0.0) }
+                    .asSequence()
+                    .sortedByDescending { it.second }
+                    .filter { it.second > 0.0 && it.first.index !in seen }
+                    .take(5 )
+                    .map { it.first }
+                    .toList()
+                    .onEach { seen.add(it.index) }
+                section to results
+            }.map { (section, paragraphs) ->
+                val browserParagraphs = paragraphs.map { BrowserParagraph(it.doc().text()) }
+                BrowserSection(section.doc().id(), browserParagraphs) }
+
+            val qname = qContainer.query
+            BrowserPage(qname, browserSections)
+                .write("html_pages/$qIndex.html")
+
+
+
+        }
+    }
+
+    fun writeEntitiesToFile(queries: List<QueryContainer>) {
+        val writer = File("entity_results.run").bufferedWriter()
+        queries.forEach { container ->
+            val seen = HashSet<String>()
+            val query = container.query
+            container.entities.forEach(EntityContainer::rescore)
+            container.entities
+                .filter { entity -> seen.add(entity.name) }
+                .sortedByDescending(EntityContainer::score)
+                .forEachIndexed { index, entity ->
+                    val id = "enwiki:" + entity.name.replace("_", "%20")
+                    writer.write("${query} Q0 $id ${index + 1} ${entity.score} Entity\n")
+                }
+        }
+        writer.flush()
+        writer.close()
+    }
+
+    fun writeParagraphsToFile(queries: List<QueryContainer>) {
+        val writer = File("paragraph_results.run").bufferedWriter()
+        queries.forEach { container ->
+            val seen = HashSet<String>()
+            val query = container.query
+            container.paragraphs.forEach(ParagraphContainer::rescore)
+            container.paragraphs
+                .filter { paragraph -> seen.add(paragraph.name) }
+                .sortedByDescending(ParagraphContainer::score)
+                .forEachIndexed { index, paragraph ->
+                    writer.write("${query} Q0 ${paragraph.name} ${index + 1} ${paragraph.score} Paragraph\n")
+                }
+        }
+        writer.flush()
+        writer.close()
+    }
+
+    fun writeSectionsToFile(queries: List<QueryContainer>) {
+        val writer = File("section_results.run").bufferedWriter()
+        queries.forEach { container ->
+            val seen = HashSet<String>()
+            val query = container.query
+            container.sections.forEach(SectionContainer::rescore)
+            container.sections
+                .filter { section -> seen.add(section.name) }
+                .sortedByDescending(SectionContainer::score)
+                .forEachIndexed { index, section ->
+                    writer.write("${query} Q0 ${section.name} ${index + 1} ${section.score} Section\n")
+                }
+        }
+        writer.flush()
+        writer.close()
+    }
+
+    fun renormalizeFeatures(entities: List<EntityContainer>) {
+        if (entities.isEmpty()) return
+
+        val nFeatures = entities.first().features.size
+        (0 until nFeatures).forEach { fIndex ->
+            entities.map { it.features[fIndex].unnormalizedScore }
+                .run { normalizeResults(this, NormType.ZSCORE) }
+                .forEachIndexed { eIndex, newScore -> entities[eIndex].features[fIndex].score = newScore  }
+        }
+        entities.map(EntityContainer::rescore)
+
+    }
+
 }
 
 

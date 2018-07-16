@@ -1,6 +1,7 @@
 package utils.stats
 
 import utils.misc.identity
+import java.util.*
 
 fun <A, B: Number>Map<A, B>.normalize(): Map<A, Double> {
     val total = values.sumByDouble { it.toDouble() }
@@ -30,3 +31,4 @@ fun<A, B: Comparable<B>> Map<A, B>.takeMostFrequent(n: Int): Map<A, B> =
 fun Double.defaultWhenNotFinite(default: Double = 0.0): Double = if (!isFinite()) default else this
 // Convenience function (turns NaN and infinite values into 0.0)
 fun sanitizeDouble(d: Double): Double { return if (d.isInfinite() || d.isNaN()) 0.0 else d }
+

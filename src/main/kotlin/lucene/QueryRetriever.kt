@@ -24,7 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * Description: Used to make queries (using BM25) and to parse the results of queries.
  *              Takes an IndexSearcher (or path to an index) for the Lucene index it will lucene with.
  */
-class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean = false) {
+class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean = false,
+                     val limit: Int? = null) {
     constructor(indexPath: String) : this(getIndexSearcher(indexPath))
 
     val analyzer = StandardAnalyzer()
@@ -46,6 +47,7 @@ class QueryRetriever(val indexSearcher: IndexSearcher, val takeSubset: Boolean =
      */
     fun getPageQueries(queryLocation: String, doBoostedQuery: Boolean = false): List<Pair<String, TopDocs>> =
             DeserializeData.iterableAnnotations(File(queryLocation).inputStream())
+                .run { limit?.let { this.take(limit) } ?: this }
                 .pmap { page ->
                     val queryId = page.pageId
                     val queryStr = createQueryString(page, emptyList())

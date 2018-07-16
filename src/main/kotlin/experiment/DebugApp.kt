@@ -1,7 +1,9 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
+import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import lucene.FieldQueryFormatter
+import lucene.containers.*
 import lucene.indexers.ContextMerger
 import lucene.indexers.IndexFields
 import lucene.indexers.getString
@@ -9,8 +11,8 @@ import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import utils.AnalyzerFunctions
-import utils.lucene.docs
-import utils.lucene.getIndexSearcher
+import utils.lucene.*
+import java.io.File
 
 class DebugApp(resources: HashMap<String, Any>) {
 //    val index: String by resources
@@ -63,27 +65,65 @@ class DebugApp(resources: HashMap<String, Any>) {
 ////        RanklibRunner("/home/jsc57/programs/RankLib-2.1-patched.jar", "/home/jsc57/projects/jsr-joint-learning/non_filtered_ranklib_results.txt")
 //            .doOptimizer()
 //            .runRankLib("wee", useKcv = true)
+        testNewParData()
     }
 
-    fun runtest() {
-        val searcher = getIndexSearcher("/speedy/jsc57/complete_section_context/")
-        val qf = FieldQueryFormatter()
-        val toks = AnalyzerFunctions.createTokenList("new hampshire university", AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-        val q = qf
-            .addWeightedQueryTokens(toks, IndexFields.FIELD_NAME)
-            .addWeightedQueryTokens(toks, IndexFields.FIELD_ENTITIES_UNIGRAMS)
-            .addWeightedQueryTokens(toks, IndexFields.FIELD_UNIGRAM)
-            .addWeightedQueryTokens(toks, IndexFields.FIELD_NEIGHBOR_SECTIONS)
-            .createBooleanQuery()
-        searcher.search(q, 10).docs(searcher).forEach { (doc, docId) ->
-            println(doc.get(IndexFields.FIELD_NAME.field))
-            println(doc.get(IndexFields.FIELD_UNIGRAM.field))
-            println(doc.get(IndexFields.FIELD_ENTITIES.field))
-            println(doc.get(IndexFields.FIELD_NEIGHBOR_SECTIONS.field))
-            println()
-        }
+    fun testNewParData() {
+        val searcher = getTypedSearcher<IndexType.PARAGRAPH>("/speedy/jsc57/extractions/paragraph/")
+        val doc = searcher.getIndexDoc(190)
+        println(doc.spotlightEntities())
+        println()
+        println(doc.spotlightInlinks())
+        println()
+        println(doc.entities())
+        println(doc.text())
+    }
+
+    fun findPage() {
+        val pageLoc = "/speedy/jsc57/data/unprocessedAllButBenchmark.cbor"
+        val corpusStream = File(pageLoc).inputStream().buffered()
+        DeserializeData.iterableAnnotations(corpusStream)
+            .asSequence()
+            .drop(1)
+            .take(1)
+            .forEach { page ->
+                println(page.outlinks())
+                println(page.filteredInlinks())
+                println("\n\n")
+
+                val outlinkSet = page.outlinks()
+                page.foldOverSection { s, section, paragraphs ->
+                    paragraphs.forEach { p -> p.entitiesOnly.filter { it !in outlinkSet }.forEach {
+                        println(it)
+                        val firstTwo = it.take(2)
+                        outlinkSet.filter { it.startsWith(firstTwo) }
+                            .forEach { println("\t$it") }
+                    }
+                    }
+                }
+            }
 
     }
+
+//    fun runtest() {
+//        val searcher = getIndexSearcher("/speedy/jsc57/complete_section_context/")
+//        val qf = FieldQueryFormatter()
+//        val toks = AnalyzerFunctions.createTokenList("new hampshire university", AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+//        val q = qf
+//            .addWeightedQueryTokens(toks, IndexFields.FIELD_NAME)
+//            .addWeightedQueryTokens(toks, IndexFields.FIELD_ENTITIES_UNIGRAMS)
+//            .addWeightedQueryTokens(toks, IndexFields.FIELD_UNIGRAM)
+//            .addWeightedQueryTokens(toks, IndexFields.FIELD_NEIGHBOR_SECTIONS)
+//            .createBooleanQuery()
+//        searcher.search(q, 10).docs(searcher).forEach { (doc, docId) ->
+//            println(doc.get(IndexFields.FIELD_NAME.field))
+//            println(doc.get(IndexFields.FIELD_UNIGRAM.field))
+//            println(doc.get(IndexFields.FIELD_ENTITIES.field))
+//            println(doc.get(IndexFields.FIELD_NEIGHBOR_SECTIONS.field))
+//            println()
+//        }
+//
+//    }
 
 
     companion object {

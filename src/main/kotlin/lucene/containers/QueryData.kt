@@ -7,9 +7,6 @@ import org.apache.lucene.search.TopDocs
 
 data class QueryData(
         val queryString: String,
-        val queryTokens: List<String>,
-        val queryBoolean: BooleanQuery,
-        val queryBooleanTokens: List<Any>,
 
         val paragraphSearcher: ParagraphSearcher,
         val entitySearcher: EntitySearcher,
@@ -19,9 +16,7 @@ data class QueryData(
         val paragraphContainers: List<ParagraphContainer>,
         val sectionContainers: List<SectionContainer>,
 //        val containers: TypedMapCollection<ArrayList<Any>>,
-        val isJoint: Boolean,
-        val tops: TopDocs,
-        val entityDb: EntityDatabase ) {
+        val isJoint: Boolean) {
 
 //    val paragraphContainers: List<ParagraphContainer> get() {
 //        val def = containers[DocumentContainerType.TYPE_PARAGRAPH] ?: emptyList()

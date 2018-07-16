@@ -16,7 +16,7 @@ data class ExtractedFeature(val name: String,
  * Description: One is created for each of the lucene strings in the lucene .cbor file.
  *              Stores corresponding lucene string and TopDocs (obtained from BM25)
  */
-data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: List<ParagraphContainer>,
+data class QueryContainer(val query: String, val paragraphs: List<ParagraphContainer>,
                           val queryData: QueryData,
                           val entities: List<EntityContainer>, val sections: List<SectionContainer>,
                           var jointDistribution: JointDistribution = JointDistribution.createEmpty()) {
@@ -37,6 +37,82 @@ data class QueryContainer(val query: String, val tops: TopDocs, val paragraphs: 
                 yield(ExtractedFeature(featureName, query, paragraphScores, entityScores))
             }
         }
+    }
+
+    fun transformFeatures(): Triple<List<EntityContainer>, List<EntityContainer>, List<EntityContainer>> {
+        if (entities.isEmpty()) {
+            println("Something is wrong at $query!")
+            return Triple(emptyList(), emptyList(), emptyList())
+        }
+        val nFeatures = entities.first().features.size
+        val entityQid = entities.first().qid
+
+        val paragraphEntities = ArrayList<EntityContainer>()
+        val sectionEntities = ArrayList<EntityContainer>()
+        paragraphs.forEach { pContainer ->
+            val entity = EntityContainer(
+                    name = pContainer.name,
+                    docType = ENTITY::class.java,
+                    isRelevant = pContainer.isRelevant,
+                    docId = pContainer.docId,
+                    score = 0.0,
+                    index = pContainer.index,
+                    searcher = pContainer.searcher,
+                    query = pContainer.query,
+                    qid = entityQid )
+            paragraphEntities.add(entity)
+        }
+
+        sections.forEach { sContainer ->
+            val entity = EntityContainer(
+                    name = sContainer.name,
+                    docType = ENTITY::class.java,
+                    isRelevant = sContainer.isRelevant,
+                    docId = sContainer.docId,
+                    score = 0.0,
+                    index = sContainer.index,
+                    searcher = sContainer.searcher,
+                    query = sContainer.query,
+                    qid = entityQid )
+            sectionEntities.add(entity)
+        }
+
+
+        (0 until nFeatures).forEach { featureIndex ->
+            val weight = entities.first().features[featureIndex].weight
+            paragraphEntities.forEach { pEntity ->
+                val weightedAverage = jointDistribution
+                    .parToEnt[pEntity.index]
+                    ?.entries
+                    ?.sumByDouble { (k,freq) ->
+//                        entities[k]!!.features[featureIndex]!!.getUnormalizedAdjusted() * freq
+                        entities[k]!!.features[featureIndex]!!.unnormalizedScore * freq
+                    } ?: 0.0
+
+                pEntity.features.add(FeatureContainer(weightedAverage, weightedAverage, weight, FeatureEnum.SECTION_QUERY_DIST))
+            }
+
+            sectionEntities.forEach { sEntity ->
+                val weightedAverage = jointDistribution
+                    .secToPar[sEntity.index]!!
+                    .entries
+                    .sumByDouble { (pIndex,pFreq) ->
+                        jointDistribution.parToEnt[pIndex]!!
+                            .entries
+                            .sumByDouble { (eIndex, eFreq) ->
+//                                entities[eIndex]!!.features[featureIndex]!!.getUnormalizedAdjusted() * eFreq * pFreq
+                                entities[eIndex]!!.features[featureIndex]!!.unnormalizedScore * eFreq * pFreq
+                            }
+                    } ?: 0.0
+
+                sEntity.features.add(FeatureContainer(weightedAverage, weightedAverage,weight, FeatureEnum.SECTION_QUERY_DIST))
+            }
+        }
+
+//        val combined = paragraphEntities.toList() + sectionEntities.toList() + entities
+
+        return Triple(paragraphEntities.toList(), sectionEntities.toList(), entities)
+
     }
 }
 

@@ -24,6 +24,12 @@ fun ParagraphDoc.neighborBigrams(): String  = IndexFields.FIELD_NEIGHBOR_BIGRAMS
 fun ParagraphDoc.neighborWindowed(): String  = IndexFields.FIELD_NEIGHBOR_WINDOWED.getString(doc)
 fun ParagraphDoc.neighborUnigrams(): String  = IndexFields.FIELD_NEIGHBOR_UNIGRAMS.getString(doc)
 fun ParagraphDoc.neighborEntities(): String  = IndexFields.FIELD_NEIGHBOR_ENTITIES.getString(doc)
+fun ParagraphDoc.spotlightEntities(): String  = IndexFields.FIELD_ENTITIES_EXTENDED.getString(doc)
+    .split(" ")
+    .toSet()
+    .toList()
+    .joinToString(" ")
+fun ParagraphDoc.spotlightInlinks(): String  = IndexFields.FIELD_ENTITIES_INLINKS.getString(doc)
 
 //@JvmName("we")fun IndexDoc<IndexType.ENTITY>.pid() = IndexFields.FIELD_PID.getString(doc)
 @JvmName("eName")

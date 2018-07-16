@@ -10,6 +10,7 @@ import org.apache.lucene.index.Term
 import utils.AnalyzerFunctions
 import utils.stats.countDuplicates
 import utils.stats.normalize
+import java.lang.Math.log
 
 
 object SectionRankingFeatures {
@@ -33,8 +34,9 @@ object SectionRankingFeatures {
 
     private fun queryDist(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val qDist = AnalyzerFunctions.createTokenList(queryString, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+//            .flatMap { it.windowed(2) }
             .countDuplicates()
-            .normalize()
+//            .normalize()
 
 
 
@@ -56,20 +58,28 @@ object SectionRankingFeatures {
                     paragraphSearcher.search(q, 1).scoreDocs.firstOrNull() }
                 .flatMap { sc ->
                     val text = paragraphSearcher.getIndexDoc(sc.doc).text()
-                    AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED).asSequence()}
+                    AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED).asSequence()
+//                    AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+//                        .flatMap { it.windowed(2) }.asSequence()
+                }
                 .asIterable()
                 .countDuplicates()
-                .toList()
-                .sortedByDescending { it.second }
-                .take(15)
-                .toMap()
-                .normalize()
+                .mapValues { it.value.toDouble() }
+//                .toList()
+//                .sortedByDescending { it.second }
+//                .take(15)
+//                .toMap()
+//                .normalize()
 
 
 
+            val cTot = cDist2.values.sum()
 
             val score = qDist.entries.sumByDouble { (token, freq) ->
-                (cDist2[token] ?: 0.000) * freq * sectionSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / sectionSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field)  }
+                log((cDist2[token] ?: 0.5) * freq)}
+//                log(cDist2[token] ?: 0.01 * freq)}
+//                log((cDist2[token] ?: 0.01) * freq * sectionSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / sectionSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field))  }
+//            (cDist2[token] ?: 0.000) * freq * sectionSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / sectionSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field)  }
 //            (cDist[token] ?: 0.000) * freq * sectionSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / sectionSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field)  }
             sf.sectionScores[container.index] = score
         }

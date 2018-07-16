@@ -31,7 +31,7 @@ import utils.lucene.docs
 object EntityRankingFeatures {
     private fun queryBm25Abstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = IndexFields.FIELD_TEXT.field, useFiltering = true)
-        val scores = entityDb.searcher.search(abstractQuery, 200000)
+        val scores = entitySearcher.search(abstractQuery, 200000)
             .scoreDocs
             .map { sc -> sc.doc to sc.score.toDouble() }
             .toMap()
@@ -42,9 +42,9 @@ object EntityRankingFeatures {
     }
 
     private fun queryDirichletAbstract(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        entityDb.searcher.setSimilarity(LMDirichletSimilarity(1.0f))
+        entitySearcher.setSimilarity(LMDirichletSimilarity(1.0f))
         val abstractQuery = AnalyzerFunctions.createQuery(qd.queryString, field = IndexFields.FIELD_TEXT.field, useFiltering = true)
-        val scores = entityDb.searcher.search(abstractQuery, 200000)
+        val scores = entitySearcher.search(abstractQuery, 200000)
             .scoreDocs
             .map { sc -> sc.doc to sc.score.toDouble() }
             .toMap()
@@ -60,7 +60,8 @@ object EntityRankingFeatures {
         val counts = paragraphContainers.flatMap { container ->
             val doc = container.doc()
 //            doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
-        doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+//        doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
+        doc.get(IndexFields.FIELD_ENTITIES_EXTENDED.field).split(" ") }
             .countDuplicates()
 
         entityContainers.forEachIndexed { index, eContainer ->
@@ -139,7 +140,7 @@ object EntityRankingFeatures {
 
 //        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
         val documentQuery = AnalyzerFunctions.createQuery(grams.joinToString(" "), gramStatType.indexField)
-        val scores = entityDb.searcher.search(documentQuery, 20000)
+        val scores = entitySearcher.search(documentQuery, 20000)
             .scoreDocs
             .map { sc -> sc.doc to sc.score.toDouble() }
             .toMap()

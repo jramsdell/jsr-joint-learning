@@ -23,6 +23,7 @@ import lucene.indexers.getList
 import org.apache.lucene.index.Term
 import utils.stats.countDuplicates
 import utils.stats.normalize
+import java.lang.Math.log
 
 
 object DocumentRankingFeatures {
@@ -94,21 +95,28 @@ object DocumentRankingFeatures {
 
     private fun queryDist(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val qDist = AnalyzerFunctions.createTokenList(queryString, ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+//            .flatMap { it.windowed(2) }
             .countDuplicates()
-            .normalize()
+//            .normalize()
 
         paragraphContainers.forEach { container ->
             val cDist = AnalyzerFunctions.createTokenList(container.doc().text(),
                     ANALYZER_ENGLISH_STOPPED)
+//                .flatMap { it.windowed(2) }
                 .countDuplicates()
-                .toList()
-                .sortedByDescending { it.second }
-                .take(15)
-                .toMap()
-                .normalize()
+                .mapValues { it.value.toDouble() }
+//                .toList()
+//                .sortedByDescending { it.second }
+//                .take(15)
+//                .toMap()
+//                .normalize()
+
+            val cTot = cDist.values.sum()
 
             val score = qDist.entries.sumByDouble { (token, freq) ->
-                (cDist[token] ?: 0.000) * freq * paragraphSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / paragraphSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field)  }
+                log((cDist[token] ?: 0.5) * freq) }
+//                log((cDist[token] ?: 0.01) * freq * paragraphSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / paragraphSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field))  }
+//                (cDist[token] ?: 0.000) * freq * paragraphSearcher.indexReader.totalTermFreq(Term(IndexFields.FIELD_UNIGRAM.field, token)) / paragraphSearcher.indexReader.getSumTotalTermFreq(IndexFields.FIELD_UNIGRAM.field)  }
             sf.paragraphScores[container.index] = score
         }
     }

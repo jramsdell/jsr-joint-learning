@@ -107,13 +107,6 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = SHARED,
             func = SharedFeatures::addSharedBoostedWindowed),
 
-    SHARED_RDF(text = "shared_rdf",
-            type = SHARED,
-            func = SharedFeatures::addSharedRdf),
-
-    SHARED_UNI_LIKE(text = "shared_unigram_likelihood",
-            type = SHARED,
-            func = SharedFeatures::addSharedUnigramLikelihood),
 
     ENTITY_BM25(text = "entity_bm25_abstract",
             type = ENTITY,

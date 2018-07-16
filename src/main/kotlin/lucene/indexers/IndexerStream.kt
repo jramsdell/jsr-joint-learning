@@ -32,6 +32,7 @@ import utils.lucene.*
 import lucene.indexers.IndexFields.*
 import org.apache.lucene.analysis.StopwordAnalyzerBase
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_STANDARD_STOPPED
+import utils.misc.toArrayList
 import utils.stats.countDuplicates
 import utils.stats.takeMostFrequent
 
@@ -297,12 +298,12 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
             val allEntities = pData.map { p -> p.entities }.joinToString(" ")
             val allUnigrams = pData.map { p -> p.unigrams }.joinToString(" ")
             val allBigrams = pData.map { p -> p.bigrams }.joinToString(" ")
-            val allWindowed = pData.map { p -> p.windowed }.joinToString(" ")
+//            val allWindowed = pData.map { p -> p.windowed }.joinToString(" ")
 
             val entitySets = pData.map { p -> p.entities.split(" ").toSet() }
             val unigramSets = pData.map { p -> p.unigrams.split(" ").toSet() }
             val bigramSets = pData.map { p -> p.bigrams.split(" ").toSet() }
-            val windowedSets = pData.map { p -> p.windowed.split(" ").toSet() }
+//            val windowedSets = pData.map { p -> p.windowed.split(" ").toSet() }
 
             pData
                 .asSequence()
@@ -320,21 +321,27 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     FIELD_NEIGHBOR_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(allEntities))
                     FIELD_NEIGHBOR_UNIGRAMS.setTextField(doc, allUnigrams)
                     FIELD_NEIGHBOR_BIGRAMS.setTextField(doc, allBigrams)
-                    FIELD_NEIGHBOR_WINDOWED.setTextField(doc, allWindowed)
+//                    FIELD_NEIGHBOR_WINDOWED.setTextField(doc, allWindowed)
 
-//                    val annotations = linker.queryServer(p.content) + p.entities
                     val fContent = AnalyzerFunctions.createTokenList(p.content, ANALYZER_STANDARD_STOPPED)
                         .joinToString(" ")
-                    val annotations = linker.queryServer(fContent) + p.entities
-                    val anOutlink = annotations.filter { it in outlinkSet }.toSet().toList()
+                    val annotations = linker.queryServer(fContent).toArrayList()
+                    p.entities.split(" ")
+                        .forEach { entity ->
+                            if (entity !in annotations)
+                                annotations.add(entity)
+                        }
+
+
+                    val anOutlink = annotations.filter { it in outlinkSet }
                         .joinToString(" ")
 
-                    val anInlink = annotations.filter { it in inlinkSet }.toSet().toList()
-                        .filter { it in inlinkSet }
-                        .run { (this + p.entities).toSet().toList() }.joinToString(" ")
+                    val anInlink = annotations.filter { it in inlinkSet }
+                        .joinToString(" ")
 
                     FIELD_ENTITIES_EXTENDED.setTextField(doc, anOutlink)
                     FIELD_ENTITIES_INLINKS.setTextField(doc, anInlink)
+
 
 
 
@@ -356,15 +363,15 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                             else other.intersect(set).toList() }
                     }.joinToString(" ")
 
-                    val jointWindowed = p.windowed.split(" ").toSet().let { set ->
-                        windowedSets.flatMap { other ->
-                            if (other == set) emptyList()
-                            else other.intersect(set).toList() }
-                    }.joinToString(" ")
+//                    val jointWindowed = p.windowed.split(" ").toSet().let { set ->
+//                        windowedSets.flatMap { other ->
+//                            if (other == set) emptyList()
+//                            else other.intersect(set).toList() }
+//                    }.joinToString(" ")
 
                     FIELD_JOINT_UNIGRAMS.setTextField(doc, jointUnigrams)
                     FIELD_JOINT_BIGRAMS.setTextField(doc, jointBigrams)
-                    FIELD_JOINT_WINDOWED.setTextField(doc, jointWindowed)
+//                    FIELD_JOINT_WINDOWED.setTextField(doc, jointWindowed)
                     FIELD_JOINT_ENTITIES.setTextField(doc, jointEntities)
                     FIELD_JOINT_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(jointEntities))
 
@@ -423,7 +430,6 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
     fun run() {
         corpusStreams.forEach { corpusStream ->
             DeserializeData.iterableAnnotations(corpusStream)
-//                .take(1000)
                 .forEachParallelQ(1000, 120) { page: Data.Page ->
 //                    processSectionContext(page)
 //                    processEntityContext(page)
