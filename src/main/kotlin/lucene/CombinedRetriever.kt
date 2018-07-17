@@ -30,7 +30,8 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                         entityQrelLoc: String = "",
                         sectionQrelLoc: String = "",
                         val limit: Int? = null,
-                        val isHomogenous: Boolean) {
+                        val isHomogenous: Boolean,
+                        val contextEntitySearcher: ContextEntitySearcher) {
 
 
     private val paragraphRelevancies =
@@ -113,7 +114,9 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
 
     private fun createParagraphContainersFromSections(query: String, qid: Int,
                                               sections: List<SectionContainer>): List<ParagraphContainer> {
-        val pids = sections.flatMap { sContainer -> sContainer.doc().paragraphs().split(" ") }
+        val pids = sections.flatMap { sContainer -> sContainer
+            .doc()
+            .paragraphs().split(" ") }
             .toSet()
             .toList()
 
@@ -182,6 +185,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                entitySearcher = entitySearcher,
                 paragraphSearcher = paragraphSearcher,
                 sectionSearcher = sectionSearcher,
+                contextEntitySearcher = contextEntitySearcher,
                 paragraphContainers = paragraphs,
                 sectionContainers = sections,
                 entityContainers = entities,

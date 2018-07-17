@@ -3,7 +3,6 @@ package experiment
 import browser.BrowserPage
 import browser.BrowserParagraph
 import browser.BrowserSection
-import entity.EntityDatabase
 import features.shared.SharedFeature
 import lucene.*
 import lucene.containers.*
@@ -17,12 +16,9 @@ import utils.lucene.getTypedSearcher
 import utils.misc.CONTENT
 import utils.misc.filledArray
 import utils.misc.sharedRand
-import utils.misc.toHashMap
 import utils.parallel.forEachParallelQ
-import utils.parallel.pmap
 import utils.stats.countDuplicates
 import utils.stats.defaultWhenNotFinite
-import utils.stats.normalize
 import java.lang.Double.sum
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -79,7 +75,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                              entityIndexLoc: String,
                              entityQrelLoc: String = "",
                              sectionIndexLoc: String = "",
-                             sectionQrelLoc: String =""
+                             sectionQrelLoc: String = "",
+                             contextEntityLoc: String = ""
                              ) {
 
     /**
@@ -89,7 +86,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
 
 
-    val useJointDist = true
+    val useJointDist = false
     val useSavedFeatures = false
     var limit: Int? = null
     val isHomogenous = false
@@ -98,6 +95,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val sectionSearcher  =
 //            if ( sectionIndexLoc == "") paragraphSearcher
              getTypedSearcher<IndexType.SECTION>(sectionIndexLoc)
+
+    val contextEntitySearcher =  getTypedSearcher<IndexType.CONTEXT_ENTITY>(contextEntityLoc)
 
 
     val queryContainers = createQueryContainers( paragraphQueryLoc, paragraphQrelLoc, entityQrelLoc, sectionQrelLoc, isHomogenous)
@@ -153,7 +152,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 entityQrelLoc = entityQrelLoc,
                 paragraphQrelLoc = paragraphQrelLoc,
                 sectionQrelLoc = sectionQrelLoc,
-                isHomogenous = isHomogenous
+                isHomogenous = isHomogenous,
+                contextEntitySearcher = contextEntitySearcher
         )
 
         return retriever.createQueryContainers(queryLocation)
@@ -207,32 +207,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         }.map { it.defaultWhenNotFinite(0.0) }
     }
 
-    private fun createQueryData(query: String, tops: TopDocs,
-                                paragraphContainers: List<ParagraphContainer>,
-                                entityContainers: List<EntityContainer>, sectionContainers: List<SectionContainer>,
-                                isJoint: Boolean): QueryData {
-        val booleanQuery = AnalyzerFunctions.createQuery(query, CONTENT)
-        val booleanQueryTokens = AnalyzerFunctions.createQueryList(query, CONTENT)
-        val tokens = AnalyzerFunctions.createTokenList(query)
-//        val typedMap = TypedMapCollection { ArrayList<Any>() }
-//        typedMap.put(entityContainers.toMutableList())
-//        typedMap.put(paragraphContainers.toMutableList())
-//        val containers = HashMap<DocumentContainerType, List<DocContainer>>()
-//        containers[DocumentContainerType.TYPE_PARAGRAPH] = paragraphContainers
-//        containers[DocumentContainerType.TYPE_ENTITY] = entityContainers
-
-
-        val data = QueryData(
-                queryString = query,
-                paragraphSearcher = paragraphSearcher,
-                entitySearcher = entitySearcher,
-                sectionSearcher = sectionSearcher,
-                paragraphContainers = paragraphContainers,
-                entityContainers = entityContainers,
-                sectionContainers = sectionContainers,
-                isJoint = isJoint)
-        return data
-    }
 
     /**
      * Function: addFeature
@@ -252,7 +226,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                     normType: NormType = NormType.NONE, f: (QueryData, SharedFeature) -> Unit) {
 
         println("Weight was: $weight")
-        val featureMap = if (useSavedFeatures) featureDatabase.getFeature(featureEnum) else null
+//        val featureMap = if (useSavedFeatures) featureDatabase.getFeature(featureEnum) else null
         val bar = ProgressBar("Feature Progress", queryContainers.size.toLong(), ProgressBarStyle.ASCII)
         bar.start()
         val lock = ReentrantLock()
@@ -277,14 +251,14 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                 }
             }
 
-            if (featureMap != null)
-                sf = featureMap[qc.query]!!
-            else
-                f(qc.queryData, sf)
+//            if (featureMap != null)
+//                sf = featureMap[qc.query]!!
+//            else
+//                f(qc.queryData, sf)
 
-            if (!useSavedFeatures) {
-                featureDatabase.storeFeature(qc.query,featureEnum, sf.makeCopy())
-            }
+//            if (!useSavedFeatures) {
+//                featureDatabase.storeFeature(qc.query,featureEnum, sf.makeCopy())
+//            }
 
 
             // Turn paragraph features into entity features
@@ -425,18 +399,18 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
         queryContainers.shuffled(sharedRand)
             .flatMap { queryContainer ->
-//                val combined = queryContainer.entities.map(EntityContainer::toString)  +
-//                        queryContainer.paragraphs.map(ParagraphContainer::toString) +
-//            queryContainer.sections.map(SectionContainer::toString)
-//                if (isHomogenous) combined.shuffled() else combined
+                val combined = queryContainer.entities.map(EntityContainer::toString)  +
+                        queryContainer.paragraphs.map(ParagraphContainer::toString) +
+            queryContainer.sections.map(SectionContainer::toString)
+                if (isHomogenous) combined.shuffled() else combined
 //                (queryContainer.transformFeatures() + queryContainer.entities)
 //                    .map(EntityContainer::toString)
 //                    .shuffled()
-                val (pars, secs, ents) = queryContainer.transformFeatures()
-                val combined = pars + secs + ents
-                renormalizeFeatures(combined)
-                combined.shuffled()
-                    .map(EntityContainer::toString)
+//                val (pars, secs, ents) = queryContainer.transformFeatures()
+//                val combined = pars + secs + ents
+//                renormalizeFeatures(combined)
+//                combined.shuffled()
+//                    .map(EntityContainer::toString)
 
 
             }
@@ -477,19 +451,25 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
      * @param outName: Name of the file to write the results to.
      */
     fun writeQueriesToFile(outName: String) {
-        queryContainers.forEach { qContainer ->
-            val (pars, secs, ents) = qContainer.transformFeatures()
-            val combined = pars + secs + ents
-            renormalizeFeatures(combined)
-//            renormalizeFeatures(secs)
-            secs.forEach { sec ->
-                qContainer.sections[sec.index].features = sec.features
-            }
-            pars.forEach { par ->
-                qContainer.paragraphs[par.index].features = par.features
-            }
+//        queryContainers.forEach { qContainer ->
+//            val (pars, secs, ents) = qContainer.transformFeatures()
+//            val combined = pars + secs + ents
+//            renormalizeFeatures(combined)
+////            renormalizeFeatures(secs)
+////            renormalizeFeatures(pars)
+//            secs.forEach { sec ->
+//                qContainer.sections[sec.index].features = sec.features
+//            }
+//            pars.forEach { par ->
+//                qContainer.paragraphs[par.index].features = par.features
+//            }
+//
+//        }
 
-        }
+//        queryContainers.forEach { qContainer ->
+//            sendParagraphToEntity(qContainer)
+//            sendSectionToEntity(qContainer)
+//        }
 
         writeParagraphsToFile(queryContainers)
         writeEntitiesToFile(queryContainers)
@@ -661,6 +641,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     fun renormalizeFeatures(entities: List<EntityContainer>) {
         if (entities.isEmpty()) return
+        return
 
         val nFeatures = entities.first().features.size
         (0 until nFeatures).forEach { fIndex ->
@@ -670,6 +651,34 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         }
         entities.map(EntityContainer::rescore)
 
+    }
+
+    fun sendParagraphToEntity(qContainer: QueryContainer) {
+        qContainer.entities.forEach { it.rescore() }
+        qContainer.paragraphs.forEach { pContainer ->
+            val newScore = qContainer.jointDistribution
+                .parToEnt[pContainer.index]!!
+                .entries.sumByDouble { (eIndex, freq) ->
+                    qContainer.entities[eIndex].score * freq }
+
+            pContainer.features.forEach { feature -> feature.score = newScore; feature.weight = 1/pContainer.features.size.toDouble() }
+        }
+    }
+
+    fun sendSectionToEntity(qContainer: QueryContainer) {
+        qContainer.entities.forEach { it.rescore() }
+        qContainer.sections.forEach { sContainer ->
+            val newScore = qContainer.jointDistribution
+                .secToPar[sContainer.index]!!
+                .entries.sumByDouble { (pIndex, pFreq) ->
+                qContainer.jointDistribution.parToEnt[pIndex]!!
+                    .entries
+                    .sumByDouble { (eIndex, eFreq) ->
+                        qContainer.entities[eIndex].score * eFreq * pFreq
+                    }}
+
+            sContainer.features.forEach { feature -> feature.score = newScore; feature.weight = 1/sContainer.features.size.toDouble() }
+        }
     }
 
 }

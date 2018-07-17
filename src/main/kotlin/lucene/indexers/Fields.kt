@@ -14,9 +14,9 @@ fun IndexFields.getString(doc: Document) = doc.get(field) ?: ""
 fun IndexFields.getDouble(doc: Document) = doc.get(field).toDouble()
 fun IndexFields.getList(doc: Document) = doc.get(field).split(" ")
 
-fun IndexFields.getString(doc: IndexDoc<*>) = doc.get(field) ?: ""
-fun IndexFields.getDouble(doc: IndexDoc<*>) = doc.get(field).toDouble()
-fun IndexFields.getList(doc: IndexDoc<*>) = doc.get(field).split(" ")
+//fun IndexFields.getString(doc: IndexDoc<*>) = doc.get(field) ?: ""
+//fun IndexFields.getDouble(doc: IndexDoc<*>) = doc.get(field).toDouble()
+//fun IndexFields.getList(doc: IndexDoc<*>) = doc.get(field).split(" ")
 
 fun IndexFields.setTextField(doc: Document, fieldValue: String) =
         doc.add(TextField(field, fieldValue, Field.Store.YES))

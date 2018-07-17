@@ -65,7 +65,34 @@ class DebugApp(resources: HashMap<String, Any>) {
 ////        RanklibRunner("/home/jsc57/programs/RankLib-2.1-patched.jar", "/home/jsc57/projects/jsr-joint-learning/non_filtered_ranklib_results.txt")
 //            .doOptimizer()
 //            .runRankLib("wee", useKcv = true)
-        testNewParData()
+//        testNewParData()
+        testEntityContext()
+    }
+
+    fun testEntityContext() {
+        val contextLoc = "/speedy/jsc57/extractions2/entity_context"
+        val contextSearcher = getTypedSearcher<IndexType.CONTEXT_ENTITY>(contextLoc)
+        val entityLoc = "/speedy/jsc57/extractions2/page"
+        val entitySearcher = getTypedSearcher<IndexType.ENTITY>(entityLoc)
+        (0 until 10).forEach { index ->
+            val doc = contextSearcher.getIndexDoc(index)
+            with (doc) {
+                println(name())
+                println(entities())
+                println(bigrams())
+                println()
+
+            }
+
+            println("Compared to:")
+            val eDoc = entitySearcher.getDocumentByField(doc.name())
+
+            eDoc?.apply {
+                println(bigrams())
+                println()
+            }
+
+        }
     }
 
     fun testNewParData() {

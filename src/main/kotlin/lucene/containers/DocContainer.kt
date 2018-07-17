@@ -12,7 +12,7 @@ class DocContainer<out A: IndexType>(val name: String,
                                      val qid: Int,
                                      val isRelevant: Int,
                                      val docId: Int,
-                                     val searcher: IndexSearcher,
+                                     val searcher: TypedSearcher<A>,
                                      val index: Int,
                                      var score: Double = 0.0,
                                      val query: String,
@@ -24,13 +24,22 @@ class DocContainer<out A: IndexType>(val name: String,
 //    fun doc(): Document = searcher.doc(docId)
 //    val doc: Document by Delegates.observable()
     private var docRef: WeakReference<IndexDoc<A>> = WeakReference<IndexDoc<A>>(null)
-    fun doc(): IndexDoc<A> {
-        return docRef.get() ?: let {
-            val d = IndexDoc<A>(searcher.doc(docId), docId)
-            docRef = WeakReference(d)
-            d
-        }
-    }
+//    fun doc(vararg fieldsToLoad: IndexFields): IndexDoc<A> {
+//        return docRef.get() ?: let {
+//            val d = if (fieldsToLoad.size > 0) {
+//                val fields = fieldsToLoad.map { it.field }.toSet()
+//                IndexDoc<A>(searcher.doc(docId, fields), docId)
+//            } else IndexDoc<A>(searcher.doc(docId), docId)
+//            docRef = WeakReference(d)
+//            d
+//        }
+//    }
+    fun doc() = searcher.getIndexDoc(docId)
+
+//    fun partialDoc(vararg fieldsToLoad: IndexFields): IndexDoc<A> {
+//        val fields = fieldsToLoad.map { it.field }.toSet()
+//        return IndexDoc<A>(searcher.doc(docId, fields), docId)
+//    }
 
 
     fun rescore() {
@@ -51,7 +60,7 @@ class DocContainer<out A: IndexType>(val name: String,
                 qid: Int,
                 isRelevant: Int,
                 docId: Int,
-                searcher: IndexSearcher,
+                searcher: TypedSearcher<T>,
                 index: Int,
                 score: Double = 0.0,
                 query: String): DocContainer<T> {

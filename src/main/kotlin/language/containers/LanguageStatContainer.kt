@@ -4,9 +4,12 @@ import language.GramAnalyzer
 import language.GramAnalyzer.Companion.createLanguageStats
 import language.GramStatType
 import language.GramStatType.*
+import lucene.containers.IndexDoc
+import lucene.indexers.IndexFields
 import org.apache.lucene.document.Document
 import utils.lucene.splitAndCount
 import utils.misc.identity
+import utils.stats.countDuplicates
 import utils.stats.defaultWhenNotFinite
 import utils.stats.normalize
 import java.lang.Math.log
@@ -65,12 +68,15 @@ data class LanguageStatContainer(
             )
 
     companion object {
-        fun createLanguageStatContainer(doc: Document) = doc.run {
-            val unigramStat = doc.splitAndCount(GramStatType.TYPE_UNIGRAM.indexField)
+        fun createLanguageStatContainer(doc: IndexDoc<*>) = doc.run {
+            val unigramStat = doc.load(IndexFields.FIELD_UNIGRAM).split(" ")
+                .countDuplicates()
                 .run { createLanguageStats(this, GramStatType.TYPE_UNIGRAM) }
-            val bigramStat = doc.splitAndCount(GramStatType.TYPE_BIGRAM.indexField)
+            val bigramStat = doc.load(IndexFields.FIELD_BIGRAM).split(" ")
+                .countDuplicates()
                 .run { createLanguageStats(this, GramStatType.TYPE_BIGRAM) }
-            val bigramWindowStat = doc.splitAndCount(GramStatType.TYPE_BIGRAM_WINDOW.indexField)
+            val bigramWindowStat = doc.load(IndexFields.FIELD_WINDOWED_BIGRAM).split(" ")
+                .countDuplicates()
                 .run { createLanguageStats(this, GramStatType.TYPE_BIGRAM_WINDOW) }
 
             LanguageStatContainer(

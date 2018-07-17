@@ -1,75 +1,101 @@
 package lucene.containers
 
 import lucene.indexers.IndexFields
+import lucene.indexers.IndexFields.*
 import lucene.indexers.getString
 import org.apache.lucene.document.Document
 
 
-data class IndexDoc<out A: IndexType>(val doc: Document, val docId: Int) {
-    fun get(field: String) = doc.get(field)
+data class IndexDoc<out A: IndexType>(private val searcher: TypedSearcher<A>, val docId: Int) {
+    //    fun get(field: String) = doc.get(field)
+    fun load(field: IndexFields): String {
+        val doc = searcher.doc(docId, setOf(field.field))
+        return field.getString(doc)
+    }
+
+    fun load(fieldString: String): String {
+        val doc = searcher.doc(docId, setOf(fieldString))
+        return doc.get(fieldString)
+    }
 }
+
 
 typealias ParagraphDoc = IndexDoc<IndexType.PARAGRAPH>
 typealias EntityDoc = IndexDoc<IndexType.ENTITY>
 typealias SectionDoc = IndexDoc<IndexType.SECTION>
+typealias ContextEntityDoc = IndexDoc<IndexType.CONTEXT_ENTITY>
 
 //val ParagraphDoc.pid: String get() = IndexFields.FIELD_PID.getString(doc)
-fun ParagraphDoc.pid(): String = IndexFields.FIELD_PID.getString(doc)
-fun ParagraphDoc.text():String =  IndexFields.FIELD_TEXT.getString(doc)
-fun ParagraphDoc.entities(): String  = IndexFields.FIELD_ENTITIES.getString(doc)
-fun ParagraphDoc.unigrams(): String  = IndexFields.FIELD_UNIGRAM.getString(doc)
-fun ParagraphDoc.bigrams(): String  = IndexFields.FIELD_BIGRAM.getString(doc)
-fun ParagraphDoc.windowed(): String  = IndexFields.FIELD_WINDOWED_BIGRAM.getString(doc)
-fun ParagraphDoc.neighborBigrams(): String  = IndexFields.FIELD_NEIGHBOR_BIGRAMS.getString(doc)
-fun ParagraphDoc.neighborWindowed(): String  = IndexFields.FIELD_NEIGHBOR_WINDOWED.getString(doc)
-fun ParagraphDoc.neighborUnigrams(): String  = IndexFields.FIELD_NEIGHBOR_UNIGRAMS.getString(doc)
-fun ParagraphDoc.neighborEntities(): String  = IndexFields.FIELD_NEIGHBOR_ENTITIES.getString(doc)
-fun ParagraphDoc.spotlightEntities(): String  = IndexFields.FIELD_ENTITIES_EXTENDED.getString(doc)
+fun ParagraphDoc.pid(): String = load(FIELD_PID)
+fun ParagraphDoc.text():String =  load(FIELD_TEXT)
+fun ParagraphDoc.entities(): String  = load(FIELD_ENTITIES)
+fun ParagraphDoc.unigrams(): String  = load(FIELD_UNIGRAM)
+fun ParagraphDoc.bigrams(): String  = load(FIELD_BIGRAM)
+fun ParagraphDoc.windowed(): String  = load(FIELD_WINDOWED_BIGRAM)
+fun ParagraphDoc.neighborBigrams(): String  = load(FIELD_NEIGHBOR_BIGRAMS)
+fun ParagraphDoc.neighborWindowed(): String  = load(FIELD_NEIGHBOR_BIGRAMS)
+fun ParagraphDoc.neighborUnigrams(): String  = load(FIELD_NEIGHBOR_UNIGRAMS)
+fun ParagraphDoc.neighborEntities(): String  = load(FIELD_NEIGHBOR_ENTITIES)
+fun ParagraphDoc.spotlightEntities(): String  = load(FIELD_ENTITIES_EXTENDED)
     .split(" ")
     .toSet()
     .toList()
     .joinToString(" ")
-fun ParagraphDoc.spotlightInlinks(): String  = IndexFields.FIELD_ENTITIES_INLINKS.getString(doc)
+fun ParagraphDoc.spotlightInlinks(): String  = load(FIELD_ENTITIES_INLINKS)
 
 //@JvmName("we")fun IndexDoc<IndexType.ENTITY>.pid() = IndexFields.FIELD_PID.getString(doc)
 @JvmName("eName")
-fun EntityDoc.name() = IndexFields.FIELD_NAME.getString(doc)
+fun EntityDoc.name() = load(FIELD_NAME)
 @JvmName("eInlinks")
-fun EntityDoc.inlinks() = IndexFields.FIELD_INLINKS.getString(doc)
+fun EntityDoc.inlinks() = load(FIELD_INLINKS)
 @JvmName("eInlinksU")
-fun EntityDoc.inlinksUnigrams() = IndexFields.FIELD_INLINKS_UNIGRAMS.getString(doc)
+fun EntityDoc.inlinksUnigrams() = load(FIELD_INLINKS_UNIGRAMS)
 @JvmName("eOutlinks")
-fun EntityDoc.outlinks() = IndexFields.FIELD_OUTLINKS.getString(doc)
+fun EntityDoc.outlinks() = load(FIELD_OUTLINKS)
 @JvmName("eOutlinksU")
-fun EntityDoc.outlinksUnigrams() = IndexFields.FIELD_OUTLINKS_UNIGRAMS.getString(doc)
+fun EntityDoc.outlinksUnigrams() = load(FIELD_OUTLINKS_UNIGRAMS)
 @JvmName("eCategories")
-fun EntityDoc.categories() = IndexFields.FIELD_CATEGORIES.getString(doc)
+fun EntityDoc.categories() = load(FIELD_CATEGORIES)
 @JvmName("eCategoriesU")
-fun EntityDoc.categoriesUnigrams() = IndexFields.FIELD_CATEGORIES_UNIGRAMS.getString(doc)
+fun EntityDoc.categoriesUnigrams() = load(FIELD_CATEGORIES_UNIGRAMS)
 @JvmName("eRedirects")
-fun EntityDoc.redirects() = IndexFields.FIELD_REDIRECTS.getString(doc)
+fun EntityDoc.redirects() = load(FIELD_REDIRECTS)
 @JvmName("eRedirectsU")
-fun EntityDoc.redirectsUnigrams() = IndexFields.FIELD_REDIRECTS_UNIGRAMS.getString(doc)
+fun EntityDoc.redirectsUnigrams() = load(FIELD_REDIRECTS_UNIGRAMS)
 @JvmName("eDisam")
-fun EntityDoc.disambig() = IndexFields.FIELD_DISAMBIGUATIONS.getString(doc)
+fun EntityDoc.disambig() = load(FIELD_DISAMBIGUATIONS)
 @JvmName("eDisamU")
-fun EntityDoc.disambigUnigrams() = IndexFields.FIELD_DISAMBIGUATIONS_UNIGRAMS.getString(doc)
+fun EntityDoc.disambigUnigrams() = load(FIELD_DISAMBIGUATIONS_UNIGRAMS)
 @JvmName("eUnigrams")
-fun EntityDoc.unigrams() = IndexFields.FIELD_UNIGRAM.getString(doc)
+fun EntityDoc.unigrams() = load(FIELD_UNIGRAM)
 @JvmName("eBigrams")
-fun EntityDoc.bigrams() = IndexFields.FIELD_BIGRAM.getString(doc)
+fun EntityDoc.bigrams() = load(FIELD_BIGRAM)
 @JvmName("eWindowed")
-fun EntityDoc.windowed() = IndexFields.FIELD_WINDOWED_BIGRAM.getString(doc)
+fun EntityDoc.windowed() = load(FIELD_WINDOWED_BIGRAM)
 
 @JvmName("sHeader")
-fun SectionDoc.heading() = IndexFields.FIELD_SECTION_HEADING.getString(doc)
+fun SectionDoc.heading() = load(FIELD_SECTION_HEADING)
 @JvmName("sId")
-fun SectionDoc.id() = IndexFields.FIELD_SECTION_ID.getString(doc)
+fun SectionDoc.id() = load(FIELD_SECTION_ID)
 @JvmName("sUnigrams")
-fun SectionDoc.unigrams() = IndexFields.FIELD_UNIGRAM.getString(doc)
+fun SectionDoc.unigrams() = load(FIELD_UNIGRAM)
 @JvmName("sBigrams")
-fun SectionDoc.bigrams() = IndexFields.FIELD_BIGRAM.getString(doc)
+fun SectionDoc.bigrams() = load(FIELD_BIGRAM)
 @JvmName("sWindowed")
-fun SectionDoc.windowed() = IndexFields.FIELD_WINDOWED_BIGRAM.getString(doc)
+fun SectionDoc.windowed() = load(FIELD_WINDOWED_BIGRAM)
 @JvmName("sChildren")
-fun SectionDoc.paragraphs() = IndexFields.FIELD_CHILDREN_IDS.getString(doc)
+fun SectionDoc.paragraphs() = load(FIELD_CHILDREN_IDS)
+
+
+@JvmName("ceEntities")
+fun ContextEntityDoc.entities() = load(FIELD_ENTITIES)
+@JvmName("ceEntitiesUnigram")
+fun ContextEntityDoc.entitiesUnigrams() = load(FIELD_ENTITIES_UNIGRAMS)
+@JvmName("ceUnigram")
+fun ContextEntityDoc.unigrams() = load(FIELD_UNIGRAM)
+@JvmName("ceBigram")
+fun ContextEntityDoc.bigrams() = load(FIELD_BIGRAM)
+@JvmName("ceWindowed")
+fun ContextEntityDoc.windowed() = load(FIELD_WINDOWED_BIGRAM)
+@JvmName("ceName")
+fun ContextEntityDoc.name() = load(FIELD_NAME)

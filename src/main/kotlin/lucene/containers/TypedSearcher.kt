@@ -25,14 +25,15 @@ class TypedSearcher<out A: IndexType>(r: IndexReader?, private val typeClass: Cl
         }
         val q = AnalyzerFunctions.createQuery(id, field = field)
         val sc = search(q, 1).scoreDocs.firstOrNull()
-        return sc?.let { IndexDoc(doc(sc.doc), sc.doc) }
+        return sc?.let { IndexDoc(this, sc.doc) }
     }
 
 
-    fun getIndexDoc(id: Int) = IndexDoc<A>(doc(id), id)
+    fun getIndexDoc(id: Int): IndexDoc<A> = IndexDoc<A>(this, id)
 }
 
 typealias EntitySearcher = TypedSearcher<IndexType.ENTITY>
 typealias ParagraphSearcher = TypedSearcher<IndexType.PARAGRAPH>
 typealias SectionSearcher = TypedSearcher<IndexType.SECTION>
+typealias ContextEntitySearcher = TypedSearcher<IndexType.CONTEXT_ENTITY>
 

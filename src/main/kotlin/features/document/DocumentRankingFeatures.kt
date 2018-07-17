@@ -171,7 +171,7 @@ object DocumentRankingFeatures {
 
         paragraphContainers.forEachIndexed { index, container ->
             val doc = container.doc()
-            val docStat = LanguageStatContainer.createLanguageStatContainer(doc.doc)
+            val docStat = LanguageStatContainer.createLanguageStatContainer(doc)
             val (uniLike, biLike, windLike) = gramAnalyzer.getQueryLikelihood(docStat, queryCorpus, 2.0)
             val score = uniLike * weights[0] + biLike * weights[1] + windLike * weights[2]
             sf.paragraphScores[index] = score

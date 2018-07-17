@@ -217,6 +217,17 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH_FUNCTOR,
             func = SubObjectFeatures::addPEntityToInlinks),
 
+    PFUNCTOR_ENTITY_CONTEXT_UNIGRAMS(text = "functor_entity_context_unigrams",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToContextUnigram),
+
+    PFUNCTOR_ENTITY_CONTEXT_BIGRAMS(text = "functor_entity_context_bigrams",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToContextBigram),
+
+    PFUNCTOR_ENTITY_CONTEXT_WINDOWED(text = "functor_entity_context_windowed",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToContextWindowed),
 
 
     PFUNCTOR_LINK_FREQ(text = "functor_punigram_einlinks",

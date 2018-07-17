@@ -169,7 +169,7 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
 //                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
 //                    .toMap()
-                val combined = baseFreqs.toMap()
+                val combined = baseFreqs.toMap().normalize()
 
 //                val otherFreqs =
 //                        entIdMap.values.map { it to (1.0 / entIdMap.size.toDouble()) * (smoothingFactor) }
@@ -198,7 +198,7 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
 //                val combined = (baseFreqs + uniform).groupBy { it.first }.mapValues { it.value.sumByDouble { it.second } }
 //                    .toMap()
-                val combined = baseFreqs.toMap()
+                val combined = baseFreqs.toMap().normalize()
 
                 combined.forEach { (parIndex, freq) ->
                     paragraphInverseMap[parIndex]!!.merge(index, freq, ::sum)
@@ -209,8 +209,8 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
 
 
-            val entFreqMap = inverseMaps.mapValues { it.value }
-            val parToSecMap = paragraphInverseMap.mapValues { it.value }
+            val entFreqMap = inverseMaps.mapValues { it.value.normalize() }
+            val parToSecMap = paragraphInverseMap.mapValues { it.value.normalize() }
 
 //            val secToEnt = secToParMap.flatMap { (secIndex, secMapToPar) ->
 //                secMapToPar.flatMap { (parIndex, parFreq) ->

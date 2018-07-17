@@ -1,5 +1,6 @@
 package lucene.containers
 
+import experiment.FeatureType
 import kotlinx.coroutines.experimental.yield
 import lucene.containers.IndexType.ENTITY
 import org.apache.lucene.search.TopDocs
@@ -46,6 +47,7 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
         }
         val nFeatures = entities.first().features.size
         val entityQid = entities.first().qid
+        val eSearcher = entities.first().searcher
 
         val paragraphEntities = ArrayList<EntityContainer>()
         val sectionEntities = ArrayList<EntityContainer>()
@@ -57,7 +59,7 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                     docId = pContainer.docId,
                     score = 0.0,
                     index = pContainer.index,
-                    searcher = pContainer.searcher,
+                    searcher = eSearcher,
                     query = pContainer.query,
                     qid = entityQid )
             paragraphEntities.add(entity)
@@ -71,7 +73,7 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                     docId = sContainer.docId,
                     score = 0.0,
                     index = sContainer.index,
-                    searcher = sContainer.searcher,
+                    searcher = eSearcher,
                     query = sContainer.query,
                     qid = entityQid )
             sectionEntities.add(entity)
@@ -80,14 +82,18 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
 
         (0 until nFeatures).forEach { featureIndex ->
             val weight = entities.first().features[featureIndex].weight
+            val type = entities.first().features[featureIndex].type
             paragraphEntities.forEach { pEntity ->
                 val weightedAverage = jointDistribution
                     .parToEnt[pEntity.index]
                     ?.entries
                     ?.sumByDouble { (k,freq) ->
 //                        entities[k]!!.features[featureIndex]!!.getUnormalizedAdjusted() * freq
-                        entities[k]!!.features[featureIndex]!!.unnormalizedScore * freq
+//                        entities[k]!!.features[featureIndex]!!.unnormalizedScore * freq
+                        entities[k]!!.features[featureIndex]!!.score * freq
                     } ?: 0.0
+
+//                val score = if (type == FeatureType.PARAGRAPH_FUNCTOR) s
 
                 pEntity.features.add(FeatureContainer(weightedAverage, weightedAverage, weight, FeatureEnum.SECTION_QUERY_DIST))
             }
@@ -101,7 +107,8 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                             .entries
                             .sumByDouble { (eIndex, eFreq) ->
 //                                entities[eIndex]!!.features[featureIndex]!!.getUnormalizedAdjusted() * eFreq * pFreq
-                                entities[eIndex]!!.features[featureIndex]!!.unnormalizedScore * eFreq * pFreq
+//                                entities[eIndex]!!.features[featureIndex]!!.unnormalizedScore * eFreq * pFreq
+                                entities[eIndex]!!.features[featureIndex]!!.score * eFreq * pFreq
                             }
                     } ?: 0.0
 

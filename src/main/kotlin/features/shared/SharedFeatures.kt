@@ -19,6 +19,7 @@ import utils.stats.normalize
 import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum
 import lucene.containers.FeatureEnum.*
+import lucene.containers.IndexDoc
 import lucene.indexers.IndexFields
 import org.apache.lucene.document.Document
 import org.apache.lucene.search.BooleanQuery
@@ -71,7 +72,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphContainers.map { container ->
                     val doc = container.doc()
-                    doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ")
+                    doc.load(IndexFields.FIELD_NEIGHBOR_ENTITIES).split(" ")
 //                    doc.getValues("spotlight")
                         .toList()
                         .countDuplicates()
@@ -88,7 +89,7 @@ object SharedFeatures {
     private fun sharedMeta(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
         val documentFeatures =
                 paragraphContainers.map { container ->
-                    val unigrams = container.doc().get(IndexFields.FIELD_NEIGHBOR_UNIGRAMS.field)
+                    val unigrams = container.doc().load(IndexFields.FIELD_NEIGHBOR_UNIGRAMS)
                         .run { AnalyzerFunctions.createTokenList(this) }
 
                     val q = FieldQueryFormatter()
@@ -117,7 +118,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphContainers.map { container ->
                     val doc = container.doc()
-                    doc.get(IndexFields.FIELD_ENTITIES.field).split(" ")
+                    doc.load(IndexFields.FIELD_ENTITIES).split(" ")
 //                    doc.getValues("spotlight")
                         .toList()
                         .countDuplicates()
@@ -133,8 +134,8 @@ object SharedFeatures {
 
 
 
-    private fun getDocumentGramQuery(paragraphDoc: Document, gramStatType: GramStatType): BooleanQuery {
-        val terms = paragraphDoc.get(gramStatType.indexField).split(" ")
+    private fun getDocumentGramQuery(paragraphDoc: IndexDoc<*>, gramStatType: GramStatType): BooleanQuery {
+        val terms = paragraphDoc.load(gramStatType.indexField).split(" ")
             .countDuplicates()
             .takeMostFrequent(15)
             .keys.toList()
@@ -148,7 +149,7 @@ object SharedFeatures {
          val documentFeatures =
                  paragraphContainers.map{ container ->
                      val doc = container.doc()
-                     val docQuery = getDocumentGramQuery(doc.doc, gramStatType)
+                     val docQuery = getDocumentGramQuery(doc, gramStatType)
                      val searchResult = entitySearcher.search(docQuery, 1000)
                          .scoreDocs
                      searchResult
@@ -173,7 +174,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphContainers.map { container ->
                     val doc = container.doc()
-                    val text = doc.get(CONTENT)
+                    val text = doc.load(CONTENT)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     entitySearcher.search(query, 1000)
                         .scoreDocs
@@ -192,7 +193,7 @@ object SharedFeatures {
         val documentFeatures =
                 paragraphContainers.map { container ->
                     val doc = container.doc()
-                    val text = doc.get(CONTENT)
+                    val text = doc.load(CONTENT)
                     val query = AnalyzerFunctions.createQuery(text, field = IndexFields.FIELD_TEXT.field)
                     entitySearcher.search(query, 1000)
                         .scoreDocs
