@@ -12,7 +12,7 @@ import language.GramStatType
 import language.GramStatType.*
 import language.containers.LanguageStatContainer
 import lucene.FieldQueryFormatter
-import lucene.containers.QueryData
+import lucene.containers.*
 import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
 import utils.lucene.explainScore
@@ -99,6 +99,32 @@ object EntityRankingFeatures {
 
         entityContainers.forEachIndexed { index, container ->
             sf.entityScores[index] = scores[container.docId] ?: 0.0
+        }
+    }
+
+    private fun queryContext(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
+        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+                analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val topParagraph = AnalyzerFunctions.createQuery(queryString, IndexFields.FIELD_UNIGRAM.field, true, ANALYZER_ENGLISH_STOPPED)
+            .run { paragraphSearcher.search(this, 1).scoreDocs.firstOrNull()?.let { paragraphSearcher.getIndexDoc(it.doc) } }
+
+        val combined = if (topParagraph == null || field != IndexFields.FIELD_BIGRAM || tokens.size > 1) tokens else tokens + topParagraph.unigrams().split(" ").countDuplicates().toList().sortedByDescending { it.second }.take(2).map { it.first }
+        val fq = FieldQueryFormatter()
+        val fieldQuery = fq
+            .addWeightedQueryTokens(combined, field)
+            .createBooleanQuery()
+
+        val scores = contextEntitySearcher.search(fieldQuery, 4000)
+            .scoreDocs
+            .map { sc -> contextEntitySearcher.getIndexDoc(sc.doc).name().toLowerCase() to sc.score.toDouble() }
+            .groupBy { it.first }
+//            .mapValues { it.value.maxBy { it.second }!!.second }
+            .mapValues { it.value.sumByDouble { it.second.toDouble() } }
+            .toMap()
+
+
+        entityContainers.forEachIndexed { index, container ->
+            sf.entityScores[index] = scores[container.name.toLowerCase()] ?: 0.0
         }
     }
 
@@ -212,5 +238,14 @@ object EntityRankingFeatures {
 
     fun addSections(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_SECTIONS_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_SECTION_UNIGRAM) }
+
+    fun addContextUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_CONTEXT_UNIGRAMS, wt, norm) { qd, sf -> queryContext(qd, sf, IndexFields.FIELD_UNIGRAM) }
+
+    fun addContextBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_CONTEXT_BIGRAMS, wt, norm) { qd, sf -> queryContext(qd, sf, IndexFields.FIELD_BIGRAM) }
+
+    fun addContextWindowed(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_CONTEXT_WINDOWED, wt, norm) { qd, sf -> queryContext(qd, sf, IndexFields.FIELD_WINDOWED_BIGRAM) }
 
 }

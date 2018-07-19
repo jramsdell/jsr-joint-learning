@@ -16,6 +16,7 @@ import utils.misc.identity
 import utils.misc.mapOfLists
 import utils.misc.sharedRand
 import utils.parallel.pmap
+import utils.stats.countDuplicates
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -87,6 +88,21 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
 
 
     private fun createSectionContainers(query: String, qid: Int): List<SectionContainer> {
+//        var tokens = AnalyzerFunctions.createTokenList(query, useFiltering = true,
+//                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+
+//        if (tokens.size == 1) {
+//            val topParagraph = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field, true, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+//                .run { paragraphSearcher.search(this, 1).scoreDocs.firstOrNull()?.let { paragraphSearcher.getIndexDoc(it.doc) } }
+//            if (topParagraph != null) {
+//                tokens = tokens + topParagraph.unigrams().split(" ").countDuplicates().maxBy { it.value }!!.key
+//            }
+//        }
+
+//        val q = FieldQueryFormatter()
+//            .addWeightedQueryTokens(query, IndexFields.FIELD_BIGRAM)
+//            .createBooleanQuery()
+
         val q = AnalyzerFunctions.createQuery(query, field = IndexFields.FIELD_UNIGRAM.field,
                 analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
                 useFiltering = true)

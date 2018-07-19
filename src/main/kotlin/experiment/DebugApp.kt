@@ -74,24 +74,31 @@ class DebugApp(resources: HashMap<String, Any>) {
         val contextSearcher = getTypedSearcher<IndexType.CONTEXT_ENTITY>(contextLoc)
         val entityLoc = "/speedy/jsc57/extractions2/page"
         val entitySearcher = getTypedSearcher<IndexType.ENTITY>(entityLoc)
-        (0 until 10).forEach { index ->
-            val doc = contextSearcher.getIndexDoc(index)
-            with (doc) {
-                println(name())
-                println(entities())
-                println(bigrams())
-                println()
-
-            }
-
-            println("Compared to:")
-            val eDoc = entitySearcher.getDocumentByField(doc.name())
-
-            eDoc?.apply {
-                println(bigrams())
-                println()
-            }
-
+//        (0 until 10).forEach { index ->
+//            val doc = contextSearcher.getIndexDoc(index)
+//            with (doc) {
+//                println(name())
+//                println(entities())
+//                println(bigrams())
+//                println()
+//
+//            }
+//
+//            println("Compared to:")
+//            val eDoc = entitySearcher.getDocumentByField(doc.name())
+//
+//            eDoc?.apply {
+//                println(bigrams())
+//                println()
+//            }
+//
+//        }
+        val q = AnalyzerFunctions.createQuery("Chocolate", IndexFields.FIELD_NAME.field)
+        val results = contextSearcher.search(q, 10).scoreDocs.forEach {
+            val doc = contextSearcher.getIndexDoc(it.doc)
+            println(doc.name())
+            println(doc.unigrams())
+            println(doc.bigrams())
         }
     }
 

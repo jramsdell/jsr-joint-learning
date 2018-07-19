@@ -14,6 +14,7 @@ import experiment.OptimalWeights.*
 import features.section.SectionRankingFeatures
 import features.subobject.SubObjectFeatures
 
+@Suppress("UNCHECKED_CAST", "UNUSED_CHANGED_VALUE")
 /**
  * Class: MasterExperiment
  * Desc: An app used to create ranklib files and run files for all of my methods.
@@ -37,50 +38,6 @@ class QueryApp(val resources: HashMap<String, Any>) {
     val indexer = getIndexSearcher(indexPath)
 
 
-    /**
-     * Func: querySDMSection
-     * Desc: Like the section-paths variant of BM25, the SDM method is run on each of a query's sections,
-     *       and the score of a document is expressed as a weighted sum of likelihoods given each section.
-     */
-//    private fun querySDMSection() {
-//        val hGram = GramAnalyzer(indexer)
-////        val weights = listOf(0.18040763371108623, 0.053702972763138165, 0.3145376765137826, 0.45135171701199295)
-//        val weights = listOf(0.08047025663846726, 0.030239885393043505, 0.15642380129849698, 0.45881012321282,
-//                0.1370279667285861, 0.1370279667285861
-//        )
-//
-//        val bindSDM = { query: String, tops: TopDocs, indexSearcher: IndexSearcher ->
-//            featSDM(query, tops, indexSearcher, hGram, 4.0)
-//        }
-//
-//        formatter.addFeature({ query, tops, indexSearcher ->
-//            featSplitSim(query, tops, indexSearcher, bindSDM, weights)
-//        }, normType = NormType.ZSCORE)
-//    }
-
-//    fun querySDM(weights: List<Double>? = null) {
-//        val hGram = GramAnalyzer(indexer)
-//        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
-//        formatter.addFeature({ query, tops, indexSearcher -> featSDM(query, tops, indexSearcher, hGram, 4.0) },
-//                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-////        formatter.addFeature2(::featQueryEntityToDocEntity,
-////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 2.0)
-//    }
-
-
-//    fun doBM25() {
-//        formatter.addBM25(normType = NormType.ZSCORE)
-//    }
-
-//    fun queryTFIDF(weights: List<Double>? = null) {
-//        formatter.addBM25(normType = NormType.ZSCORE, weight = weights?.get(0) ?: 1.0)
-////        formatter.addFeature2({ queryData -> featAddLuceneSimilarity(queryData, TFIDF)},
-////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-////        formatter.addFeature2(::featEntityStringSim,
-////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-////        formatter.addFeature2(::featQueryEntityToDocEntity,
-////                normType = NormType.ZSCORE, weight = weights?.get(1) ?: 1.0)
-//    }
 
     fun queryBM25() {
         DocumentRankingFeatures.addBM25Document(formatter, 1.0, norm = NormType.NONE)
@@ -102,30 +59,38 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
         // Super awesome features
 
-//        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addQuerySpecial(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addQueryBoring(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        //  0.183	|  0.2307
+        //  0.1666	|  0.2236
 
 //        DocumentRankingFeatures.addQueryDist(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //        DocumentRankingFeatures.addSectionFreq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
-//        DocumentRankingFeatures.addUnionUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addUnionBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addUnionUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addUnionBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addJointUnigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        DocumentRankingFeatures.addJointBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addJointBigramField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //
-//        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
         EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addContextUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addContextBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addContextWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //
         SectionRankingFeatures.addUnigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SectionRankingFeatures.addBigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SectionRankingFeatures.addBigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addHeading(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SectionRankingFeatures.addPath(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -138,20 +103,29 @@ class QueryApp(val resources: HashMap<String, Any>) {
     }
 
     fun queryFunctor(weights: List<Double>? = null) {
+        formatter.useJointDist = false
         val norm = NormType.ZSCORE
+        // 0.2183 , 0.2866, 0.2281
         var i = 0
 //        SubObjectFeatures.addLinkFreq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToECategory(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-//        SubObjectFeatures.addPUnigramToEInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
+
+//        SubObjectFeatures.addPUnigramToEInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+
 
 //        SubObjectFeatures.addPUnigramToERedirects(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToEDisambig(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //        SubObjectFeatures.addPUnigramToESection(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
+
+
 //        SubObjectFeatures.addPUnigramToEOutlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+
 ////
 //        SubObjectFeatures.addPJointUnigramToEUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPBigramToEBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -159,12 +133,19 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //        SubObjectFeatures.addPEntityToInlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPEntityToOutlinks(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
+
 //        SubObjectFeatures.addPWindowedToEWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+
 //        SubObjectFeatures.addPJointWindowedToEWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
-        SubObjectFeatures.addPUnigramToContextUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SubObjectFeatures.addPUnigramToContextBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        SubObjectFeatures.addPUnigramToContextWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToContextUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToContextBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToContextBigramToParagraph(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        SubObjectFeatures.addCombinedContext(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToContextWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToContextEntities(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        SubObjectFeatures.addPUnigramToContextJointBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
     }
 
     fun queryScorer(weights: List<Double>? = null) {
@@ -217,6 +198,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
                 val instance = QueryApp(resources)
                 val method = dispatcher.methodContainer!! as MethodContainer<QueryApp>
                 method.getMethod(methodType, methodName)?.invoke(instance)
+                instance.formatter.finish()
 
 
                 if (methodType == "query") {

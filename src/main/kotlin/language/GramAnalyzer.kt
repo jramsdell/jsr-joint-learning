@@ -161,7 +161,7 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
         fun countWindowedBigrams(terms: List<String>): Map<String, Int> {
 //        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED)
             val docBigramWindowCounts = terms
-                .windowed(8, 1, true)
+                .windowed(8, 1, false)
                 .flatMap { window ->
                     val firstTerm = window[0]
                     window
@@ -179,7 +179,7 @@ class GramAnalyzer(val indexSearcher: IndexSearcher) {
          */
         fun countBigrams(terms: List<String>): Map<String, Int> {
 //        val terms = AnalyzerFunctions.createTokenList(text, analyzerType = ANALYZER_ENGLISH_STOPPED).toList()
-            val docBigramCounts = terms.windowed(2, 1)
+            val docBigramCounts = terms.windowed(2, 1, partialWindows = false)
                 .map { window -> window.joinToString(separator = "") }
                 .groupingBy(::identity)
                 .eachCount()

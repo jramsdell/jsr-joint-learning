@@ -16,9 +16,7 @@ import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
 import utils.misc.toHashMap
-import utils.stats.countDuplicates
-import utils.stats.defaultWhenNotFinite
-import utils.stats.normalize
+import utils.stats.*
 import java.lang.Double.max
 import java.lang.Double.sum
 import java.lang.Math.log
@@ -31,15 +29,15 @@ object SubObjectFeatures {
 
 
         val pScores = sf.paragraphScores.map { it }
-//        val eScores = sf.entityScores.map { it }
+        val eScores = sf.entityScores.map { it }
         sf.entityScores.fill(0.0)
         sf.paragraphScores.fill(0.0)
 
         val smoothFactor = 0.0
-//        val inverseMaps = qd.entityContainers.mapIndexed { _, entity ->  entity.index to HashMap<Int, Double>() }.toMap()
+        val inverseMaps = qd.entityContainers.mapIndexed { _, entity ->  entity.index to HashMap<Int, Double>() }.toMap()
 //        val uniform = qd.entityContainers.map { (it.index to (1 / sf.entityScores.size.toDouble()) * (smoothFactor) )}
-//        val parFreqMap = getParagraphConditionMap(qd, uniform, conditionFunction, smoothFactor, inverseMaps)
-        val parFreqMap = gParCondMap(qd, conditionFunction)
+        val parFreqMap = getParagraphConditionMap(qd, conditionFunction, inverseMaps)
+//        val parFreqMap = gParCondMap(qd, conditionFunction)
 //        val entFreqMap = getEntityConditionMap(qd, uniform, conditionFunction, smoothFactor)
 
 
@@ -56,7 +54,7 @@ object SubObjectFeatures {
 ////            entityToPar.map { it.second }.toMap() }
 
 
-//        val entFreqMap = inverseMaps.mapValues { it.value.normalize() }
+        val entFreqMap = inverseMaps.mapValues { it.value.normalize() }
 
 //        val (parToEnt, entToPar) = getSubMap(qd)
 
@@ -92,30 +90,28 @@ object SubObjectFeatures {
             }
         }
 
-//        qd.entityContainers.forEachIndexed { eIndex, eContainer ->
-//            val entityScore = eScores[eContainer.index]
-////            inverseMap[eContainer.index]!!.forEach { pIndex, probabilityOfParagraphGivenEntity ->
-//                entFreqMap[eContainer.index]!!.forEach { pIndex, probabilityOfParagraphGivenEntity ->
-////                sf.paragraphScores[pIndex] += entityScore * (probabilityOfParagraphGivenEntity * (1.0 - smoothFactor)) + entityScore * ((1/sf.paragraphScores.size.toDouble()) * smoothFactor)
-//                sf.paragraphScores[pIndex] += entityScore  * probabilityOfParagraphGivenEntity
-//            }
-//        }
+        qd.entityContainers.forEachIndexed { eIndex, eContainer ->
+            val entityScore = eScores[eContainer.index]
+//            inverseMap[eContainer.index]!!.forEach { pIndex, probabilityOfParagraphGivenEntity ->
+                inverseMaps[eContainer.index]!!.forEach { pIndex, probabilityOfParagraphGivenEntity ->
+//                sf.paragraphScores[pIndex] += entityScore * (probabilityOfParagraphGivenEntity * (1.0 - smoothFactor)) + entityScore * ((1/sf.paragraphScores.size.toDouble()) * smoothFactor)
+                sf.paragraphScores[pIndex] += entityScore  * probabilityOfParagraphGivenEntity
+            }
+        }
 
 
     }
 
 
-    private fun getParagraphConditionMap(qd: QueryData, uniform: List<Pair<Int, Double>>, conditionFunction: (ParagraphContainer, EntityContainer) -> Double, smoothFactor: Double, inverseMaps: Map<Int, HashMap<Int, Double>>): Map<Int, Map<Int, Double>> {
+    fun getParagraphConditionMap(qd: QueryData, conditionFunction: (ParagraphContainer, EntityContainer) -> Double, inverseMaps: Map<Int, HashMap<Int, Double>>): Map<Int, Map<Int, Double>> {
         val parFreqMap = qd.paragraphContainers.map { pContainer ->
-            val baseMap = uniform.toHashMap()
-            qd.entityContainers
+            val dist = qd.entityContainers
                 .map { eContainer ->
                     val conditionScore = conditionFunction(pContainer, eContainer)
-                    eContainer.index to conditionScore * (1.0 - smoothFactor)
-                }
-                .forEach { (k, v) -> baseMap.merge(k, v, ::sum) }
-            baseMap.normalize().forEach { (k, v) -> inverseMaps[k]!!.merge(pContainer.index, v, ::sum) }
-            pContainer.index to baseMap.normalize()
+                    inverseMaps[eContainer.index]!!.merge(pContainer.index, conditionScore, ::sum)
+                    eContainer.index to conditionScore
+                }.toMap()
+            pContainer.index to dist
         }.toMap()
         return parFreqMap
     }
@@ -126,7 +122,7 @@ object SubObjectFeatures {
                 .map { eContainer ->
                     val conditionScore = conditionFunction(pContainer, eContainer)
                     eContainer.index to conditionScore
-                }.toMap().normalize()
+                }.toMap()
             pContainer.index to dist
         }.toMap()
         return parFreqMap
@@ -156,10 +152,11 @@ object SubObjectFeatures {
     fun scoreByField(qd: QueryData, paragraphField: IndexFields, entityField: IndexFields): (ParagraphContainer, EntityContainer) -> Double {
         val scoreMap =
                 qd.paragraphContainers.mapIndexed { pIndex, pContainer ->
-                    val fieldTokens = pContainer.doc().load(paragraphField).split(" ")
-                    val fieldQuery = FieldQueryFormatter()
-                        .addWeightedQueryTokens(fieldTokens, entityField, 1.0)
-                        .createBooleanQuery()
+                    val fieldContents = pContainer.doc().load(paragraphField)
+//                    val fieldQuery = FieldQueryFormatter()
+//                        .addWeightedQueryTokens(fieldTokens, entityField, 1.0)
+//                        .createBooleanQuery()
+                    val fieldQuery = AnalyzerFunctions.createQuery(fieldContents, entityField.field)
                     val searchResult = qd.entitySearcher.search(fieldQuery, 500)
 
                     val parToEntScores =
@@ -175,25 +172,82 @@ object SubObjectFeatures {
     fun scoreByEntityContextField(qd: QueryData, paragraphField: IndexFields, entityField: IndexFields): (ParagraphContainer, EntityContainer) -> Double {
         val scoreMap =
                 qd.paragraphContainers.mapIndexed { pIndex, pContainer ->
-                    val fieldTokens = pContainer.doc().load(paragraphField).split(" ")
-                    val fieldQuery = FieldQueryFormatter()
-                        .addWeightedQueryTokens(fieldTokens, entityField, 1.0)
-                        .createBooleanQuery()
+                    val fieldContents = pContainer.doc().load(paragraphField)
+
+                    val fieldQuery = AnalyzerFunctions.createQuery(fieldContents, entityField.field)
                     val searchResult = qd.contextEntitySearcher.search(fieldQuery, 500)
 
                     val parToEntScores =
                             searchResult.scoreDocs
-                                .filter { it.score > 0.0 }
                                 .map { sc ->
-                                val doc = qd.contextEntitySearcher.getIndexDoc(sc.doc)
-                                doc.name().toLowerCase() to sc.score.toDouble()
-                            }
+                                    val doc = qd.contextEntitySearcher.getIndexDoc(sc.doc)
+                                    doc.name().toLowerCase() to sc.score.toDouble() }
+                                .groupBy { it.first }
+                                .mapValues { it.value.sumByDouble { it.second } }
                     pContainer.docId to parToEntScores.toMap()
                 }.toMap()
 
 
-//        val conditionFunction = createConditionFunctionUsingScores(scoreMap)
-//        return conditionFunction
+        return { pContainer: ParagraphContainer, eContainer: EntityContainer ->
+            (scoreMap[pContainer.docId]?.get(eContainer.name.toLowerCase()) ?: 0.0)
+        }
+    }
+
+    fun scoreByEntityContextFieldToParagraph(qd: QueryData, paragraphField: IndexFields, entityField: IndexFields): (ParagraphContainer, EntityContainer) -> Double {
+        val scoreMap =
+                qd.entityContainers.mapIndexed { pIndex, eContainer ->
+                    val q = AnalyzerFunctions.createQuery(eContainer.name, IndexFields.FIELD_NAME.field)
+                    val fieldContents = qd.contextEntitySearcher.search(q, 10)
+                        .scoreDocs
+                        .flatMap { sd ->
+                            val doc = qd.contextEntitySearcher.getIndexDoc(sd.doc)
+                            doc.load(entityField).split(" ") }
+                        .countDuplicates()
+                        .toList()
+                        .sortedByDescending { it.first }
+                        .take(15)
+                        .map { it.first }
+                        .joinToString(" ")
+
+                    val fieldQuery = AnalyzerFunctions.createQuery(fieldContents, paragraphField.field)
+                    val searchResult = qd.paragraphSearcher.search(fieldQuery, 500)
+
+                    val entToParResults =
+                            searchResult.scoreDocs
+                                .map { sc ->
+                                    sc.doc to sc.score.toDouble() }
+                    eContainer.name.toLowerCase() to entToParResults.toMap()
+                }.toMap()
+
+
+        return { pContainer: ParagraphContainer, eContainer: EntityContainer ->
+            (scoreMap[eContainer.name.toLowerCase()]?.get(pContainer.docId) ?: 0.0)
+        }
+    }
+
+    fun scoreByEntityContextFieldWeights(qd: QueryData, fields: List<Triple<IndexFields, IndexFields, Double>>): (ParagraphContainer, EntityContainer) -> Double {
+        val scoreMap =
+                qd.paragraphContainers.mapIndexed { pIndex, pContainer ->
+                    val qf = FieldQueryFormatter()
+                    fields.forEach { (pField, eField, weight) ->
+                        val fieldContents = pContainer.doc().load(pField)
+                        val tokens = AnalyzerFunctions.createTokenList(fieldContents)
+                        qf.addWeightedQueryTokens(tokens, eField, weight)
+                    }
+
+                    val searchResult = qd.contextEntitySearcher.search(qf.createBooleanQuery(), 500)
+
+                    val parToEntScores =
+                            searchResult.scoreDocs
+                                .map { sc ->
+                                    val doc = qd.contextEntitySearcher.getIndexDoc(sc.doc)
+                                    doc.name().toLowerCase() to sc.score.toDouble() }
+                                .groupBy { it.first }
+                                .mapValues { it.value.sumByDouble { it.second } }
+                    pContainer.docId to parToEntScores.toMap()
+                }.toMap()
+
+
         return { pContainer: ParagraphContainer, eContainer: EntityContainer ->
             (scoreMap[pContainer.docId]?.get(eContainer.name.toLowerCase()) ?: 0.0)
         }
@@ -316,6 +370,28 @@ object SubObjectFeatures {
         entityConditionalExpectation(qd, sf, result)
     }
 
+    fun bindEntityContextFieldToPar(paragraphField: IndexFields, entityField: IndexFields) = {
+        qd: QueryData, sf: SharedFeature ->
+        val result = scoreByEntityContextFieldToParagraph(qd, paragraphField, entityField)
+        entityConditionalExpectation(qd, sf, result)
+    }
+
+    fun bindEntityContextFieldWeighted(fields: List<Triple<IndexFields, IndexFields, Double>>) = {
+        qd: QueryData, sf: SharedFeature ->
+        val result = scoreByEntityContextFieldWeights(qd, fields)
+        entityConditionalExpectation(qd, sf, result)
+    }
+
+    fun bindCombined(paragraphField: IndexFields, entityField: IndexFields) = {
+        qd: QueryData, sf: SharedFeature ->
+        val result = scoreByEntityContextField(qd, paragraphField, entityField)
+        val result2 = scoreByEntityContextFieldToParagraph(qd, paragraphField, entityField)
+        val combinedFunc = { pContainer: ParagraphContainer, eContainer: EntityContainer ->
+            result(pContainer, eContainer) + result2(pContainer, eContainer)
+        }
+        entityConditionalExpectation(qd, sf, combinedFunc)
+    }
+
 
 
 
@@ -389,11 +465,34 @@ object SubObjectFeatures {
                     bindEntityContextField(paragraphField = FIELD_UNIGRAM, entityField = FIELD_UNIGRAM))
 
     fun addPUnigramToContextBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_UNIGRAMS, wt, norm,
+            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_BIGRAMS, wt, norm,
                     bindEntityContextField(paragraphField = FIELD_BIGRAM, entityField = FIELD_BIGRAM))
 
+    fun addPUnigramToContextBigramToParagraph(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_BIGRAMS, wt, norm,
+                    bindEntityContextFieldToPar(paragraphField = FIELD_BIGRAM, entityField = FIELD_BIGRAM))
+
+    fun addCombinedContext(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_BIGRAMS, wt, norm,
+                    bindCombined(paragraphField = FIELD_BIGRAM, entityField = FIELD_BIGRAM))
+
+    fun addPUnigramToContextJointBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_JOINT_BIGRAMS, wt, norm,
+                    bindEntityContextField(paragraphField = FIELD_JOINT_BIGRAMS, entityField = FIELD_BIGRAM))
+
     fun addPUnigramToContextWindowed(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_UNIGRAMS, wt, norm,
+            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_WINDOWED, wt, norm,
                     bindEntityContextField(paragraphField = FIELD_WINDOWED_BIGRAM, entityField = FIELD_WINDOWED_BIGRAM))
+
+    fun addPUnigramToContextEntities(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_ENTITIES, wt, norm,
+                    bindEntityContextField(paragraphField = FIELD_UNIGRAM, entityField = FIELD_ENTITIES_UNIGRAMS))
+//
+//    fun addCombinedContext(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+//            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_ENTITIES, wt, norm,
+//                    bindEntityContextFieldWeighted(
+//                            listOf(Triple(FIELD_BIGRAM, FIELD_BIGRAM, 1.0),
+//                                    Triple(FIELD_WINDOWED_BIGRAM, FIELD_WINDOWED_BIGRAM, 1.0))
+//                    ))
 
 }

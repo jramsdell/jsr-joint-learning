@@ -16,9 +16,17 @@ import java.lang.Math.log
 object SectionRankingFeatures {
 
     private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
-        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+        var tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
                 analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
         val fq = FieldQueryFormatter()
+        if (tokens.size == 1 && field == IndexFields.FIELD_BIGRAM) {
+            val topParagraph = AnalyzerFunctions.createQuery(queryString, IndexFields.FIELD_UNIGRAM.field, true, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+                .run { paragraphSearcher.search(this, 1).scoreDocs.firstOrNull()?.let { paragraphSearcher.getIndexDoc(it.doc) } }
+            if (topParagraph != null) {
+                tokens = tokens + topParagraph.unigrams().split(" ").countDuplicates().maxBy { it.value }!!.key
+            }
+
+        }
         val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
 
         val scores = sectionSearcher.search(fieldQuery, 5000)

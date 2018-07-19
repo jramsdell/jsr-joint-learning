@@ -86,7 +86,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
 
 
-    val useJointDist = false
+    var useJointDist = true
     val useSavedFeatures = false
     var limit: Int? = null
     val isHomogenous = false
@@ -254,7 +254,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            if (featureMap != null)
 //                sf = featureMap[qc.query]!!
 //            else
-//                f(qc.queryData, sf)
+            f(qc.queryData, sf)
 
 //            if (!useSavedFeatures) {
 //                featureDatabase.storeFeature(qc.query,featureEnum, sf.makeCopy())
@@ -397,11 +397,13 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val onlySection = File("ony_section.txt").bufferedWriter()
 
 
-        queryContainers.shuffled(sharedRand)
+        queryContainers
             .flatMap { queryContainer ->
-                val combined = queryContainer.entities.map(EntityContainer::toString)  +
-                        queryContainer.paragraphs.map(ParagraphContainer::toString) +
-            queryContainer.sections.map(SectionContainer::toString)
+                val combined = listOf(queryContainer.entities.map(EntityContainer::toString),
+                        queryContainer.paragraphs.map(ParagraphContainer::toString),
+                        queryContainer.sections.map(SectionContainer::toString))
+                    .shuffled()
+                    .flatten()
                 if (isHomogenous) combined.shuffled() else combined
 //                (queryContainer.transformFeatures() + queryContainer.entities)
 //                    .map(EntityContainer::toString)
@@ -417,18 +419,19 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             .joinToString(separator = "\n")
             .let { file.write(it + "\n"); }
 
-        queryContainers.shuffled(sharedRand)
+        queryContainers
             .flatMap { queryContainer -> queryContainer.paragraphs.map(ParagraphContainer::toString)  }
             .joinToString(separator = "\n")
             .let { onlyParagraph.write(it + "\n"); }
 
 
-        queryContainers.shuffled(sharedRand)
+        queryContainers
             .flatMap { queryContainer -> queryContainer.entities  }
             .joinToString(separator = "\n", transform = EntityContainer::toString)
             .let { onlyEntity.write(it) }
+        //Avg.	|   0.1641	|  0.2245
 
-        queryContainers.shuffled(sharedRand)
+        queryContainers
             .flatMap { queryContainer -> queryContainer.sections  }
             .joinToString(separator = "\n", transform = SectionContainer::toString)
             .let { onlySection.write(it) }
@@ -480,9 +483,10 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         if (!useJointDist)
             return
 
-        queryContainers.forEach { qContainer ->
+        queryContainers.forEachParallelQ { qContainer ->
             //                val jointDistribution = JointDistribution.createFromFunctor(qContainer.queryData)
-                val jointDistribution =  JointDistribution.createJointDistribution(qContainer.queryData)
+//                val jointDistribution =  JointDistribution.createJointDistribution(qContainer.queryData)
+            val jointDistribution =  JointDistribution.createNew(qContainer.queryData)
 //            val jointDistribution =  JointDistribution.createMonoidDistribution(qContainer.query, qContainer.queryData)
             qContainer.jointDistribution = jointDistribution
 //            analyzeStuff(qContainer.queryData)
@@ -550,6 +554,14 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     fun initialize() {
 //        doPullback(IndexFields.FIELD_UNIGRAM)
         doJointDistribution()
+    }
+
+    fun finish() {
+//        val nFeatures = queryContainers.first().paragraphs.first().features.size
+//        (0 until nFeatures).forEach { fIndex ->
+//            foldOverFeature(fIndex, this::normZscore)
+//        }
+
     }
 
     fun writeHtml() {
@@ -679,6 +691,22 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
             sContainer.features.forEach { feature -> feature.score = newScore; feature.weight = 1/sContainer.features.size.toDouble() }
         }
+    }
+
+    fun foldOverFeature(fIndex: Int, f: (List<Double>) -> List<Double>) {
+        val pFeatures = queryContainers.flatMap { qContainer -> qContainer.paragraphs.map { it.features[fIndex] } }
+        val eFeatures = queryContainers.flatMap { qContainer -> qContainer.entities.map { it.features[fIndex] } }
+        val sFeatures = queryContainers.flatMap { qContainer -> qContainer.sections.map { it.features[fIndex] } }
+
+        listOf(pFeatures, eFeatures, sFeatures)
+            .forEach { featureList ->
+
+                featureList.map { it.unnormalizedScore }
+                    .run(f)
+                    .zip(featureList)
+                    .forEach { (newScore, feature) -> feature.score = newScore }
+
+            }
     }
 
 }

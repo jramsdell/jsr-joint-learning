@@ -15,14 +15,14 @@ import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
 
 import utils.lucene.explainScore
-import utils.stats.takeMostFrequent
 import lucene.containers.FeatureEnum.*
 import lucene.containers.paragraphs
 import lucene.containers.text
+import lucene.containers.unigrams
 import lucene.indexers.getList
 import org.apache.lucene.index.Term
-import utils.stats.countDuplicates
-import utils.stats.normalize
+import utils.stats.*
+import java.lang.Double.sum
 import java.lang.Math.log
 
 
@@ -127,18 +127,70 @@ object DocumentRankingFeatures {
                 analyzerType = ANALYZER_ENGLISH_STOPPED)
         val fq = FieldQueryFormatter()
         val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
-//        val fieldQuery = AnalyzerFunctions.createQuery(queryString, field.field, useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
-
-//        val scores = paragraphSearcher.search(fieldQuery, 2000)
-//            .scoreDocs
-//            .map { sc -> sc.doc to sc.score.toDouble() }
-//            .toMap()
 
 
         paragraphContainers.forEachIndexed { index, container ->
             val score = paragraphSearcher.explainScore(fieldQuery, container.docId)
 //            sf.paragraphScores[index] = scores[container.docId] ?: 0.0
             sf.paragraphScores[index] = score
+        }
+    }
+
+    val filterCounter = arrayListOf(0, 0)
+    val filterScore1 = arrayListOf(0.0, 0.0)
+    val filterScore2 = arrayListOf(0.0, 0.0)
+    val filterScore3 = arrayListOf(0.0, 0.0)
+
+    private fun queryBoring(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val q1 = AnalyzerFunctions.createQuery(queryString, IndexFields.FIELD_UNIGRAM.field, useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
+        qd.paragraphContainers.forEach { container ->
+            sf.paragraphScores[container.index] = paragraphSearcher.explainScore(q1, container.docId)
+        }
+
+    }
+
+    private fun querySpecial(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        // Parse query and retrieve a language model for it
+        val field = IndexFields.FIELD_UNIGRAM
+        val q1 = AnalyzerFunctions.createQuery(queryString, IndexFields.FIELD_UNIGRAM.field, useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val q2 = AnalyzerFunctions.doExpandedQuery(queryString, ANALYZER_ENGLISH_STOPPED, true, contextEntitySearcher,
+                IndexFields.FIELD_ENTITIES_UNIGRAMS, field)
+//        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+//                analyzerType = ANALYZER_ENGLISH_STOPPED)
+//        val fq = FieldQueryFormatter()
+//        val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+
+        val p1Dist = qd.paragraphContainers.map { container ->
+            val score1 = paragraphSearcher.explainScore(q1, container.docId)
+            container.docId to score1 }
+            .toMap()
+            .normalizeRanked()
+//
+//
+//        val p2Dist = qd.paragraphContainers.map { container ->
+//            val score2 = paragraphSearcher.explainScore(q2, container.docId)
+//            container.docId to score2 }
+//            .toMap()
+//            .normalizeZscore()
+
+        qd.paragraphContainers.forEach { container ->
+            val score1 = paragraphSearcher.explainScore(q1, container.docId)
+            val score2 = paragraphSearcher.explainScore(q2, container.docId)
+//            sf.paragraphScores[container.index] = Math.max(score1, score2)
+//            sf.paragraphScores[container.index] = Math.max(score1, score2)
+            if (score2 > score1  ) {
+                filterCounter[container.isRelevant] += 1
+                filterScore1[container.isRelevant] += score1
+                filterScore2[container.isRelevant] += score2
+                filterScore3[container.isRelevant] += Math.max(score1, score2)
+
+                val score1Av = filterScore1.zip(filterCounter).map { (v1, v2) -> v1 / v2 }
+                val score2Av = filterScore2.zip(filterCounter).map { (v1, v2) -> v1 / v2 }
+                val score3Av = filterScore3.zip(filterCounter).map { (v1, v2) -> v1 / v2 }
+//                println("$filterCounter $score1Av, $score2Av, $score3Av")
+            }
+//            sf.paragraphScores[container.index] = if (score2 > 0.0) 0.0 else score1
+            sf.paragraphScores[container.index] = score2
         }
     }
 
@@ -243,6 +295,12 @@ object DocumentRankingFeatures {
 
     fun addQueryDist(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_QUERY_DIST, wt, norm, this::queryDist)
+
+    fun addQuerySpecial(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_QUERY_DIST, wt, norm, this::querySpecial)
+
+    fun addQueryBoring(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_QUERY_DIST, wt, norm, this::queryBoring)
 
 //    fun addDistScore(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
 //            fmt.addFeature3(DOC_JOINT_ENTITIES_FIELD, wt, norm, this::distributeByScore)

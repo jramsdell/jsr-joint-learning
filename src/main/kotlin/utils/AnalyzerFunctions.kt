@@ -1,13 +1,21 @@
 package utils
 
+import lucene.containers.TypedSearcher
+import lucene.indexers.IndexFields
 import org.apache.lucene.analysis.CharArraySet
 import org.apache.lucene.analysis.en.EnglishAnalyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.Term
+import org.apache.lucene.queryparser.xml.builders.BooleanQueryBuilder
 import org.apache.lucene.search.*
+import utils.misc.removeAll
+import utils.stats.countDuplicates
+import utils.stats.normalize
 import java.io.File
 import java.io.StringReader
+import java.lang.Double.max
+import java.lang.Double.sum
 import kotlin.coroutines.experimental.buildSequence
 
 private fun buildStopWords(): CharArraySet {
@@ -126,6 +134,50 @@ object AnalyzerFunctions {
             query.split("/")
                 .map { section -> AnalyzerFunctions
                     .createTokenList(section, useFiltering = true, analyzerType = analyzerType) }
+
+
+    fun doExpandedQuery(query: String, analyzerType: AnalyzerType, useFiltering: Boolean,
+                        originSearcher: TypedSearcher<*>,
+                        originField: IndexFields, targetField: IndexFields): BooleanQuery {
+
+//        val qtkens = AnalyzerFunctions.createQueryList(query, originField.field, useFiltering, analyzerType)
+        val tlist = AnalyzerFunctions.createTokenList(query, analyzerType, useFiltering)
+            .toSet()
+        val q = createQuery(query, originField.field, useFiltering, analyzerType)
+        val results = HashMap<String, Double>()
+        originSearcher.search(q, 100).scoreDocs.map { sd ->
+            originSearcher.getIndexDoc(sd.doc).load(originField)
+                .split(" ")
+                .countDuplicates()
+                .forEach { (k,v) -> results.merge(k, v * sd.score.toDouble(), ::sum) }
+//                .forEach { (k,v) -> results.merge(k, v.toDouble(), ::sum) }
+        }
+
+        val builder = BooleanQuery.Builder()
+
+//        results
+//            .toList()
+//            .sortedBy { it.second }
+//            .filter { it.first !in tlist }
+//            .take(5)
+//            .forEach { (k,v) ->
+//                val tq = BoostQuery(TermQuery(Term(targetField.field, k)), -v.toFloat())
+//                builder.add(tq, BooleanClause.Occur.SHOULD)
+//            }
+
+        results
+            .normalize()
+            .toList()
+            .sortedBy { it.second }
+            .filter { it.first !in tlist }
+            .take(5)
+            .forEach { (k,v) ->
+                val tq = BoostQuery(TermQuery(Term(targetField.field, k)), v.toFloat())
+                builder.add(tq, BooleanClause.Occur.SHOULD)
+            }
+
+        return builder.build()
+    }
 
 
 }

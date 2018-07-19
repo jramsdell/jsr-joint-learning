@@ -15,6 +15,32 @@ fun Iterable<Double>.normalize(): List<Double> {
     return items.map { value -> value / total }
 }
 
+fun <A, B: Number>Map<A, B>.normalizeZscore(): Map<A, Double> {
+    val mean = values.map { it.toDouble() }.average()
+    val std = Math.sqrt(values.sumByDouble { Math.pow(it.toDouble() - mean, 2.0) })
+    return mapValues { (_, value) -> (value.toDouble() - mean) / std }
+}
+
+fun <A, B: Number>Map<A, B>.normalizeRanked(): Map<A, Double> {
+    val items = values.size.toDouble()
+    return map { it.key to it.value.toDouble() }
+        .sortedByDescending { it.second }
+        .mapIndexed { index, (k,_) -> k to (items - index)/items   }
+        .toMap()
+}
+
+fun <A, B: Number>Map<A, B>.normalizeMinMax(): Map<A, Double> {
+    val vMax = values.maxBy { it.toDouble() }!!.toDouble()
+    val vMin = values.minBy { it.toDouble() }!!.toDouble()
+    return mapValues { (it.value.toDouble() - vMin) / (vMax - vMin) }
+}
+
+private fun normZscore(values: List<Double>): List<Double> {
+    val mean = values.average()
+    val std = Math.sqrt(values.sumByDouble { Math.pow(it - mean, 2.0) })
+    return values.map { ((it - mean) / std) }
+}
+
 fun<A> Iterable<A>.countDuplicates(): Map<A, Int> =
         groupingBy(::identity)
             .eachCount()

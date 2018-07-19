@@ -136,6 +136,18 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = ENTITY,
             func = EntityRankingFeatures::addCategoriesField),
 
+    ENTITY_CONTEXT_UNIGRAMS(text = "entity_context_unigrams",
+            type = ENTITY,
+            func = EntityRankingFeatures::addContextUnigram),
+
+    ENTITY_CONTEXT_BIGRAMS(text = "entity_context_bigrams",
+            type = ENTITY,
+            func = EntityRankingFeatures::addContextBigram),
+
+    ENTITY_CONTEXT_WINDOWED(text = "entity_context_windowed",
+            type = ENTITY,
+            func = EntityRankingFeatures::addContextWindowed),
+
     ENTITY_SECTIONS_FIELD(text = "entity_sections_field",
             type = ENTITY,
             func = EntityRankingFeatures::addSections),
@@ -221,7 +233,15 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
             type = PARAGRAPH_FUNCTOR,
             func = SubObjectFeatures::addPUnigramToContextUnigram),
 
+    PFUNCTOR_ENTITY_CONTEXT_ENTITIES(text = "functor_entity_context_entities_unigrams",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToContextEntities),
+
     PFUNCTOR_ENTITY_CONTEXT_BIGRAMS(text = "functor_entity_context_bigrams",
+            type = PARAGRAPH_FUNCTOR,
+            func = SubObjectFeatures::addPUnigramToContextBigram),
+
+    PFUNCTOR_ENTITY_CONTEXT_JOINT_BIGRAMS(text = "functor_entity_context_joint_bigrams",
             type = PARAGRAPH_FUNCTOR,
             func = SubObjectFeatures::addPUnigramToContextBigram),
 
