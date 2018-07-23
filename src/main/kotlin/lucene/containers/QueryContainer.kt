@@ -52,6 +52,7 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
         val paragraphEntities = ArrayList<EntityContainer>()
         val sectionEntities = ArrayList<EntityContainer>()
         paragraphs.forEach { pContainer ->
+//            pContainer.rescore()
             val entity = EntityContainer(
                     name = pContainer.name,
                     docType = ENTITY::class.java,
@@ -61,11 +62,13 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                     index = pContainer.index,
                     searcher = eSearcher,
                     query = pContainer.query,
-                    qid = entityQid )
+                    qid = pContainer.qid )
+                .apply { features = pContainer.features }
             paragraphEntities.add(entity)
         }
 
         sections.forEach { sContainer ->
+//            sContainer.rescore()
             val entity = EntityContainer(
                     name = sContainer.name,
                     docType = ENTITY::class.java,
@@ -75,7 +78,8 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                     index = sContainer.index,
                     searcher = eSearcher,
                     query = sContainer.query,
-                    qid = entityQid )
+                    qid = sContainer.qid )
+                .apply { features = sContainer.features }
             sectionEntities.add(entity)
         }
 
@@ -84,22 +88,34 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
             val weight = entities.first().features[featureIndex].weight
             val type = entities.first().features[featureIndex].type
             paragraphEntities.forEach { pEntity ->
-                val weightedAverage = jointDistribution
+//                val oldScore = pEntity.features[featureIndex].score
+                val oldScore = 1.0
+                var weightedAverage = jointDistribution
                     .parToEnt[pEntity.index]
                     ?.entries
                     ?.sumByDouble { (k,freq) ->
 //                        entities[k]!!.features[featureIndex]!!.getUnormalizedAdjusted() * freq
 //                        entities[k]!!.features[featureIndex]!!.unnormalizedScore * freq
-                        entities[k]!!.features[featureIndex]!!.score * freq
+                        entities[k]!!.features[featureIndex]!!.score * freq * oldScore
                     } ?: 0.0
+
+                if (type != FeatureType.ENTITY) {
+                    weightedAverage = pEntity.features[featureIndex].score
+                }
 
 //                val score = if (type == FeatureType.PARAGRAPH_FUNCTOR) s
 
-                pEntity.features.add(FeatureContainer(weightedAverage, weightedAverage, weight, FeatureEnum.SECTION_QUERY_DIST))
+//                pEntity.features.add(FeatureContainer(weightedAverage, weightedAverage, weight, FeatureEnum.SECTION_QUERY_DIST))
+                pEntity.features[featureIndex]
+                    .apply {
+                        score = weightedAverage
+                        unnormalizedScore = weightedAverage
+                    }
             }
 
             sectionEntities.forEach { sEntity ->
-                val weightedAverage = jointDistribution
+                val type = entities.first().features[featureIndex].type
+                var weightedAverage = jointDistribution
                     .secToPar[sEntity.index]!!
                     .entries
                     .sumByDouble { (pIndex,pFreq) ->
@@ -112,7 +128,15 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                             }
                     } ?: 0.0
 
-                sEntity.features.add(FeatureContainer(weightedAverage, weightedAverage,weight, FeatureEnum.SECTION_QUERY_DIST))
+                if (type != FeatureType.ENTITY)
+                    weightedAverage = sEntity.features[featureIndex].score
+
+//                sEntity.features.add(FeatureContainer(weightedAverage, weightedAverage,weight, FeatureEnum.SECTION_QUERY_DIST))
+                sEntity.features[featureIndex]
+                    .apply {
+                        score = weightedAverage
+                        unnormalizedScore = weightedAverage
+                    }
             }
         }
 

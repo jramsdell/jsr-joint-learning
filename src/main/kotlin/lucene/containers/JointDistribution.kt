@@ -198,15 +198,31 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
         fun createNew(qd: QueryData): JointDistribution {
             val base = createJointDistribution(qd)
 
-            val scorer = SubObjectFeatures.scoreByEntityContextField(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
-            val scorerEntity = SubObjectFeatures.scoreByEntityContextFieldToParagraph(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
-            val finalScorer = {pContainer: ParagraphContainer, eContainer: EntityContainer ->
-                scorer(pContainer, eContainer) + scorerEntity(pContainer, eContainer)
-            }
+//            val scorer1 = SubObjectFeatures.scoreByField(qd, IndexFields.FIELD_UNIGRAM, IndexFields.FIELD_INLINKS_UNIGRAMS)
+//            val scorer2 = SubObjectFeatures.scoreByField(qd, IndexFields.FIELD_UNIGRAM, IndexFields.FIELD_OUTLINKS_UNIGRAMS)
+            val scorer3 = SubObjectFeatures.scoreByEntityContextField(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
+//            val scorer4 = SubObjectFeatures.scoreByEntityContextField(qd, IndexFields.FIELD_WINDOWED_BIGRAM, IndexFields.FIELD_WINDOWED_BIGRAM)
+//            val scorerEntity = SubObjectFeatures.scoreByEntityContextFieldToParagraph(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
+//            val finalScorer = {pContainer: ParagraphContainer, eContainer: EntityContainer ->
+//                scorer(pContainer, eContainer) + scorerEntity(pContainer, eContainer)
+//            }
+
+//            val weights = listOf(
+//                    0.3111721925625245 ,-0.18064698522369768 ,0.500945353849402 ,0.007235468364375822
+//
+//            )
+
+//            val combined = { pContainer: ParagraphContainer, eContainer: EntityContainer ->
+//                scorer1(pContainer, eContainer) * weights[0] +
+//                        scorer2(pContainer, eContainer) * weights[1] +
+//                        scorer3(pContainer, eContainer) * weights[2] +
+//                        scorer4(pContainer, eContainer) * weights[3]
+//            }
+
 
             val inverseMaps = qd.entityContainers.map { it.index to HashMap<Int, Double>() }
                 .toMap()
-            val pDist = SubObjectFeatures.getParagraphConditionMap(qd, finalScorer, inverseMaps)
+            val pDist = SubObjectFeatures.getParagraphConditionMap(qd, scorer3, inverseMaps)
 //            val eDist = qd.entityContainers.map { eContainer ->
 //                val dist = qd.paragraphContainers.map { pContainer ->
 //                    pContainer.index to scorerEntity(pContainer, eContainer) }
@@ -225,51 +241,6 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
         }
 
-        fun createFromFunctor(qd: QueryData): JointDistribution {
-            val sf1 = SubObjectFeatures.scoreByEntityLinks(qd)
-//            val sf2 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_CATEGORIES_UNIGRAMS)
-            val sf3 = SubObjectFeatures.scoreByField(qd,
-                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_INLINKS_UNIGRAMS)
-            val sf4 = SubObjectFeatures.scoreByField(qd,
-                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_UNIGRAM)
-//            val sf5 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_REDIRECTS_UNIGRAMS)
-//            val sf6 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_DISAMBIGUATIONS_UNIGRAMS)
-////            val sf7 = SubObjectFeatures.scoreByField(qd,
-////                    paragraphField = IndexFields.FIELD_NEIGHBOR_UNIGRAMS, entityField = IndexFields.FIELD_SECTION_UNIGRAM)
-//            val sf8 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_OUTLINKS_UNIGRAMS)
-
-//
-//            val sf9 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_JOINT_WINDOWED, entityField = IndexFields.FIELD_WINDOWED_BIGRAM)
-
-//            val sf10 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_JOINT_BIGRAMS, entityField = IndexFields.FIELD_BIGRAM)
-
-//            val sf2 = SubObjectFeatures.scoreByField(qd,
-//                    paragraphField = IndexFields.FIELD_UNIGRAM, entityField = IndexFields.FIELD_UNIGRAM)
-            // 0.06829399869281763 ,0.08641083044323171 ,-0.04567514341156267
-
-
-
-//            val weights = listOf(
-//                    sf1 to 0.36031379874240177)
-
-//            val functors = listOf(sf1)
-            val functors = listOf(sf1, sf3, sf4)
-//            val functors = listOf(sf3)
-            val weights = listOf(0.8646424114134189 ,0.05187387093956956 ,0.0834837176470115
-            )
-            val joined = functors.zip(weights)
-
-//            val (ptoE, etoP) = getSubMap(qd.paragraphContainers, qd.entityContainers)
-
-
-            return createEmpty()
-        }
 
         fun createEmpty() = JointDistribution(emptyMap(), emptyMap())
 
