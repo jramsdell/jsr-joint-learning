@@ -8,7 +8,7 @@ import org.apache.lucene.search.IndexSearcher
 import java.lang.ref.WeakReference
 import kotlin.properties.Delegates
 
-class DocContainer<out A: IndexType>(val name: String,
+class DocContainer<out A: IndexType>(var name: String,
                                      val qid: Int,
                                      val isRelevant: Int,
                                      val docId: Int,
@@ -23,7 +23,6 @@ class DocContainer<out A: IndexType>(val name: String,
     // Adjust the paragraph's score so that it is equal to the weighted sum of its features.
 //    fun doc(): Document = searcher.doc(docId)
 //    val doc: Document by Delegates.observable()
-    private var docRef: WeakReference<IndexDoc<A>> = WeakReference<IndexDoc<A>>(null)
 //    fun doc(vararg fieldsToLoad: IndexFields): IndexDoc<A> {
 //        return docRef.get() ?: let {
 //            val d = if (fieldsToLoad.size > 0) {
@@ -51,7 +50,14 @@ class DocContainer<out A: IndexType>(val name: String,
                 return "$isRelevant qid:$qid " +
                     (1..features.size).zip(features)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    "#$name #${docType.typeName.split("$").last()}"
+                    "#$name # ${docId} ${docType.typeName.split("$").last()}"
+    }
+
+    fun toCustomString(qd: Int): String {
+        return "$isRelevant qid:$qd " +
+                (1..features.size).zip(features)
+                    .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
+                "#$name # ${docId} ${docType.typeName.split("$").last()}"
     }
 
     companion object {
@@ -77,5 +83,6 @@ class DocContainer<out A: IndexType>(val name: String,
 typealias ParagraphContainer = DocContainer<IndexType.PARAGRAPH>
 typealias EntityContainer = DocContainer<IndexType.ENTITY>
 typealias SectionContainer = DocContainer<IndexType.SECTION>
+typealias ContextEntityContainer = DocContainer<IndexType.CONTEXT_ENTITY>
 
 

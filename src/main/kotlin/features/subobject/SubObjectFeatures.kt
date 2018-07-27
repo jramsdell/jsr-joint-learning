@@ -1,5 +1,6 @@
 package features.subobject
 
+import edu.unh.cs.treccar_v2.Data
 import experiment.KotlinRanklibFormatter
 import experiment.NormType
 import experiment.NormType.*
@@ -15,6 +16,7 @@ import lucene.indexers.getString
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
+import utils.lucene.explainScore
 import utils.misc.toHashMap
 import utils.stats.*
 import java.lang.Double.max
@@ -153,14 +155,33 @@ object SubObjectFeatures {
         val scoreMap =
                 qd.paragraphContainers.mapIndexed { pIndex, pContainer ->
                     val fieldContents = pContainer.doc().load(paragraphField)
-//                    val fieldQuery = FieldQueryFormatter()
-//                        .addWeightedQueryTokens(fieldTokens, entityField, 1.0)
-//                        .createBooleanQuery()
                     val fieldQuery = AnalyzerFunctions.createQuery(fieldContents, entityField.field)
                     val searchResult = qd.entitySearcher.search(fieldQuery, 500)
 
                     val parToEntScores =
                             searchResult.scoreDocs.map { sc -> sc.doc to sc.score.toDouble() }
+                    pContainer.docId to parToEntScores.toMap()
+                }.toMap()
+
+
+        val conditionFunction = createConditionFunctionUsingScores(scoreMap)
+        return conditionFunction
+    }
+
+    fun scoreByFieldContext(qd: QueryData, paragraphField: IndexFields, entityField: IndexFields): (ParagraphContainer, EntityContainer) -> Double {
+        val scoreMap =
+                qd.paragraphContainers.mapIndexed { pIndex, pContainer ->
+                    val fieldContents = pContainer.doc().load(paragraphField)
+                    val entities = pContainer.doc().spotlightEntities().split(" ").toSet()
+                    val fieldQuery = AnalyzerFunctions.createQuery(fieldContents, entityField.field)
+                    val searchResult = qd.contextEntitySearcher.search(fieldQuery, 500)
+
+                    val parToEntScores =
+                            searchResult.scoreDocs.map { sc ->
+                                val name = qd.contextEntitySearcher.getIndexDoc(sc.doc).name()
+                                var score = 0.0f
+                                sc.doc to if (name in entities) sc.score.toDouble()  else 0.0
+                            }
                     pContainer.docId to parToEntScores.toMap()
                 }.toMap()
 
@@ -382,15 +403,15 @@ object SubObjectFeatures {
         entityConditionalExpectation(qd, sf, result)
     }
 
-    fun bindCombined(paragraphField: IndexFields, entityField: IndexFields) = {
-        qd: QueryData, sf: SharedFeature ->
-        val result = scoreByEntityContextField(qd, paragraphField, entityField)
-        val result2 = scoreByEntityContextFieldToParagraph(qd, paragraphField, entityField)
-        val combinedFunc = { pContainer: ParagraphContainer, eContainer: EntityContainer ->
-            result(pContainer, eContainer) + result2(pContainer, eContainer)
-        }
-        entityConditionalExpectation(qd, sf, combinedFunc)
-    }
+//    fun bindCombined(paragraphField: IndexFields, entityField: IndexFields) = {
+//        qd: QueryData, sf: SharedFeature ->
+//        val result = scoreByEntityContextField(qd, paragraphField, entityField)
+//        val result2 = scoreByEntityContextFieldToParagraph(qd, paragraphField, entityField)
+//        val combinedFunc = { pContainer: ParagraphContainer, eContainer: EntityContainer ->
+//            result(pContainer, eContainer) + result2(pContainer, eContainer)
+//        }
+//        entityConditionalExpectation(qd, sf, combinedFunc)
+//    }
 
 
 
@@ -472,9 +493,9 @@ object SubObjectFeatures {
             fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_BIGRAMS, wt, norm,
                     bindEntityContextFieldToPar(paragraphField = FIELD_BIGRAM, entityField = FIELD_BIGRAM))
 
-    fun addCombinedContext(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_BIGRAMS, wt, norm,
-                    bindCombined(paragraphField = FIELD_BIGRAM, entityField = FIELD_BIGRAM))
+//    fun addCombinedContext(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+//            fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_BIGRAMS, wt, norm,
+//                    bindCombined(paragraphField = FIELD_BIGRAM, entityField = FIELD_BIGRAM))
 
     fun addPUnigramToContextJointBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3 (FeatureEnum.PFUNCTOR_ENTITY_CONTEXT_JOINT_BIGRAMS, wt, norm,

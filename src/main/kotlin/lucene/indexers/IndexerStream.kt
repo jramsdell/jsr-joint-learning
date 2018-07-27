@@ -75,7 +75,9 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
     val paragraphContextIndexers = ArrayList<Indexer>()
     val pageCounter = AtomicInteger()
     val paragraphCounter = AtomicInteger()
-    val speedy = "/speedy/jsc57/"
+//    val speedy = "/speedy/jsc57/"
+    val speedy = "/home/jsc57/data/backup"
+    val annotationOutput = File(speedy + "/annotations.tsv").bufferedWriter()
     val pageIndex = getIndexWriter("${speedy}extractions/page", mode = IndexWriterConfig.OpenMode.CREATE)
     val sectionIndex = getIndexWriter("${speedy}extractions/section", mode = IndexWriterConfig.OpenMode.CREATE)
     val paragraphIndex = getIndexWriter("${speedy}extractions/paragraph", mode = IndexWriterConfig.OpenMode.CREATE)
@@ -342,6 +344,8 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     FIELD_ENTITIES_EXTENDED.setTextField(doc, anOutlink)
                     FIELD_ENTITIES_INLINKS.setTextField(doc, anInlink)
 
+                    annotationOutput.write("${p.pid}\t$anOutlink\n")
+
 
 
 
@@ -381,25 +385,6 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
     }
 
 
-    fun processParagraphIndexers(page: Data.Page) {
-        val docs =
-                page.paragraphs().map { paragraph ->
-                    LuceneDocumentContainer(page = page, paragraph = paragraph)
-                }
-        paragraphIndexers.forEach { pageIndexer -> pageIndexer.doExtract(docs) }
-//        paragraphIndex.addDocuments(docs.map { it.doc })
-//        docs.forEachChunkedParallel(1000) { doc -> paragraphIndex.addDocument(doc.doc) }
-//        docs.forEachParallelQ(100, 5) { doc -> paragraphIndex.addDocument(doc.doc) }
-        docs.forEach{ doc -> paragraphIndex.addDocument(doc.doc) }
-//        println("Paragraphs: ${paragraphCounter.addAndGet(docs.size)}")
-//        paragraphIndex.commit()
-//        Thread( { paragraphIndex.commit() } ).start()
-    }
-
-//    fun wee() {
-//        DeserializeData.
-//    }
-
 
     fun processSections(page: Data.Page) {
         page.foldOverSection { path, section, paragraphs ->
@@ -432,10 +417,9 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
             DeserializeData.iterableAnnotations(corpusStream)
                 .forEachParallelQ(1000, 120) { page: Data.Page ->
 //                    processSectionContext(page)
-//                    processEntityContext(page)
-
-//                    processPageIndexers(page)
-//                    processSections(page)
+                    processEntityContext(page)
+                    processPageIndexers(page)
+                    processSections(page)
                     processParagraphs(page)
                     val result = pageCounter.incrementAndGet()
                     println(result)
@@ -453,6 +437,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
         pageIndex.commit()
         sectionContextIndex.commit()
         entityContextIndex.commit()
+        annotationOutput.close()
         sectionIndex.commit()
         paragraphIndex.close()
         pageIndex.close()

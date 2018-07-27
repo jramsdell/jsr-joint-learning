@@ -1,6 +1,7 @@
 package lucene.containers
 
 import entity.EntityDatabase
+import lucene.PseudoDocumentDatabase
 import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TopDocs
@@ -11,13 +12,19 @@ data class QueryData(
         val paragraphSearcher: ParagraphSearcher,
         val entitySearcher: EntitySearcher,
         val sectionSearcher: SectionSearcher,
+        val originSearcher: ParagraphSearcher,
         val contextEntitySearcher: ContextEntitySearcher,
 
         val entityContainers: List<EntityContainer>,
         val paragraphContainers: List<ParagraphContainer>,
+        val originParagraphContainers: List<ParagraphContainer>,
         val sectionContainers: List<SectionContainer>,
+        val contextEntityContainers: List<ContextEntityContainer>,
 //        val containers: TypedMapCollection<ArrayList<Any>>,
         val isJoint: Boolean) {
+
+//    val pseudo = PseudoDocumentDatabase.buildDatabase(queryString,
+//            paragraphContainers, sectionContainers, entityContainers )
 
 //    val paragraphContainers: List<ParagraphContainer> get() {
 //        val def = containers[DocumentContainerType.TYPE_PARAGRAPH] ?: emptyList()

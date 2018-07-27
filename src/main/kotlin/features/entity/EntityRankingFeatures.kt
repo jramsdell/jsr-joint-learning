@@ -24,7 +24,12 @@ import java.lang.Double.sum
 import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum.*
 import lucene.indexers.IndexFields
+import lucene.indexers.boostedTermQuery
+import lucene.indexers.termQuery
+import org.apache.lucene.search.BooleanClause
+import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
+import org.apache.lucene.util.QueryBuilder
 import utils.lucene.docs
 
 
@@ -70,6 +75,56 @@ object EntityRankingFeatures {
         }
     }
 
+    private fun topParagraphUnigrams(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+//        val freqQuery = paragraphContainers.flatMap { container ->
+//            val doc = container.doc()
+//            doc.load(IndexFields.FIELD_BIGRAM).split(" ") }
+//            .countDuplicates()
+//            .takeMostFrequent(20)
+//            .toList()
+//            .fold(BooleanQuery.Builder()) { builder, (term, freq) ->
+//                builder.add(
+//                        IndexFields.FIELD_BIGRAM.boostedTermQuery(term, freq.toDouble()),
+//                        BooleanClause.Occur.SHOULD) }
+//            .build()
+
+        val freqQuery = paragraphContainers.map { pContainer ->
+            pContainer.doc().bigrams()
+                .split(" ")
+                .countDuplicates()
+                .map { IndexFields.FIELD_BIGRAM.boostedTermQuery(it.key, it.value.toDouble()) }
+                .fold(BooleanQuery.Builder()) { builder, q -> builder.add(q, BooleanClause.Occur.SHOULD) }
+                .build()
+        }.fold(BooleanQuery.Builder()) { builder, term -> builder.add(term, BooleanClause.Occur.SHOULD) }
+            .build()
+
+//        val doc = container.doc()
+//        doc.load(IndexFields.FIELD_BIGRAM).split(" ") }
+//        .countDuplicates()
+//        .takeMostFrequent(20)
+//        .toList()
+//        .fold(BooleanQuery.Builder()) { builder, (term, freq) ->
+//            builder.add(
+//                    IndexFields.FIELD_BIGRAM.boostedTermQuery(term, freq.toDouble()),
+//                    BooleanClause.Occur.SHOULD) }
+//        .build()
+
+
+        val scores = contextEntitySearcher.search(freqQuery, 5000)
+            .scoreDocs
+            .map { it.doc to it.score.toDouble() }
+            .toMap()
+//        val scores = pseudo.entitySearcher.search(freqQuery, 5000)
+//            .scoreDocs
+//            .map { pseudo.entitySearcher.getIndexDoc(it.doc).load("did").toInt() to it.score.toDouble() }
+//            .toMap()
+
+        entityContainers.forEachIndexed { index, eContainer ->
+            sf.entityScores[index] = scores[eContainer.docId] ?: 0.0
+        }
+    }
+
+
 //    private fun entityScoreTransfer(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
 //        val counts = paragraphDocuments.flatMap { doc ->
 //            doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
@@ -83,22 +138,14 @@ object EntityRankingFeatures {
 
 
     private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
-        // Parse query and retrieve a language model for it
-//        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
-//                analyzerType = ANALYZER_ENGLISH_STOPPED).joinToString(" ")
         val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
                 analyzerType = ANALYZER_ENGLISH_STOPPED)
         val fq = FieldQueryFormatter()
         val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
 
-        val scores = entitySearcher.search(fieldQuery, 5000)
-            .scoreDocs
-            .map { sc -> sc.doc to sc.score.toDouble() }
-            .toMap()
-
-
         entityContainers.forEachIndexed { index, container ->
-            sf.entityScores[index] = scores[container.docId] ?: 0.0
+            val score = entitySearcher.explainScore(fieldQuery, container.docId)
+            sf.entityScores[index] = score
         }
     }
 
@@ -211,15 +258,20 @@ object EntityRankingFeatures {
     fun addTop25Freq(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_TOP25_FREQ, wt, norm, this::entityTop25Freq)
 
+    fun addTopParagraphUnigrams(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(ENTITY_TOP25_FREQ, wt, norm, this::topParagraphUnigrams)
 
     fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(ENTITY_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_UNIGRAM) }
+            fmt.addFeature3(ENTITY_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_UNIGRAM) }
+
+//    fun addBM25BoostedUnigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+//            fmt.addFeature3(ENTITY_BOOSTED_UNIGRAM, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_UNIGRAM) }
 
     fun addBM25BoostedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(ENTITY_BOOSTED_BIGRAM, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM) }
+            fmt.addFeature3(ENTITY_BOOSTED_BIGRAM, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_BIGRAM) }
 
     fun addBM25BoostedWindowedBigram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
-            fmt.addFeature3(ENTITY_BOOSTED_WINDOW, wt, norm) { qd, sf -> entityBoostedGram(qd, sf, TYPE_BIGRAM_WINDOW) }
+            fmt.addFeature3(ENTITY_BOOSTED_WINDOW, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_WINDOWED_BIGRAM) }
 
     fun addInlinksField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(ENTITY_INLINKS_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_INLINKS_UNIGRAMS) }

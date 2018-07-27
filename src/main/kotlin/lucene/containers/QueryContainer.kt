@@ -2,6 +2,8 @@ package lucene.containers
 
 import experiment.FeatureType
 import kotlinx.coroutines.experimental.yield
+import lucene.PseudoDatabase
+import lucene.PseudoDocumentDatabase
 import lucene.containers.IndexType.ENTITY
 import org.apache.lucene.search.TopDocs
 import kotlin.coroutines.experimental.buildIterator
@@ -18,9 +20,11 @@ data class ExtractedFeature(val name: String,
  *              Stores corresponding lucene string and TopDocs (obtained from BM25)
  */
 data class QueryContainer(val query: String, val paragraphs: List<ParagraphContainer>,
+                          val contextEntities: List<ContextEntityContainer>,
                           val queryData: QueryData,
                           val entities: List<EntityContainer>, val sections: List<SectionContainer>,
-                          var jointDistribution: JointDistribution = JointDistribution.createEmpty()) {
+                          var jointDistribution: JointDistribution = JointDistribution.createEmpty(),
+                          val originParagraphs: List<ParagraphContainer>) {
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createFromFunctor(queryData)
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createJointDistribution(queryData)
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createExperimental(queryData)

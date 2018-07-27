@@ -4,6 +4,7 @@ import experiment.FeatureType
 import experiment.FeatureType.*
 import experiment.KotlinRanklibFormatter
 import experiment.NormType
+import features.context.ContextEntityRankingFeatures
 import features.document.DocumentRankingFeatures
 import features.entity.EntityRankingFeatures
 import features.section.SectionRankingFeatures
@@ -281,5 +282,17 @@ enum class FeatureEnum(val text: String, val type: FeatureType, val func: (Kotli
     SECTION_QUERY_DIST(text = "section_query_dist",
             type = SECTION,
             func = SectionRankingFeatures::addQueryDist),
+
+    CONTEXT_ENTITY_UNIGRAM(text = "context_entity_unigram",
+            type = CONTEXT_ENTITY,
+            func = ContextEntityRankingFeatures::addUnigram),
+
+    CONTEXT_ENTITY_BIGRAM(text = "context_entity_bigram",
+            type = CONTEXT_ENTITY,
+            func = ContextEntityRankingFeatures::addBigram),
+
+    CONTEXT_ENTITY_WINDOWED(text = "context_entity_windowed",
+            type = CONTEXT_ENTITY,
+            func = ContextEntityRankingFeatures::addWindowed),
 
 }

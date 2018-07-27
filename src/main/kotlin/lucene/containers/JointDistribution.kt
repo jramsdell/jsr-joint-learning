@@ -35,98 +35,15 @@ fun getSubMap(paragraphContainers: List<ParagraphContainer>, entityContainers: L
     return parToEntity to entToPar
 }
 
+typealias indexProbMap = Map<Int, Map<Int, Double>>
 
-class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: Map<Int, Map<Int, Double>>,
-                        val secToPar: Map<Int, Map<Int, Double>> = emptyMap(),
-                        val parToSec: Map<Int, Map<Int, Double>> = emptyMap()) {
+class JointDistribution(val parToEnt: indexProbMap, val entToPar: indexProbMap,
+                        val secToPar: indexProbMap = emptyMap(),
+                        val parToSec: indexProbMap = emptyMap(),
+                        val entToContextEnt: indexProbMap = emptyMap(),
+                        val contextEntToEnt: indexProbMap = emptyMap()) {
     companion object {
 
-        fun createExperimental(qd: QueryData): JointDistribution {
-
-            val secToPar = HashMap<Int, Map<Int, Double>>()
-            val parToSec = qd.paragraphContainers.mapIndexed { index, pContainer ->
-                index to HashMap<Int, Double>() }
-                .toMap()
-            val parToEnt = HashMap<Int, Map<Int, Double>>()
-            val entToPar = qd.entityContainers.mapIndexed { index, eContainer ->
-                index to HashMap<Int, Double>() }
-                .toMap()
-
-            val totalParagraphs = qd.paragraphContainers.map { pContainer ->
-                val text = pContainer.doc().text()
-                val dist = AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-                    .countDuplicates()
-                pContainer.index to dist
-            }
-
-            val totalEntities = qd.entityContainers.map { eContainer ->
-//                val inlinks = eContainer.doc().inlinks().split(" ")
-//                val outlinks = eContainer.doc().outlinks().split(" ")
-                val outlinks = eContainer.doc().unigrams().split(" ")
-                val dist = (outlinks)
-                    .countDuplicates()
-                    .toMap()
-                eContainer.index to dist
-            }
-
-            qd.sectionContainers.forEach { section ->
-                val pSet = section.doc().paragraphs().split(" ").toSet()
-                val children = qd.paragraphContainers.filter { it.name in pSet }
-                    .map { paragraph ->
-                        val text = paragraph.doc().text()
-                        val tokens = AnalyzerFunctions.createTokenList(text, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-                            .toList()
-                        paragraph.index to tokens
-                    }
-
-
-                val sTotal = children.flatMap { it.second }
-                    .countDuplicates()
-                    .toList()
-                    .sortedByDescending { it.second }
-                    .take(15)
-                    .toMap()
-
-
-                val sCond = totalParagraphs.map { (child, dist) ->
-                    child to dist.entries.sumBy { (token, freq) -> (sTotal[token] ?: 0) * freq }.toDouble() }
-                    .toMap()
-
-
-                secToPar[section.index] = sCond.normalize()
-                sCond.forEach { (pIndex, freq) -> parToSec[pIndex]!!.merge(section.index, freq, ::sum)  }
-            }
-
-            qd.paragraphContainers.forEach { paragraph ->
-                val eSet = paragraph.doc().entities().split(" ").toSet()
-                val children = qd.entityContainers.filter { it.name in eSet }
-                    .map { totalEntities[it.index]!! }
-
-
-                val sTotal = children.flatMap { it.second.map { (link, freq) -> link to freq } }
-                    .groupBy { it.first }
-                    .mapValues { it.value.sumBy { it.second } }
-                    .toList()
-                    .sortedByDescending { it.second }
-                    .take(15)
-                    .toMap()
-
-                val sCond = totalEntities.map { (child, dist) ->
-                    child to dist.entries.sumBy { (token, freq) -> (sTotal[token] ?: 0) * freq }.toDouble() }
-                    .toMap()
-
-                parToEnt[paragraph.index] = sCond.normalize()
-                sCond.forEach { (eIndex: Int, freq: Double) -> entToPar[eIndex]!!.merge(paragraph.index, freq, ::sum)  }
-            }
-
-
-            return JointDistribution(
-                    parToSec = parToSec.map { it.key to it.value.normalize() }.toMap(),
-                    secToPar = secToPar,
-                    parToEnt = parToEnt,
-                    entToPar = entToPar.map { it.key to it.value.normalize() }.toMap()
-            )
-        }
 
 
         fun createJointDistribution(qd: QueryData): JointDistribution {
@@ -134,28 +51,29 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
             val entityContainers = qd.entityContainers
             val paragraphContainers = qd.paragraphContainers
             val sectionContainers = qd.sectionContainers
+            val contextEntityContainers = qd.contextEntityContainers
 
             val entIdMap = entityContainers.mapIndexed { index, container -> container.name to index }.toMap()
             val parIdMap = paragraphContainers.mapIndexed { index, container -> container.name to index }.toMap()
             val inverseMaps =
-                    entityContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }
-                        .toMap()
+                    entityContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }.toMap()
 
             val paragraphInverseMap =
-                    paragraphContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }
-                        .toMap()
+                    paragraphContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }.toMap()
+
+            val contextInverseMap =
+                    contextEntityContainers.mapIndexed { index, _ -> index to HashMap<Int, Double>() }.toMap()
 
             val parFreqMap = HashMap<Int, Map<Int, Double>>()
             val secToParMap = HashMap<Int, Map<Int, Double>>()
+            val entToContextEntMap = HashMap<Int, Map<Int, Double>>()
 
 
 
             paragraphContainers.forEachIndexed { index, container ->
                 val entities = container.doc().spotlightEntities().split(" ")
-
                 val baseFreqs =
-                        entities.mapNotNull { id -> entIdMap[id] }
-                            .map { it to 1.0 }
+                        entities.mapNotNull { id -> entIdMap[id] }.map { it to 1.0 }
 
                 val combined = baseFreqs.toMap()
                 combined.forEach { (entityIndex, freq) ->
@@ -166,10 +84,8 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 
             sectionContainers.forEachIndexed { index, container ->
                 val paragraphs = container.doc().paragraphs().split(" ")
-
                 val baseFreqs =
-                        paragraphs.mapNotNull { id -> parIdMap[id]  }
-                            .map { it to 1.0 }
+                        paragraphs.mapNotNull { id -> parIdMap[id]  }.map { it to 1.0 }
 
                 val combined = baseFreqs.toMap()
                 combined.forEach { (parIndex, freq) ->
@@ -179,11 +95,25 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
                 secToParMap[index] = combined
             }
 
+            entityContainers.forEachIndexed { index, container ->
+
+                val baseFreqs =
+                        qd.contextEntityContainers.mapNotNull { cContainer ->
+                            if (cContainer.name.toLowerCase() == container.name.toLowerCase())
+                                cContainer.index to 1.0 else null }
+
+                val combined = baseFreqs.toMap()
+                combined.forEach { (contIndex, freq) ->
+                    contextInverseMap[contIndex]!!.merge(index, freq, ::sum)
+                }
+
+                entToContextEntMap[index] = combined
+            }
+
+
             val entFreqMap = inverseMaps.mapValues { it.value }
             val parToSecMap = paragraphInverseMap.mapValues { it.value }
-
-
-
+            val contToEntMap = contextInverseMap.mapValues { it.value }
 
 
 
@@ -191,8 +121,9 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
                     entToPar = entFreqMap,
                     parToEnt = parFreqMap as Map<Int, Map<Int, Double>>,
                     parToSec = parToSecMap,
-                    secToPar = secToParMap
-            )
+                    secToPar = secToParMap,
+                    entToContextEnt = entToContextEntMap,
+                    contextEntToEnt = contToEntMap)
         }
 
         fun createNew(qd: QueryData): JointDistribution {
@@ -201,6 +132,7 @@ class JointDistribution(val parToEnt: Map<Int, Map<Int, Double>>, val entToPar: 
 //            val scorer1 = SubObjectFeatures.scoreByField(qd, IndexFields.FIELD_UNIGRAM, IndexFields.FIELD_INLINKS_UNIGRAMS)
 //            val scorer2 = SubObjectFeatures.scoreByField(qd, IndexFields.FIELD_UNIGRAM, IndexFields.FIELD_OUTLINKS_UNIGRAMS)
             val scorer3 = SubObjectFeatures.scoreByEntityContextField(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
+//            val scorer4 = SubObjectFeatures.scoreByFieldContext(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
 //            val scorer4 = SubObjectFeatures.scoreByEntityContextField(qd, IndexFields.FIELD_WINDOWED_BIGRAM, IndexFields.FIELD_WINDOWED_BIGRAM)
 //            val scorerEntity = SubObjectFeatures.scoreByEntityContextFieldToParagraph(qd, IndexFields.FIELD_BIGRAM, IndexFields.FIELD_BIGRAM)
 //            val finalScorer = {pContainer: ParagraphContainer, eContainer: EntityContainer ->
