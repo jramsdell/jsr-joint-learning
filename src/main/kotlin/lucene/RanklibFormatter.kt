@@ -255,8 +255,6 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
             // Turn section features into other features
             if (featureEnum.type == FeatureType.SECTION && useJointDist) {
-                val tempScores = sf.sectionScores.map { it }
-//                sf.sectionScores.fill(0.0)
 
                 sf.sectionScores.forEachIndexed { index, score ->
                     qc.jointDistribution.secToPar[index]!!

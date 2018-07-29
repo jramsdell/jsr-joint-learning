@@ -32,21 +32,27 @@ fun getSections(cur: Data.Section): List<String> {
             else header + cur.childSections.flatMap { child -> getSections(child) }
 }
 
-private fun foldOverSection(f: (String, Data.Section, List<Data.Paragraph>) -> Unit, cur: Data.Section, path: String) {
+private fun foldOverSection(f: (String, Data.Section, List<Data.Paragraph>) -> Unit, cur: Data.Section, path: String,
+                            useFilter: Boolean = true) {
     if (cur.heading !in sectionsToIgnore) {
         val content = cur.children
             .filterIsInstance<Data.Para>()
             .map { it.paragraph }
-            .filter { p -> p.textOnly.length > 100 &&
-                    !p.textOnly.contains(":") && !p.textOnly.contains("•") }
+            .filter { p -> !useFilter || (p.textOnly.length > 100 &&
+                    !p.textOnly.contains(":") && !p.textOnly.contains("•")) }
         if (content.isNotEmpty())
             f(path, cur, content)
-        cur.childSections.forEach { child -> foldOverSection(f, child, path + "/" + child.heading) }
+        cur.childSections.forEach { child -> foldOverSection(f, child, path + "/" + child.heading, useFilter) }
     }
 }
 
-fun Data.Page.foldOverSection(f: (String, Data.Section, List<Data.Paragraph>) -> Unit) {
-    childSections.forEach { section -> foldOverSection(f, section, section.heading) }
+@Suppress("UNCHECKED_CAST")
+fun Data.Page.foldOverSection(useFilter: Boolean = true, f: (path: String, section: Data.Section, paragraphs: List<Data.Paragraph>) -> Unit) {
+    val abstract = skeleton
+        .takeWhile { it is Data.Para } as List<Data.Para>
+    val pageSection = Data.Section(pageName, pageId, abstract)
+    f(pageName, pageSection, abstract.map { it.paragraph } )
+    childSections.forEach { section -> foldOverSection(f, section, pageName + "/" + section.heading, useFilter) }
 }
 
 fun Data.Page.getSectionLevels() =

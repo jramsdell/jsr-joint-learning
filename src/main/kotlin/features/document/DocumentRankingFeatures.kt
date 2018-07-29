@@ -21,6 +21,7 @@ import lucene.containers.text
 import lucene.containers.unigrams
 import lucene.indexers.getList
 import org.apache.lucene.index.Term
+import org.apache.lucene.search.DisjunctionMaxQuery
 import utils.stats.*
 import java.lang.Double.sum
 import java.lang.Math.log
@@ -37,42 +38,79 @@ object DocumentRankingFeatures {
 
     private fun queryBM25BoostedGram(qd: QueryData, sf: SharedFeature, gramStatType: GramStatType,
                                 weight: Double = 1.0): Unit = with(qd) {
-        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
-        val grams = when(gramStatType) {
-            TYPE_UNIGRAM -> GramAnalyzer.countUnigrams(terms)
-                .takeMostFrequent(15)
-                .keys.toList()
-//                .normalize()
-            TYPE_BIGRAM -> GramAnalyzer.countBigrams(terms)
-                .takeMostFrequent(15)
-                .keys.toList()
-//                .normalize()
-            TYPE_BIGRAM_WINDOW -> GramAnalyzer.countWindowedBigrams(terms)
-                .takeMostFrequent(15)
-                .keys.toList()
-//                .normalize()
-        }
 
-        val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+        val ff = qd.sectionPaths.flatten()
+        val paths = qd.sectionPaths + listOf(ff)
+        paths.forEach { sp ->
 
-        paragraphContainers.mapIndexed {  index, paragraphContainer ->
-            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
-            sf.paragraphScores[index] = score
+            val sQuery = sp.joinToString(" ")
+//            val sQuery = queryString
+            val terms = AnalyzerFunctions.createTokenList(sQuery, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+            val grams = when (gramStatType) {
+                TYPE_UNIGRAM       -> GramAnalyzer.countUnigrams(terms)
+                    .takeMostFrequent(15)
+                    .keys.toList()
+//                .normalize()
+                TYPE_BIGRAM        -> GramAnalyzer.countBigrams(terms)
+                    .takeMostFrequent(15)
+                    .keys.toList()
+//                .normalize()
+                TYPE_BIGRAM_WINDOW -> GramAnalyzer.countWindowedBigrams(terms)
+                    .takeMostFrequent(15)
+                    .keys.toList()
+//                .normalize()
+            }
+
+            val documentQuery = AnalyzerFunctions.createWeightedTermsQuery(grams, gramStatType.indexField)
+            val scores = paragraphSearcher.search(documentQuery, 1000)
+                .scoreDocs
+                .map { it.doc to it.score.toDouble() }
+                .toMap()
+
+            paragraphContainers.mapIndexed { index, paragraphContainer ->
+//                val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId)
+                val score = scores[paragraphContainer.docId] ?: 0.0
+                sf.paragraphScores[index] = Math.max(score, sf.paragraphScores[index])
+
+            }
         }
     }
 
+    //0.3512, 0.1854
+
     private fun combinedBoostedGram(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
-        val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
-        val queryFormatter = FieldQueryFormatter()
-        val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
+            val terms = AnalyzerFunctions.createTokenList(queryString, analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+            val queryFormatter = FieldQueryFormatter()
+            val weights = listOf(0.9346718895308014, 0.049745249968994265, 0.015582860500204451)
 
-        queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
-        queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
-        queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
-        val documentQuery = queryFormatter.createBooleanQuery()
+            queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
+            queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
+            queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
+            val documentQuery = queryFormatter.createBooleanQuery()
 
-        paragraphContainers.mapIndexed {  index, paragraphContainer ->
-            val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId )
+            paragraphContainers.mapIndexed { index, paragraphContainer ->
+                val score = paragraphSearcher.explainScore(documentQuery, paragraphContainer.docId)
+                sf.paragraphScores[index] = score
+            }
+    }
+    private fun combinedBoostedGramDisjunct(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        val booleanQueries = sectionPaths.map { sp ->
+            val terms = AnalyzerFunctions.createTokenList(sp.joinToString(" "), analyzerType = ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+            val queryFormatter = FieldQueryFormatter()
+            val weights = listOf(0.9346718895308014, 0.049745249968994265, 0.015582860500204451)
+
+            queryFormatter.addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
+                .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
+                .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
+                .createBooleanQuery()
+        }
+
+        val disjunctQuery = DisjunctionMaxQuery(booleanQueries, 0.0f)
+        val scores = paragraphSearcher.searchToScoreMap(disjunctQuery, 2000)
+
+        paragraphContainers.mapIndexed { index, paragraphContainer ->
+//            val score = paragraphSearcher.explainScore(disjunctQuery, paragraphContainer.docId)
+            val score = scores[paragraphContainer.docId] ?: 0.0
             sf.paragraphScores[index] = score
         }
     }
@@ -123,16 +161,20 @@ object DocumentRankingFeatures {
 
     private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
         // Parse query and retrieve a language model for it
-        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
-                analyzerType = ANALYZER_ENGLISH_STOPPED)
-        val fq = FieldQueryFormatter()
-        val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+
+        qd.sectionPaths.forEach { sp ->
+            val sQuery = sp.joinToString(" ")
+            val tokens = AnalyzerFunctions.createTokenList(sQuery, useFiltering = true,
+                    analyzerType = ANALYZER_ENGLISH_STOPPED)
+            val fq = FieldQueryFormatter()
+            val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
 
 
-        paragraphContainers.forEachIndexed { index, container ->
-            val score = paragraphSearcher.explainScore(fieldQuery, container.docId)
+            paragraphContainers.forEachIndexed { index, container ->
+                val score = paragraphSearcher.explainScore(fieldQuery, container.docId)
 //            sf.paragraphScores[index] = scores[container.docId] ?: 0.0
-            sf.paragraphScores[index] = score
+                sf.paragraphScores[index] = Math.max(score, sf.paragraphScores[index])
+            }
         }
     }
 
@@ -268,6 +310,9 @@ object DocumentRankingFeatures {
 
     fun addCombinedBoostedGram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_BOOSTED_COMBINED, wt, norm, this::combinedBoostedGram)
+
+    fun addCombinedBoostedGramDisjunction(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_BOOSTED_COMBINED, wt, norm, this::combinedBoostedGramDisjunct)
 
     fun addJointUnigramField(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_JOINT_UNIGRAM_FIELD, wt, norm) { qd, sf -> queryField(qd, sf, IndexFields.FIELD_JOINT_UNIGRAMS) }

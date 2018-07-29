@@ -5,6 +5,7 @@ import lucene.indexers.IndexFields
 import lucene.indexers.IndexerStream
 import lucene.indexers.QuickAndDirtyParagraphIndexer
 import lucene.parsers.ExtractorStream
+import lucene.parsers.TrecCarQrelGenerator
 import lucene.parsers.TrecParagraphAnnotator
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
@@ -27,6 +28,7 @@ class ExtractorApp(resources: HashMap<String, Any>) {
 //            extractor.run()
 
             val extractor = QuickAndDirtyParagraphIndexer()
+//            val extractor = TrecCarQrelGenerator()
             extractor.run()
             return
         }

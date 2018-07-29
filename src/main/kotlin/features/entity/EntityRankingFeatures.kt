@@ -7,6 +7,7 @@ import experiment.NormType
 import experiment.NormType.*
 import features.shared.SharedFeature
 import info.debatty.java.stringsimilarity.NormalizedLevenshtein
+import khttp.patch
 import language.GramAnalyzer
 import language.GramStatType
 import language.GramStatType.*
@@ -28,6 +29,7 @@ import lucene.indexers.boostedTermQuery
 import lucene.indexers.termQuery
 import org.apache.lucene.search.BooleanClause
 import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.DisjunctionMaxQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
 import org.apache.lucene.util.QueryBuilder
 import utils.lucene.docs
@@ -138,14 +140,32 @@ object EntityRankingFeatures {
 //    }
 
 
+    // 1519 / 2904
     private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
-        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
-                analyzerType = ANALYZER_ENGLISH_STOPPED)
-        val fq = FieldQueryFormatter()
-        val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+
+            val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+                    analyzerType = ANALYZER_ENGLISH_STOPPED)
+            val fq = FieldQueryFormatter()
+            val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+
+            entityContainers.forEachIndexed { index, container ->
+                val score = entitySearcher.explainScore(fieldQuery, container.docId)
+                sf.entityScores[index] = score
+            }
+    }
+
+    private fun queryFieldDisjunction(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
+        val queries = qd.sectionPaths.map { sp ->
+            val tokens = AnalyzerFunctions.createTokenList(sp.joinToString(" "), useFiltering = true,
+                    analyzerType = ANALYZER_ENGLISH_STOPPED)
+            val fq = FieldQueryFormatter()
+            fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+        }
+        val disjunctQuery = DisjunctionMaxQuery(queries, 0.0f)
+        val scores = entitySearcher.searchToScoreMap(disjunctQuery, 4000)
 
         entityContainers.forEachIndexed { index, container ->
-            val score = entitySearcher.explainScore(fieldQuery, container.docId)
+            val score = scores[container.docId] ?: 0.0
             sf.entityScores[index] = score
         }
     }
@@ -167,6 +187,33 @@ object EntityRankingFeatures {
             .map { sc -> contextEntitySearcher.getIndexDoc(sc.doc).name().toLowerCase() to sc.score.toDouble() }
             .groupBy { it.first }
 //            .mapValues { it.value.maxBy { it.second }!!.second }
+            .mapValues { it.value.sumByDouble { it.second.toDouble() } }
+            .toMap()
+
+
+        entityContainers.forEachIndexed { index, container ->
+            sf.entityScores[index] = scores[container.name.toLowerCase()] ?: 0.0
+        }
+    }
+
+    private fun queryContextDisjunct(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
+        val queries = sectionPaths.map { sp ->
+            val tokens = AnalyzerFunctions.createTokenList(sp.joinToString(" "), useFiltering = true,
+                    analyzerType = ANALYZER_ENGLISH_STOPPED)
+            val topParagraph = AnalyzerFunctions.createQuery(queryString, IndexFields.FIELD_UNIGRAM.field, true, ANALYZER_ENGLISH_STOPPED)
+                .run { paragraphSearcher.search(this, 1).scoreDocs.firstOrNull()?.let { paragraphSearcher.getIndexDoc(it.doc) } }
+
+            val combined = if (topParagraph == null || field != IndexFields.FIELD_BIGRAM || tokens.size > 1) tokens else tokens + topParagraph.unigrams().split(" ").countDuplicates().toList().sortedByDescending { it.second }.take(2).map { it.first }
+            FieldQueryFormatter()
+                .addWeightedQueryTokens(combined, field)
+                .createBooleanQuery()
+        }
+
+        val disjunctQuery = DisjunctionMaxQuery(queries, 0.0f)
+        val scores = contextEntitySearcher.search(disjunctQuery, 4000)
+            .scoreDocs
+            .map { sc -> contextEntitySearcher.getIndexDoc(sc.doc).name().toLowerCase() to sc.score.toDouble() }
+            .groupBy { it.first }
             .mapValues { it.value.sumByDouble { it.second.toDouble() } }
             .toMap()
 

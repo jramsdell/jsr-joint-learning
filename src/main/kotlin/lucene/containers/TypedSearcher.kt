@@ -3,6 +3,7 @@ package lucene.containers
 import lucene.indexers.IndexFields
 import org.apache.lucene.index.IndexReader
 import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.Query
 import utils.AnalyzerFunctions
 
 
@@ -27,6 +28,12 @@ class TypedSearcher<out A: IndexType>(r: IndexReader?, private val typeClass: Cl
         val sc = search(q, 1).scoreDocs.firstOrNull()
         return sc?.let { IndexDoc(this, sc.doc) }
     }
+
+    fun searchToScoreMap(query: Query, nDocs: Int) =
+            search(query, nDocs)
+                .scoreDocs
+                .map { scoreDoc -> scoreDoc.doc to scoreDoc.score.toDouble()  }
+                .toMap()
 
 
     fun getIndexDoc(id: Int): IndexDoc<A> = IndexDoc<A>(this, id)

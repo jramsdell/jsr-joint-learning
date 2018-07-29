@@ -43,7 +43,9 @@ class QuickAndDirtyParagraphIndexer() {
     val paragraphCounter = AtomicInteger()
 //    val speedy = "/speedy/jsc57/"
     val speedy = "/home/jsc57/data/backup/"
-    val paragraphIndex = getIndexWriter("${speedy}extractions/paragraph", mode = IndexWriterConfig.OpenMode.CREATE)
+    val paragraphIndex = getIndexWriter("${speedy}extractions/paragraph2", mode = IndexWriterConfig.OpenMode.CREATE)
+    val linker = SpotlightEntityLinker("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
+        .apply { (0 until 100).forEach { queryServer("Test") }   }
 
 
 
@@ -69,8 +71,10 @@ class QuickAndDirtyParagraphIndexer() {
         val entities = paragraph.entitiesOnly
             .map(this::cleanEntity)
             .joinToString(" ")
+        val annotations = linker.queryServer(paragraph.textOnly)
         FIELD_ENTITIES.setTextField(doc, entities)
         FIELD_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(entities))
+        FIELD_ENTITIES_EXTENDED.setTextField(doc, annotations.joinToString(" "))
 
         val (unigrams, bigrams, windowed) = getGramsFromContent(paragraph.textOnly)
 
@@ -87,7 +91,7 @@ class QuickAndDirtyParagraphIndexer() {
             .inputStream()
             .buffered()
             DeserializeData.iterableParagraphs(corpusStream)
-                .forEachParallelQ(1000, 10) { paragraph: Data.Paragraph ->
+                .forEachParallelQ(1000, 30) { paragraph: Data.Paragraph ->
                     processParagraphs(paragraph)
                     val result = paragraphCounter.incrementAndGet()
                     if (result % 10000 == 0) {

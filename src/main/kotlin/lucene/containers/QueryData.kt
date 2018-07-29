@@ -8,6 +8,7 @@ import org.apache.lucene.search.TopDocs
 
 data class QueryData(
         val queryString: String,
+        val sectionPaths: List<List<String>>,
 
         val paragraphSearcher: ParagraphSearcher,
         val entitySearcher: EntitySearcher,
