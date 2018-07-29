@@ -66,7 +66,8 @@ object EntityRankingFeatures {
             val doc = container.doc()
 //            doc.get(IndexFields.FIELD_ENTITIES.field).split(" ") }
 //        doc.get(IndexFields.FIELD_NEIGHBOR_ENTITIES.field).split(" ") }
-        doc.load(IndexFields.FIELD_ENTITIES_EXTENDED).split(" ") }
+//        doc.load(IndexFields.FIELD_ENTITIES_EXTENDED).split(" ") }
+        doc.load(IndexFields.FIELD_ENTITIES).split(" ") }
             .countDuplicates()
 
         entityContainers.forEachIndexed { index, eContainer ->

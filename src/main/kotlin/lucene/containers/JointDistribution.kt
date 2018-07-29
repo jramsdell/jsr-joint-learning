@@ -71,7 +71,7 @@ class JointDistribution(val parToEnt: indexProbMap, val entToPar: indexProbMap,
 
 
             paragraphContainers.forEachIndexed { index, container ->
-                val entities = container.doc().spotlightEntities().split(" ")
+                val entities = container.doc().entities().split(" ")
                 val baseFreqs =
                         entities.mapNotNull { id -> entIdMap[id] }.map { it to 1.0 }
 

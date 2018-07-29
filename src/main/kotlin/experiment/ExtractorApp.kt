@@ -3,6 +3,7 @@ package experiment
 
 import lucene.indexers.IndexFields
 import lucene.indexers.IndexerStream
+import lucene.indexers.QuickAndDirtyParagraphIndexer
 import lucene.parsers.ExtractorStream
 import lucene.parsers.TrecParagraphAnnotator
 import net.sourceforge.argparse4j.inf.Namespace
@@ -19,9 +20,13 @@ class ExtractorApp(resources: HashMap<String, Any>) {
     fun extract() {
         val doExtract = true
         if (doExtract) {
-            val extractor = IndexerStream(corpusFiles)
-            extractor.addPageIndexer()
-            extractor.addParagraphIndexer()
+
+//            val extractor = IndexerStream(corpusFiles)
+//            extractor.addPageIndexer()
+//            extractor.addParagraphIndexer()
+//            extractor.run()
+
+            val extractor = QuickAndDirtyParagraphIndexer()
             extractor.run()
             return
         }

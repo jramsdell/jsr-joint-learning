@@ -172,7 +172,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
     private fun createEntityContainersFromParagraphs(query: String, qid: Int,
                                               paragraphs: List<ParagraphContainer>): List<EntityContainer> {
 
-        val entityNames = paragraphs.flatMap { pContainer -> pContainer.doc().spotlightEntities().split(" ") }
+        val entityNames = paragraphs.flatMap { pContainer -> pContainer.doc().entities().split(" ") }
             .toSet()
             .toList()
 
@@ -201,18 +201,19 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
     }
 
     private fun createOriginParagraphContainers(query: String, qid: Int): List<ParagraphContainer> {
-        val q = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field, useFiltering = true,
-                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+//        val q = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field, useFiltering = true,
+//                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+        val q = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_TEXT.field, useFiltering = true)
 
-        originParagraphSearcher.search(q, 100).scoreDocs.mapIndexed { index, sd ->
-            val doc = originParagraphSearcher.getIndexDoc(sd.doc)
+        paragraphSearcher.search(q, 100).scoreDocs.mapIndexed { index, sd ->
+            val doc = paragraphSearcher.getIndexDoc(sd.doc)
             ParagraphContainer(
                     query = query,
                     qid = qid,
                     name = doc.pid(),
-                    searcher = originParagraphSearcher,
+                    searcher = paragraphSearcher,
                     docId = doc.docId,
-                    isRelevant = paragraphRelevancies[query]?.get(doc.pid().toLowerCase()) ?: 0,
+                    isRelevant = paragraphRelevancies[query]?.get(doc.pid()) ?: 0,
                     index = index,
                     score = 0.0,
                     docType = IndexType.PARAGRAPH::class.java
@@ -295,7 +296,8 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
 
     private fun createQueryContainer(query: String, queryId: String, qid: Int): QueryContainer {
         val sections = createSectionContainers(queryId, qid)
-        val paragraphs = createParagraphContainersFromSections(queryId, qid, sections)
+//        val paragraphs = createParagraphContainersFromSections(queryId, qid, sections)
+        val paragraphs = createOriginParagraphContainers(queryId, qid)
         val entities = createEntityContainersFromParagraphs(queryId, qid, paragraphs)
 //        val contextEntities = createContextEntityContainers(queryId, qid, paragraphs)
 //        val originParagraphs = createOriginParagraphContainers(queryId, qid)

@@ -253,8 +253,8 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
 //                        pars.map { it.toString() },
 //                        secs.map { it.toString() })
                 val combined = listOf(queryContainer.entities.map(EntityContainer::toString),
-                        queryContainer.paragraphs.map(ParagraphContainer::toString),
-                        queryContainer.sections.map(SectionContainer::toString))
+                        queryContainer.paragraphs.map(ParagraphContainer::toString))
+//                        queryContainer.sections.map(SectionContainer::toString))
                     .shuffled()
                     .flatten()
 //                if (isHomogenous) combined.shuffled() else combined
@@ -356,8 +356,8 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
 
         writeParagraphsToFile(queryContainers)
         writeEntitiesToFile(queryContainers)
-        writeSectionsToFile(queryContainers)
-        writeOriginParagraphsToFile(queryContainers)
+//        writeSectionsToFile(queryContainers)
+//        writeOriginParagraphsToFile(queryContainers)
     }
 }
 
