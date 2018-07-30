@@ -220,7 +220,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                 .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
                 .createBooleanQuery()
 //            val q = AnalyzerFunctions.createQuery(qString, IndexFields.FIELD_TEXT.field, useFiltering = true)
-            paragraphSearcher.search(q, 50).scoreDocs.toList() }
+            paragraphSearcher.search(q, 30).scoreDocs.toList() }
             .distinctBy { scoreDoc -> scoreDoc.doc  }
 
         val paragraphs = scoreDocs.mapIndexed { index, scoreDoc ->
@@ -233,7 +233,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                     docId = doc.docId,
                     isRelevant = paragraphRelevancies[query]?.get(doc.pid()) ?: 0,
                     index = index,
-                    score = 0.0,
+                    score = scoreDoc.score.toDouble(),
                     docType = IndexType.PARAGRAPH::class.java
             )
         }

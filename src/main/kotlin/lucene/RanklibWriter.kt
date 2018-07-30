@@ -247,6 +247,7 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
 
 
         queryContainers
+            .shuffled(sharedRand)
             .flatMap { queryContainer ->
                 //                val (pars, secs, ents) = queryContainer.transformFeatures()
 //                val combined = listOf(queryContainer.entities.map(EntityContainer::toString),
@@ -272,11 +273,12 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
             .let { file.write(it + "\n"); }
 
         queryContainers
+            .shuffled(sharedRand)
 //            .flatMap { queryContainer ->
 //                val (pars, secs, ents) = queryContainer.transformFeatures()
 //                renormalizeFeatures(pars)
 //                pars.map { it.toString() }  }
-            .flatMap { queryContainer -> queryContainer.paragraphs.map(ParagraphContainer::toString) }
+            .flatMap { queryContainer -> queryContainer.paragraphs.shuffled(sharedRand).map(ParagraphContainer::toString) }
             .joinToString(separator = "\n")
             .let { onlyParagraph.write(it + "\n"); }
 

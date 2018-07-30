@@ -1,5 +1,6 @@
 package lucene
 
+import learning.L2RModel
 import learning.LogitThingy
 import learning.applyFeatures2
 import learning.perturb
@@ -118,17 +119,25 @@ class RanklibReader(fileLoc: String) {
         val padding = trainingExamples.size.toDouble()
 
         trainingExamples.forEach { example ->
-//            if (example.relevant == 1) {
                 targets += example.relevant.toDouble()
                 example.features.forEachIndexed { index, ranklibFeature -> arrays[index].add(ranklibFeature.value) }
-//            }
         }
-//        val featureMatrices = arrays.map { array -> Matrix.newInstance(array.toDoubleArray()) }
         val featureMatrices = arrays.take(arrays.size - 1).map { it.toList().toNDArray() }
-//        val featureMatrices = arrays.map { it.toNDArray() }
-        val targetMatrix = targets.normalize().toNDArray()
+        val targetMatrix = targets.toNDArray()
 
         return targetMatrix to featureMatrices
+    }
+
+    fun createVectors2(): List<L2RModel> {
+        val results = trainingExamples.groupBy { it.qid }
+            .map { examples ->
+                val relevances = examples.value.map { it.relevant.toDouble() }
+                val features = examples.value.map { it.features.map { it.value }.toNDArray() }.combineNDArrays()
+                relevances to features
+            }
+
+        val models = results.map { L2RModel(it.second, it.first.mapIndexed{ index, score -> index to score }.toMap()) }
+        return models
     }
 
     fun getRanklibFile() =

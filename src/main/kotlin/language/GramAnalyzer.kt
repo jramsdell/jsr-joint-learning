@@ -5,6 +5,7 @@ import language.containers.CorpusStat
 import language.containers.CorpusStatContainer
 import language.containers.LanguageStat
 import language.containers.LanguageStatContainer
+import lucene.indexers.IndexFields
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
@@ -20,7 +21,7 @@ import utils.misc.identity
 enum class GramStatType(val indexField: String)  {
     TYPE_UNIGRAM("unigram"),
     TYPE_BIGRAM("bigrams"),
-    TYPE_BIGRAM_WINDOW("bigram_windows")
+    TYPE_BIGRAM_WINDOW("bigram_windows"),
 }
 
 

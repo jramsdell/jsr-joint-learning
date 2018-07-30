@@ -7,6 +7,7 @@ import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.Query
 import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.*
+import utils.stats.countDuplicates
 import utils.stats.takeMostFrequent
 
 
@@ -17,25 +18,33 @@ class FieldQueryFormatter() {
         GramAnalyzer.countUnigrams(tokens)
             .takeMostFrequent(15)
             .keys.toList()
-//            .normalize()
 
     private fun parseBigrams(tokens: List<String>) =
             GramAnalyzer.countBigrams(tokens)
                 .takeMostFrequent(15)
                 .keys.toList()
-//                .normalize()
 
     private fun parseWindowedBigrams(tokens: List<String>) =
             GramAnalyzer.countWindowedBigrams(tokens)
                 .takeMostFrequent(15)
                 .keys.toList()
-//                .normalize()
+
+    private fun parseLetters(tokens: List<String>, nLetters: Int) =
+            tokens.flatMap { token ->
+                token.windowed(nLetters, partialWindows = false) }
+                .countDuplicates()
+                .takeMostFrequent(15)
+                .keys.toList()
+
 
     fun addWeightedQueryTokens(tokens: List<String>, fieldName: IndexFields, weight: Double = 1.0): FieldQueryFormatter {
 
         val result = when (fieldName) {
             FIELD_BIGRAM, FIELD_NEIGHBOR_BIGRAMS, FIELD_JOINT_BIGRAMS          -> parseBigrams(tokens)
-            FIELD_WINDOWED_BIGRAM, FIELD_NEIGHBOR_WINDOWED, FIELD_JOINT_WINDOWED -> parseWindowedBigrams(tokens)
+            FIELD_WINDOWED_BIGRAM, FIELD_NEIGHBOR_WINDOWED, FIELD_JOINT_WINDOWED,
+            FIELD_WINDOWED_BIGRAM_3, FIELD_WINDOWED_BIGRAM_4, FIELD_WINDOWED_BIGRAM_6-> parseWindowedBigrams(tokens)
+            FIELD_LETTER_3 -> parseLetters(tokens, 3)
+            FIELD_LETTER_4 -> parseLetters(tokens, 4)
             else                  -> parseUnigrams(tokens)
         }
 

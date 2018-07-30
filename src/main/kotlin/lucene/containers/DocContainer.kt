@@ -50,14 +50,14 @@ class DocContainer<out A: IndexType>(var name: String,
                 return "$isRelevant qid:$qid " +
                     (1..features.size).zip(features)
                         .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                    "#$name # ${docId} ${docType.typeName.split("$").last()}"
+                    " #$name # ${docId} ${docType.typeName.split("$").last()}"
     }
 
     fun toCustomString(qd: Int): String {
         return "$isRelevant qid:$qd " +
                 (1..features.size).zip(features)
                     .joinToString(separator = " ") { (id,feat) -> "$id:$feat" } +
-                "#$name # ${docId} ${docType.typeName.split("$").last()}"
+                " #$name # ${docId} ${docType.typeName.split("$").last()}"
     }
 
     companion object {
