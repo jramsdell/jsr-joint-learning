@@ -35,7 +35,7 @@ import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_STANDARD_STOPPED
 import utils.misc.toArrayList
 import utils.stats.countDuplicates
 import utils.stats.takeMostFrequent
-
+import java.lang.Integer.min
 
 
 class QuickAndDirtyParagraphIndexer() {
@@ -44,8 +44,8 @@ class QuickAndDirtyParagraphIndexer() {
 //    val speedy = "/speedy/jsc57/"
     val speedy = "/home/jsc57/data/backup/"
     val paragraphIndex = getIndexWriter("${speedy}extractions/paragraph2", mode = IndexWriterConfig.OpenMode.CREATE)
-    val linker = SpotlightEntityLinker("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
-        .apply { (0 until 100).forEach { queryServer("Test") }   }
+//    val linker = SpotlightEntityLinker("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
+//        .apply { (0 until 100).forEach { queryServer("Test") }   }
 
 
 
@@ -71,20 +71,55 @@ class QuickAndDirtyParagraphIndexer() {
         val entities = paragraph.entitiesOnly
             .map(this::cleanEntity)
             .joinToString(" ")
-        val annotations = linker.queryServer(paragraph.textOnly)
+//        val annotations = linker.queryServer(paragraph.textOnly)
         FIELD_ENTITIES.setTextField(doc, entities)
         FIELD_ENTITIES_UNIGRAMS.setTextField(doc, convertToUnigrams(entities))
-        FIELD_ENTITIES_EXTENDED.setTextField(doc, annotations.joinToString(" "))
+//        FIELD_ENTITIES_EXTENDED.setTextField(doc, annotations.joinToString(" "))
 
         val (unigrams, bigrams, windowed) = getGramsFromContent(paragraph.textOnly)
 
         FIELD_UNIGRAM.setTextField(doc, unigrams)
         FIELD_BIGRAM.setTextField(doc, bigrams)
         FIELD_WINDOWED_BIGRAM.setTextField(doc, windowed)
+        val tokens = AnalyzerFunctions.createTokenList(paragraph.textOnly, ANALYZER_ENGLISH_STOPPED)
+        FIELD_TRIGRAM.setTextField(doc, getTrigram(tokens))
+        FIELD_WINDOWED_BIGRAM_3.setTextField(doc, getWindowed(tokens, 3))
+        FIELD_WINDOWED_BIGRAM_4.setTextField(doc, getWindowed(tokens, 4))
+        FIELD_WINDOWED_BIGRAM_6.setTextField(doc, getWindowed(tokens, 6))
+        FIELD_LETTER_2.setTextField(doc, getLetterGram(tokens, 2))
+        FIELD_LETTER_3.setTextField(doc, getLetterGram(tokens, 3))
+        FIELD_LETTER_4.setTextField(doc, getLetterGram(tokens, 4))
 
         paragraphIndex.addDocument(doc)
 
     }
+
+    fun getWindowed(tokens: List<String>, windowSize: Int): String {
+        val windowed = ArrayList<String>()
+        (0 until tokens.size).forEach { i ->
+
+            ( i + 1 until min(i + (windowSize + 1), tokens.size)).forEach { j ->
+                windowed.add(tokens[i] + tokens[j])
+                windowed.add(tokens[j] + tokens[i])
+            }
+        }
+        return windowed.countDuplicates()
+            .entries
+            .sortedByDescending { it.value }
+            .take(20)
+            .map { (it.key + " ").repeat(it.value) }
+            .joinToString(" ")
+    }
+
+    fun getTrigram(tokens: List<String>) =
+        tokens.windowed(3, partialWindows = false)
+            .map { it.joinToString("") }
+            .joinToString(" ")
+
+    fun getLetterGram(tokens: List<String>, gramSize: Int) =
+            tokens.flatMap { token ->
+                token.windowed(gramSize, partialWindows = false) }
+                .joinToString(" ")
 
     fun run() {
         val corpusStream = File("/home/jsc57/data/corpus/paragraphCorpus/dedup.articles-paragraphs.cbor")
