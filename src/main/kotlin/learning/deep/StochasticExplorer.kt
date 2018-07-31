@@ -24,11 +24,12 @@ class Ball(val radius: Double = 0.05, val location: Double = 0.5,
     var right: Ball? = null
 
     fun spawnBall(): Ball {
-        val loc = dist.sample().let { if (it <= 0.025) 0.025 else if (it >= 0.975) 0.975 else it }
+        val loc = dist.sample().let { if (it <= 0.0) 0.0 else if (it >= 1.0) 1.0 else it }
 //        return Ball(radius = radius * (if (vote() >= 0.5) 0.9 else 1.0), location = loc,
 //                return Ball(radius = Math.max(0.5 * radius + 0.5 * (1 - vote()), 0.001), location = loc,
 //                        return Ball(radius = Math.max(0.8 * radius + 0.2 * (1 - votes(3).average()), 0.001), location = loc,
-                                return Ball(radius = radius *  (beta.alpha  / (beta.alpha + beta.beta)), location = loc,
+//                                return Ball(radius = radius *  (beta.alpha  / (beta.alpha + beta.beta)), location = loc,
+                                        return Ball(radius = radius * 0.9, location = loc,
 //                                        return Ball(radius = radius, location = loc,
 //                successes = Math.max(beta.alpha - 1.0, 1.0), failures = Math.max(beta.beta - 1.0, 1.0))
 //                successes = Math.max(beta.alpha / 2.0, 1.0), failures = Math.max(beta.beta / 2.0, 1.0))
@@ -144,24 +145,12 @@ class Cover() {
     fun penalize(amount: Double) = curBall.penalize(amount)
 
     fun newGeneration(children: Int, respawn: Int = 0) {
-//        val generation = (0 until 20).flatMap {
-//            balls
-//                .filter { it.vote() > 0.7 }
-//                .map { it.spawnBall() }
-//        }.shuffled().take(children)
-//            .sortedBy { it.location }
-//        val valid = balls.filter { it.beta.alpha >= 1.0  }
-//        balls.clear()
-//        balls.addAll(valid)
 
         val generation = (0 until children).flatMap {
             val ball = draw().spawnBall()
 //            listOf(ball) + (0 until 2).mapNotNull { if (ball.vote() > 0.5) ball.spawnBall() else null } }
             listOf(ball)  }
-                (0 until respawn).map { draw() }
-                    .shuffled()
-                    .take(children)
-                    .sortedBy { it.location }
+            .sortedBy { it.location }
 
         balls.clear()
         balls.addAll(generation)
@@ -210,9 +199,9 @@ fun main(args: Array<String>) {
     val cover = Cover()
 
 
-    (0 until 20).forEach {
-        runRewards(cover, 50)
-        cover.newGeneration(50)
+    (0 until 10).forEach {
+        runRewards(cover, 20)
+        cover.newGeneration(20)
 //        if (it > 10)
 //            cover.newGeneration(40)
         val avLoc = cover.balls.map { it.location }.average()
