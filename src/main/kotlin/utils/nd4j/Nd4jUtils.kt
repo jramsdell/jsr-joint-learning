@@ -77,6 +77,12 @@ fun INDArray.kldSymmetric(other: INDArray): INDArray = this.div(other).log().mul
 //fun INDArray.kldSymmetric(other: INDArray): INDArray = (this.kld(other) + other.kld(this))/2.0
 fun INDArray.kldRow(other: INDArray): INDArray = this.divRowVector(other).log().mul(this).sum(1)
 fun INDArray.invertDistribution(): INDArray = onesLike(this).div(this)
+fun INDArray.invertDistribution2(): INDArray {
+    val o = onesLike(this).div(this)
+    val total = o.sumNumber().toDouble()
+    return o / total
+
+}
 fun INDArray.varianceRows(): INDArray {
     val total = this.sum(0).div(this.rows().toDouble())
     return this.subRowVector(total).pow(2.0).sum(0).sqrt()

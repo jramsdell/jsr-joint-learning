@@ -1,7 +1,10 @@
 package utils.stats
 
 import utils.misc.identity
+import utils.nd4j.softMax
+import utils.nd4j.toNDArray
 import java.util.*
+import java.util.concurrent.ThreadLocalRandom
 
 fun <A, B: Number>Map<A, B>.normalize(): Map<A, Double> {
     val total = values.sumByDouble { it.toDouble() }
@@ -52,6 +55,13 @@ fun<A, B: Comparable<B>> Map<A, B>.takeMostFrequent(n: Int): Map<A, B> =
             .map { it.key to it.value }
             .toMap()
 
+
+fun<A> Map<A, Double>.weightedPick(): A {
+    var total = 0.0
+    val cumSum = map { total += it.value; it.key to total }
+    val rValue = ThreadLocalRandom.current().nextDouble(0.0, total)
+    return cumSum.find { it.second >= rValue }!!.first
+}
 
 
 fun Double.defaultWhenNotFinite(default: Double = 0.0): Double = if (!isFinite()) default else this

@@ -130,14 +130,28 @@ class RanklibReader(fileLoc: String) {
 
     fun createVectors2(): List<L2RModel> {
         val results = trainingExamples.groupBy { it.qid }
+            .filter { examples -> examples.value.any { it.relevant > 0 } }
             .map { examples ->
                 val relevances = examples.value.map { it.relevant.toDouble() }
                 val features = examples.value.map { it.features.map { it.value }.toNDArray() }.combineNDArrays()
-                relevances to features
+                val relFeatures = examples.value
+                    .filter { example -> example.relevant > 0 }
+                    .map { it.features.map { it.value }.toNDArray() }.combineNDArrays()
+                val irelFeatures = examples.value
+                    .filter { example -> example.relevant == 0 }
+                    .map { it.features.map { it.value }.toNDArray() }.combineNDArrays()
+                L2RModel(
+                        features = features,
+                        relevances = relevances.mapIndexed { index, d -> index to d }.toMap(),
+                        relFeatures = relFeatures,
+                        nonRelFeatures = irelFeatures
+                )
+
+//                relevances to features
             }
 
-        val models = results.map { L2RModel(it.second, it.first.mapIndexed{ index, score -> index to score }.toMap()) }
-        return models
+//        val models = results.map { L2RModel(it.second, it.first.mapIndexed{ index, score -> index to score }.toMap()) }
+        return results
     }
 
     fun getRanklibFile() =

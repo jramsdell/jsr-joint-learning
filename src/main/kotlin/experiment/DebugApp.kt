@@ -2,6 +2,7 @@
 package experiment
 
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
+import learning.runTestMap
 import lucene.FieldQueryFormatter
 import lucene.containers.*
 import lucene.indexers.ContextMerger
@@ -66,7 +67,8 @@ class DebugApp(resources: HashMap<String, Any>) {
 //            .doOptimizer()
 //            .runRankLib("wee", useKcv = true)
 //        testNewParData()
-        testEntityContext()
+//        testEntityContext()
+        runTestMap()
     }
 
     fun testEntityContext() {

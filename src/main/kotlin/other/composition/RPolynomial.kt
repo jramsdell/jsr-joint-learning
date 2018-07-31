@@ -1,16 +1,16 @@
 package other.composition
 
-import de.lab4inf.math.functions.Polynomial
-import edu.jas.arith.PrimeTest
-import org.matheclipse.core.expression.F.*
+//import de.lab4inf.math.functions.Polynomial
+//import edu.jas.arith.PrimeTest
+//import org.matheclipse.core.expression.F.*
 import org.apache.commons.math3.complex.Complex
 import org.apache.commons.math3.exception.MathArithmeticException
 import org.apache.commons.math3.fraction.BigFraction
 import org.apache.commons.math3.fraction.BigFractionFormat
-import org.matheclipse.core.eval.ExprEvaluator
-import org.matheclipse.core.eval.EvalEngine
-import org.matheclipse.core.expression.F
-import org.matheclipse.core.polynomials.PolynomialsUtils
+//import org.matheclipse.core.eval.ExprEvaluator
+//import org.matheclipse.core.eval.EvalEngine
+//import org.matheclipse.core.expression.F
+//import org.matheclipse.core.polynomials.PolynomialsUtils
 import utils.misc.identity
 import utils.stats.countDuplicates
 import java.math.BigDecimal
