@@ -2,6 +2,7 @@
 package experiment
 
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
+import learning.deep.runStochastic
 import learning.runTestMap
 import lucene.FieldQueryFormatter
 import lucene.containers.*
@@ -68,7 +69,8 @@ class DebugApp(resources: HashMap<String, Any>) {
 //            .runRankLib("wee", useKcv = true)
 //        testNewParData()
 //        testEntityContext()
-        runTestMap()
+//        runTestMap()
+        runStochastic()
     }
 
     fun testEntityContext() {

@@ -120,6 +120,7 @@ class MAPCalculator(val models: List<L2RModel>) {
     var gradientTotal = 0.0
     var bestLearn = 0.0
 
+
     fun run(cur: INDArray, learningRate: Double): Pair<INDArray, Double> {
         var params = cur
         val baseline = getMAP(params)
@@ -155,12 +156,13 @@ class MAPCalculator(val models: List<L2RModel>) {
         val result = getTotalDiffGradient(p)
         return result * learningRate
     }
+
 }
+
 
 
 fun runTestMap() {
     val models = RanklibReader("ony_paragraph.txt")
-//    val models = RanklibReader("ranklib_results.txt")
         .createVectors2()
         .filter { it.relevances.any { it.value > 0.0 } }
 

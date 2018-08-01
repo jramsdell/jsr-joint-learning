@@ -2,9 +2,11 @@ package learning.deep
 
 import org.apache.commons.math3.distribution.BetaDistribution
 import org.apache.commons.math3.distribution.NormalDistribution
+import utils.misc.sharedRand
 import utils.stats.weightedPick
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.absoluteValue
 import kotlin.math.pow
 
@@ -15,28 +17,38 @@ import kotlin.math.pow
 //private val betaDists = ConcurrentHashMap<Pair<Double, Double>, BetaDistribution>()
 
 
-class Ball(val radius: Double = 0.05, val location: Double = 0.5,
+class Ball(val radius: Double = 0.05, var location: Double = 0.5,
            successes: Double = 2.0, failures: Double = 2.0) {
     val dist = NormalDistribution(location, radius)
 //    var beta = betaDists.computeIfAbsent(successes to failures) { BetaDistribution(successes, failures) }
-    var beta = BetaDistribution(successes, failures)
+    val betaRef = AtomicReference(BetaDistribution(successes, failures))
     var left: Ball? = null
     var right: Ball? = null
+    var lastParam = 0.0
+
+    val beta: BetaDistribution
+        get() = betaRef.get()
 
     fun spawnBall(): Ball {
-        val loc = dist.sample().let { if (it <= 0.0) 0.0 else if (it >= 1.0) 1.0 else it }
+//        val loc = dist.sample().let { if (it <= 0.0) 0.0 else if (it >= 1.0) 1.0 else it }
+        val loc = dist.sample().let { if (it <= 0.0) 0.0 else it }
+//        val loc = dist.sample().let { if (it <= 0.0) 0.0 else it }
 //        return Ball(radius = radius * (if (vote() >= 0.5) 0.9 else 1.0), location = loc,
 //                return Ball(radius = Math.max(0.5 * radius + 0.5 * (1 - vote()), 0.001), location = loc,
 //                        return Ball(radius = Math.max(0.8 * radius + 0.2 * (1 - votes(3).average()), 0.001), location = loc,
-//                                return Ball(radius = radius *  (beta.alpha  / (beta.alpha + beta.beta)), location = loc,
-                                        return Ball(radius = radius * 0.9, location = loc,
+//                                return Ball(radius = radius *  (beta.alpha  / (beta.beta)), location = loc,
+                                        return Ball(radius = radius *  (beta.beta  / (beta.alpha)), location = loc,
+//                                                return Ball(radius = radius * 0.95, location = loc,
+//                                        return Ball(radius = radius * 0.99, location = loc,
 //                                        return Ball(radius = radius, location = loc,
 //                successes = Math.max(beta.alpha - 1.0, 1.0), failures = Math.max(beta.beta - 1.0, 1.0))
-//                successes = Math.max(beta.alpha / 2.0, 1.0), failures = Math.max(beta.beta / 2.0, 1.0))
-                successes = beta.alpha, failures = beta.beta)
+                successes = Math.max(beta.alpha / 2.0, 1.0), failures = Math.max(beta.beta / 1, 1.0))
+//                successes = Math.max(beta.alpha / 2.0, 1.0), failures = Math.max(beta.beta / 1, 1.0))
+//                successes = beta.alpha, failures = beta.beta)
     }
 
-    fun vote() = beta.sample(3).average()
+//    fun vote() = beta.sample(3).average()
+    fun vote() = beta.sample(1).average()
 //    fun vote() = beta.sample()
     fun votes(nVotes: Int) = beta.sample(nVotes)
 
@@ -44,16 +56,28 @@ class Ball(val radius: Double = 0.05, val location: Double = 0.5,
 //        val dist = (ball.location - this.location).absoluteValue.pow(0.25)
 //        return ThreadLocalRandom.current().nextDouble() > dist
         return (ball.location - origin).absoluteValue <= ball.radius * (ball.beta.alpha / (ball.beta.alpha + ball.beta.beta))
+//        return (ball.location - origin).absoluteValue <= ball.radius
+//        return (ball.location - origin).absoluteValue <= 0.05
     }
 
-    var rewardDecay = 0.1
+    var rewardDecay = 0.8
 
     fun reward(amount: Double = 1.0, times: Int = 5, origin: Double = this.location) {
 //        this.beta = betaDists.computeIfAbsent(this.beta.alpha + amount to this.beta.beta) {
 //            BetaDistribution(this.beta.alpha + amount, this.beta.beta) }
         val mult = 0.5
-        this.beta =
-            BetaDistribution(this.beta.alpha + amount, Math.max(this.beta.beta - amount * mult, 0.1))
+
+        val curBeta = this.betaRef.get()
+        location = lastParam
+        val newBeta = BetaDistribution(curBeta.alpha + amount, Math.max(curBeta.beta - amount * mult, 0.1))
+
+        val success = this.betaRef.compareAndSet(curBeta, newBeta)
+        if(!success) {
+            println("Something went wrong!")
+        }
+
+
+//            BetaDistribution(this.beta.alpha + amount, Math.max(this.beta.beta - amount * mult, 0.1))
         if (times > 0) {
             if (left != null) {
                 if (distChance(origin, left!!)) {
@@ -72,36 +96,38 @@ class Ball(val radius: Double = 0.05, val location: Double = 0.5,
     }
 
     fun penalize(amount: Double = 1.0, times: Int = 5, origin: Double = this.location) {
-//        this.beta = betaDists.computeIfAbsent(this.beta.alpha  to this.beta.beta + amount) {
-//            BetaDistribution(this.beta.alpha, this.beta.beta + amount) }
         val mult = 0.5
-        this.beta =
-            BetaDistribution(Math.max(this.beta.alpha - mult * amount, 0.1), this.beta.beta + amount )
+
+
+        val curBeta = this.betaRef.get()
+        val newBeta = BetaDistribution(Math.max(this.beta.alpha - mult * amount, 0.1), this.beta.beta + amount )
+        this.betaRef.compareAndSet(curBeta, newBeta)
+
+//        this.beta =
+//            BetaDistribution(Math.max(this.beta.alpha - mult * amount, 0.1), this.beta.beta + amount )
         if (times > 0) {
 
             if (left != null) {
                 if (distChance(origin, left!!)) {
-                    left!!.penalize(amount * rewardDecay, times - 1, origin)
+                    left!!.penalize(amount * rewardDecay * 0.0, times - 1, origin)
                 }
             }
 
             if (right != null) {
                 if (distChance(origin, right!!)) {
-                    right!!.penalize(amount * rewardDecay, times - 1, origin)
+                    right!!.penalize(amount * rewardDecay * 0.0, times - 1, origin)
                 }
             }
 
-//            left?.penalize(amount / 2.0, false)
-//            right?.penalize(amount / 2.0, false)
         }
     }
 
 
     fun getParam(): Double {
-        val param = dist.sample()
-        return  if (param < 0.0) 0.0
-                else if (param > 1.0) 1.0
-                else param
+        lastParam = dist.sample()
+        return  if (lastParam < 0.0) 0.0
+//                else if (lastParam > 1.0) 1.0
+                else lastParam
     }
 }
 
@@ -129,31 +155,35 @@ class Cover() {
     }
 
     fun draw(): Ball {
-//        if (ThreadLocalRandom.current().nextDouble() <= justRand) {
-//            return balls[ThreadLocalRandom.current().nextInt(balls.size)]
-//                .apply { curBall= this }
-//        }
-//        val doRand = ThreadLocalRandom.current().nextDouble() <= justRand
-//        return balls.map { it to if (doRand) Math.max(1.0 / it.vote(), 0.0001) else it.vote() }
         return balls.map { it to  it.vote() }
             .toMap()
             .weightedPick()
             .apply { curBall = this }
     }
 
-    fun reward(amount: Double) = curBall.reward(amount)
+    //    fun reward(amount: Double) = curBall.reward(amount)
+    fun rewardSpawn() {
+        val child = curBall.spawnBall()
+        curBall.reward(4.0)
+        balls.add(child)
+    }
     fun penalize(amount: Double) = curBall.penalize(amount)
 
     fun newGeneration(children: Int, respawn: Int = 0) {
 
         val generation = (0 until children).flatMap {
             val ball = draw().spawnBall()
-//            listOf(ball) + (0 until 2).mapNotNull { if (ball.vote() > 0.5) ball.spawnBall() else null } }
+//            val left = Ball(radius = ball.radius, location = 0.01 + ball.location,
+//                    successes = 2.0, failures = 2.0)
+//                    val right = Ball(radius = ball.radius, location = Math.max(0.0, ball.location - 0.01),
+//                    successes = 2.0, failures = 2.0)
             listOf(ball)  }
-            .sortedBy { it.location }
+
+
+//            .sortedBy { it.location }
 
         balls.clear()
-        balls.addAll(generation)
+        balls.addAll((generation).sortedBy { it.location } )
         linkBalls()
     }
 
@@ -171,7 +201,8 @@ fun runRewards(cover: Cover, nRewards: Int, rewardMult: Double = 1.0) {
         if (candidates.isEmpty()) {
             candidates.add(nearTarget)
             ball.reward(1.0)
-        } else if (ThreadLocalRandom.current().nextDouble() >= (nearTarget / candidates.average()).pow(1.0)) {
+//        } else if (ThreadLocalRandom.current().nextDouble() >= (nearTarget / candidates.average()).pow(1.0)) {
+        } else if (sharedRand.nextDouble() >= (nearTarget / candidates.average()).pow(1.0)) {
             if (candidates.size >= 10) {
                 candidates[counter % 10] = nearTarget
             } else {
@@ -182,13 +213,6 @@ fun runRewards(cover: Cover, nRewards: Int, rewardMult: Double = 1.0) {
         } else {
             ball.penalize(1.0)
         }
-//        if (ball.location >= 0.2 && ball.location <= 0.35) {
-//            ball.reward(1.0)
-//            if (ball.location <= 2.3)
-//                ball.reward(5.0)
-//        }
-//        else
-//            ball.penalize(5.0)
 
         ball.getParam()
     }.average().run { println("Average draw: $this") }

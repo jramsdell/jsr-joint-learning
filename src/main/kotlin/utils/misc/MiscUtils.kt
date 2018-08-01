@@ -10,6 +10,13 @@ fun<A> withTime(f: () -> A): Pair<Long, A> {
     return time to result!!
 }
 
+fun<A> printTime(label: String = "Time", f: () -> A): A {
+    var result: A? = null
+    val time = measureTimeMillis { result = f() }
+    println("$label : $time")
+    return result!!
+}
+
 // I don't know why the hell they don't have an identity function..
 fun <A> identity(it: A): A = it
 

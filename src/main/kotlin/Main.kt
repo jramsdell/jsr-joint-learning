@@ -1,4 +1,5 @@
 import experiment.*
+import learning.deep.runStochastic
 import net.sourceforge.argparse4j.ArgumentParsers
 import net.sourceforge.argparse4j.helper.HelpScreenException
 import net.sourceforge.argparse4j.inf.ArgumentParser
@@ -21,6 +22,7 @@ fun buildParser(): ArgumentParser {
 }
 
 fun run(args: Array<String>) {
+//    runStochastic()
     val parser: ArgumentParser = buildParser()
     val params: Namespace = parser.parseArgs(args)
         params.get<(Namespace) -> Unit>("func")
