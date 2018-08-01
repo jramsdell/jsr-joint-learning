@@ -42,7 +42,7 @@ class Ball(val radius: Double = 0.05, var location: Double = 0.5,
 //                                        return Ball(radius = radius * 0.99, location = loc,
 //                                        return Ball(radius = radius, location = loc,
 //                successes = Math.max(beta.alpha - 1.0, 1.0), failures = Math.max(beta.beta - 1.0, 1.0))
-                successes = Math.max(beta.alpha / 2.0, 1.0), failures = Math.max(beta.beta / 1, 1.0))
+                successes = Math.max(beta.alpha / 2.0, 0.5), failures = Math.max(beta.beta / 1, 0.5))
 //                successes = Math.max(beta.alpha / 2.0, 1.0), failures = Math.max(beta.beta / 1, 1.0))
 //                successes = beta.alpha, failures = beta.beta)
     }
@@ -62,7 +62,7 @@ class Ball(val radius: Double = 0.05, var location: Double = 0.5,
 
     var rewardDecay = 0.8
 
-    fun reward(amount: Double = 1.0, times: Int = 5, origin: Double = this.location) {
+    fun reward(amount: Double = 1.0, times: Int = 5, origin: Double = this.location, direction: String = "origin") {
 //        this.beta = betaDists.computeIfAbsent(this.beta.alpha + amount to this.beta.beta) {
 //            BetaDistribution(this.beta.alpha + amount, this.beta.beta) }
         val mult = 0.5
@@ -80,21 +80,20 @@ class Ball(val radius: Double = 0.05, var location: Double = 0.5,
         }
 
 
-//            BetaDistribution(this.beta.alpha + amount, Math.max(this.beta.beta - amount * mult, 0.1))
         if (times > 0) {
-            if (left != null) {
+            val toRight = (direction == "origin" || direction == "right")
+            val toLeft = (direction == "origin" || direction == "left")
+            if (left != null && toLeft) {
                 if (distChance(origin, left!!)) {
-                    left!!.reward(amount * rewardDecay, times - 1, origin)
+                    left!!.reward(amount * rewardDecay, times - 1, origin, "left")
                 }
             }
 
-            if (right != null) {
+            if (right != null && toRight) {
                 if (distChance(origin, right!!)) {
-                    right!!.reward(amount * rewardDecay, times - 1, origin)
+                    right!!.reward(amount * rewardDecay, times - 1, origin, "right")
                 }
             }
-//            left?.reward(amount / (location - left!!.location), false)
-//            right?.reward(amount / 2.0, false)
         }
     }
 

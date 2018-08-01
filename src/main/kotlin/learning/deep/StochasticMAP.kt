@@ -109,6 +109,7 @@ class StochasticMAP(val models: List<L2RModel>) {
 
     fun getTotalDiff(weights: INDArray): Double = models.pmap { getDiff(it, weights) }.average()
 
+
     fun runStep() {
         (0 until 80).forEach {
 //            (0 until 80).forEachParallelQ {
@@ -124,10 +125,12 @@ class StochasticMAP(val models: List<L2RModel>) {
             val bestAv = bestMap.average()
             val margin = bestMap.map { it - bestAv }.average()!!
             val mapMargin = map - bestAv
+
 //            println("$bestAv : $margin : $mapMargin")
 
             if (mapMargin > margin || mapCounter < 5   ) {
 //            if (ThreadLocalRandom.current().nextDouble() <= ((map * 1.2) / bestMap.average()).defaultWhenNotFinite(1.0)) {
+
 
 
 
@@ -153,7 +156,7 @@ class StochasticMAP(val models: List<L2RModel>) {
 
     fun search() {
         var curHighest = highest
-        (0 until 50).forEach {
+        (0 until 300).forEach {
             runStep()
             println("Highest: $highest")
             if (highest == curHighest) {
