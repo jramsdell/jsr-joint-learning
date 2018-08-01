@@ -1,5 +1,4 @@
 import experiment.*
-import learning.deep.runStochastic
 import net.sourceforge.argparse4j.ArgumentParsers
 import net.sourceforge.argparse4j.helper.HelpScreenException
 import net.sourceforge.argparse4j.inf.ArgumentParser

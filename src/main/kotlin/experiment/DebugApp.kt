@@ -2,13 +2,9 @@
 package experiment
 
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
-import learning.deep.runStochastic
-import learning.runTestMap
-import lucene.FieldQueryFormatter
+import learning.deep.stochastic.runStochastic
 import lucene.containers.*
-import lucene.indexers.ContextMerger
 import lucene.indexers.IndexFields
-import lucene.indexers.getString
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
