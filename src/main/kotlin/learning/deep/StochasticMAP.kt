@@ -86,12 +86,28 @@ class StochasticMAP(val models: List<L2RModel>) {
     fun getDiff(model: L2RModel, weights: INDArray): Double {
         val rMap = model.relevances.entries.groupBy { it.value > 0.0 }
         val results = (model.features mulRowV weights).sum(1).toDoubleVector()
-        val averageTrue = rMap[true]?.let { it.map { hi -> results[hi.key] }.sorted().take(1).sum() } ?: 0.0
-        val averageFalse = rMap[false]?.let { it.map { hi -> results[hi.key] }.sortedDescending().take(1).sum() } ?: 0.0
-        return averageTrue - averageFalse
+//        val averageTrue = rMap[true]?.let { it.map { hi -> results[hi.key] }.sorted().take(1).sum() } ?: 0.0
+//        val averageFalse = rMap[false]?.let { it.map { hi -> results[hi.key] }.sortedDescending().take(1).sum() } ?: 0.0
+//        return averageTrue - averageFalse
+
+//        val offset = 0.000000001
+//        return (0 until 10).map {
+//            val randBest = rMap[true]!!.map { it.key to (1 / results[it.key]).defaultWhenNotFinite(0.0) + offset }.toMap().weightedPick()
+//            val randWorst = rMap[false]!!.map { it.key to results[it.key] + offset }.toMap().weightedPick()
+//            val best = model.features.getRow(randBest)
+//            val worst = model.features.getRow(randWorst)
+//            best.sub(worst).sumNumber().toDouble()
+//        }.sum()
+
+
+        val bestScore = model.relFeatures.mulRowVector(weights).sum(1)
+        val worstScore = model.nonRelFeatures.mulRowVector(weights).sum(1)
+        val best = model.relFeatures.transpose().mmul(bestScore).transpose()
+        val worst = model.nonRelFeatures.transpose().mmul(worstScore).transpose()
+        return best.sub(worst).sumNumber().toDouble()
     }
 
-    fun getTotalDiff(weights: INDArray): Double = models.pmap { getDiff(it, weights) }.sum()
+    fun getTotalDiff(weights: INDArray): Double = models.pmap { getDiff(it, weights) }.average()
 
     fun runStep() {
         (0 until 80).forEach {
@@ -100,8 +116,9 @@ class StochasticMAP(val models: List<L2RModel>) {
             val balls=  getBalls()
 
             val weights = balls.map { it.getParam() }.normalize()
-            val map =   getTotalDiff(weights.toNDArray())
-//            val map =   getMAP(weights.toNDArray())
+//            val weights = balls.map { it.getParam() }
+//            val map =   getTotalDiff(weights.toNDArray())
+            val map =   getMAP(weights.toNDArray())
 
 
             val bestAv = bestMap.average()
@@ -123,13 +140,13 @@ class StochasticMAP(val models: List<L2RModel>) {
                 if (highest < map) {
                     println("$map : ${getMAP(weights.toNDArray())}")
                     highest = map
-//                    println(weights)
+                    println(weights)
                     println()
                 }
                 mapCounter += 1
 //                bestWeights.add(weights)
             } else {
-                balls.forEach { it.penalize(1.0) }
+                balls.forEach { it.penalize(0.1) }
             }
         }
     }
