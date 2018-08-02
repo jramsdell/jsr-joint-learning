@@ -39,6 +39,13 @@ class Cover() {
             .apply { curBall = this }
     }
 
+    fun drawInverse(): Ball {
+        return balls.map { it to  1.0 / it.vote() }
+            .toMap()
+            .weightedPick()
+            .apply { curBall = this }
+    }
+
     fun draws(nTimes: Int): List<Ball> {
         return balls.map { it to  it.vote() }
             .toMap()

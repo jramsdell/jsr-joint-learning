@@ -36,7 +36,8 @@ class StochasticMAP(val models: List<L2RModel>) {
     ).toNDArray()
     val covers = (0 until nFeatures).map { Cover() }
 //    val bestMap = (0 until 20).map { -999999.9 }.toArrayList()
-    val bestMap = (0 until 5).map { -999999.9 }.toArrayList()
+    val nCandidates = 10
+    val bestMap = (0 until nCandidates).map { -999999.9 }.toArrayList()
     var iterations = 0
 //    var mapCounter = AtomicInteger(0)
     var mapCounter = 0
@@ -86,7 +87,7 @@ class StochasticMAP(val models: List<L2RModel>) {
 
     fun getMAP(weights: INDArray) = models.pmap { model -> getAP(model, weights) }.average()
 
-    fun getBalls() = covers.pmap { it.draw() }
+    fun getBalls(isInverse: Boolean = false) = if (!isInverse) covers.pmap { it.draw() } else covers.pmap { it.drawInverse() }
     fun newGeneration(nChildren: Int) = covers.forEachParallelQ { cover -> cover.newGeneration(children = nChildren) }
 
 //    val bestWeights = ArrayList<List<Double>>()
@@ -123,98 +124,65 @@ class StochasticMAP(val models: List<L2RModel>) {
 
     fun getBestParams(balls: List<Ball>): Triple<Double, List<Double>, List<Double>> {
         var bestResult = Triple(0.0, emptyList<Double>(), emptyList<Double>())
-        val lock = ReentrantLock()
-//        val jobs = ArrayList<() -> Unit>()
-//        val experiments = ArrayList<StochasticExperiment>()
-
-//        (0 until 1).forEach {
-//            val weights = balls.map { it.getParam() }.normalize()
-//            val experiment = StochasticExperiment(weights)
-//            experiments.add(experiment)
-//
-//            models.forEach { model ->
-//                jobs.add {
-//                    val result = getAP(model, experiment.weightINDArray)
-//                    experiment.lock.withLock { experiment.results.add(result) }
-//                }
-//            }
-//            val map =   getMAP(weights.toNDArray())
-//            lock.withLock {
-//                if (bestResult.first < map) {
-//                    bestResult = map to weights
-//                }
-//            }
-//        }
-
         (0 until 3).forEach {
             val params = balls.map { it.getParam() }
             val weights = params.normalize()
             val map =   getMAP(weights.toNDArray())
-//            lock.withLock {
                 if (bestResult.first < map) {
                     bestResult = Triple(map, weights, params)
                 }
-//            }
 
         }
-
-
-//        (0 until jobs.size).forEachParallelQ {
-//            jobs[it].invoke()
-//        }
-
-//        jobs.forEachParallelQ { it() }
-//        experiments.maxBy { it.results.average() }!!.let { best ->
-//            val map = best.results.average()
-//            val weights = best.weights
-//            return map to weights
-//        }
         return bestResult
     }
 
     fun runStep() {
-        (0 until 80).forEach {
-//            (0 until 80).forEachParallelQ {
+        (0 until 120).forEach {
             val balls=  getBalls()
-
-//            val (map, weights, params) = getBestParams(balls)
             val weights = balls.map { it.getParam() }.normalize()
             val map =    getMAP(weights.toNDArray())
-//            val map =   getTotalDiff(weights.toNDArray())
 
             val bestAv = bestMap.average()
             val margin = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign }}.average()!!
             val mapMargin = (map - bestAv).let { it.pow(2.0) * it.sign }
 
-//            println("$bestAv : $margin : $mapMargin")
             var chanceOfGenerating = 0.0
 
-//            if (mapCounter >= 10) {
-//                val std = Math.sqrt(bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign  } }.sum().absoluteValue / 100.0)
+//            if (mapCounter >= 15 + nCandidates) {
+////                val std = Math.sqrt(bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign  } }.sum().absoluteValue / 5.0)
+//                val std = Math.sqrt(bestMap.map { (it - bestAv).let { it.pow(2.0)  } }.sum().absoluteValue / 5.0)
 //                if (std > 0.0) {
-//                    val averageDeviation = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign } }.average()
-//                    val myDist2 = NormalDistribution(averageDeviation, std)
-//                    val mapDiff = map - bestAv
-//                    chanceOfGenerating = myDist2.probability(mapDiff - std, mapDiff + std)
+////                    val averageDeviation = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign } }.average()
+////                    val averageDeviation = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign } }.average()
+//                    val myDist2 = NormalDistribution(bestAv, std)
+////                    val mapDiff = map - bestAv
+////                    chanceOfGenerating = myDist2.probability(mapDiff - std, mapDiff + std)
+//                    chanceOfGenerating = myDist2.getInvDist(map)
 //                }
 //            }
 
 
-//            if (mapMargin > margin || mapCounter < 5 || ThreadLocalRandom.current().nextDouble() <= chanceOfGenerating   ) {
-                if (mapMargin > margin || mapCounter < 5    ) {
+//            if (mapMargin > margin || mapCounter < nCandidates || ThreadLocalRandom.current().nextDouble() <= chanceOfGenerating   ) {
+//                println("Chance of generating: $chanceOfGenerating")
+                if (mapMargin > margin || mapCounter < nCandidates    ) {
 //            if (ThreadLocalRandom.current().nextDouble() <= ((map * 1.2) / bestMap.average()).defaultWhenNotFinite(1.0)) {
 
 
 
 
-                if (mapCounter >= 5) {
+                if (mapCounter >= nCandidates) {
+                    var rewardAmount = 4.0
+//                    if (mapCounter >= 20) {
+//                        rewardAmount += 4.0 * (1.0 - chanceOfGenerating)
+//                    }
                     rewarded = true
 //                    balls.zip(params).forEach { (ball, param) -> ball.reward(4.0, rewardParam = param) }
-                        balls.zip(weights).forEach { (ball, param) -> ball.reward(4.0, rewardParam = param) }
+                        balls.zip(weights).forEach { (ball, param) -> ball.reward(rewardAmount, rewardParam = param) }
                 }
 //                balls.forEachIndexed {index, _ -> covers[index].rewardSpawn() }
 //                val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { it.pow(2.0).times(it.sign) } }!!.index
-                    val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { 1.0 / it.pow(2.0).times(it.sign) } }!!.index
+//                    val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { 1.0 / it.pow(2.0).times(it.sign) } }!!.index
+                    val lowestIndex = bestMap.withIndex().minBy { it.value }!!.index
 //                    val lowestIndex = bestMap.withIndex().minBy { it.value }!!.index
 //                if (map > bestMap[lowestIndex]) {
 //                    bestMap[lowestIndex] = map
@@ -242,8 +210,8 @@ class StochasticMAP(val models: List<L2RModel>) {
         (0 until 300).forEach {
                 runStep()
             println("Highest: $highest")
-//            if (highest == curHighest) {
-            if (!rewarded) {
+            if (highest == curHighest) {
+//            if (!rewarded) {
                  newGeneration(40)
             }
             rewarded = false

@@ -37,15 +37,16 @@ class Ball(var radius: Double = 0.05, var location: Double = 0.5,
         val loc = dist.sample()
 //        val loc = if (lastParam > 1.0) 1.0 else if (lastParam < 0.0) 0.0 else lastParam
         return Ball(radius = radius * (beta.beta / (beta.alpha)), location = loc,
-                successes = Math.max(beta.alpha / 2.0, 0.5), failures = Math.max(beta.beta / 2, 0.5))
+                successes = Math.max(beta.alpha / 2.0, 0.5), failures = Math.max(beta.beta / 1.5, 0.5))
     }
 
-    fun vote() = beta.sample()
+    fun vote() = beta.sample(3).average()
 //    fun vote() = Math.log(beta.alpha.pow(2.0) / beta.beta)
     fun votes(nVotes: Int) = beta.sample(nVotes)
 
     fun getProbOfGenerating(point: Double): Double {
-        return dist.probability(point - radius / 1.0, point + radius / 1.0)
+//        return dist.probability(point - radius / 1.0, point + radius / 1.0)
+        return dist.getInvDist(point)
     }
 
     fun distChance(origin: Double, ball: Ball): Boolean {
@@ -56,7 +57,7 @@ class Ball(var radius: Double = 0.05, var location: Double = 0.5,
 
     var rewardDecay = 1.0
 
-    fun reward(amount: Double = 1.0, times: Int = 10, origin: Double = this.location, direction: String = "origin",
+    fun reward(amount: Double = 1.0, times: Int = 40, origin: Double = this.location, direction: String = "origin",
                rewardParam: Double = this.lastParam) {
 //        this.beta = betaDists.computeIfAbsent(this.beta.alpha + amount to this.beta.beta) {
 //            BetaDistribution(this.beta.alpha + amount, this.beta.beta) }
@@ -77,7 +78,7 @@ class Ball(var radius: Double = 0.05, var location: Double = 0.5,
         } else {
 
 //            location = (lastParam + this.location) / 2.0
-//            location = (lastParam + this.location) / 2.0
+//            location = (rewardParam + this.location) / 2.0
 //            dist = NormalDistribution(location, radius)
         }
 
