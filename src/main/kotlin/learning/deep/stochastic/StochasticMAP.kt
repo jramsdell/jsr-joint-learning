@@ -2,12 +2,26 @@ package learning.deep.stochastic
 
 import learning.L2RModel
 import lucene.RanklibReader
+import org.apache.commons.math3.distribution.NormalDistribution
 import org.nd4j.linalg.api.ndarray.INDArray
+import utils.misc.printTime
 import utils.misc.toArrayList
 import utils.nd4j.*
+import utils.parallel.forEachParallelQ
 
 import utils.parallel.pmap
+import utils.stats.defaultWhenNotFinite
 import utils.stats.normalize
+import utils.stats.weightedPick
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import kotlin.math.absoluteValue
+import kotlin.math.pow
+import kotlin.math.sign
+import kotlin.system.measureTimeMillis
 
 
 class StochasticMAP(val models: List<L2RModel>) {
@@ -33,17 +47,21 @@ class StochasticMAP(val models: List<L2RModel>) {
 
 
     fun getAP(model: L2RModel, weights: INDArray): Double {
-        val results = (model.features mulRowV weights).sum(1).toDoubleVector()
+
+        val results =  (model.features.dup() mulRowV weights.dup()).sum(1).toDoubleVector()
+
+        var apScore = 0.0
+        var totalRight = 0.0
+
+
         val sortedResults = results
             .asSequence()
             .mapIndexed { index, score -> index to score }
             .sortedByDescending { it.second }
             .toList()
 
-        var apScore = 0.0
-        var totalRight = 0.0
 
-        sortedResults.forEachIndexed  { rank, (docIndex, _) ->
+        sortedResults.forEachIndexed { rank, (docIndex, _) ->
             val rel = model.relevances[docIndex]!!
             totalRight += rel
             if (rel > 0.0) {
@@ -57,10 +75,19 @@ class StochasticMAP(val models: List<L2RModel>) {
 
 
 
+    data class StochasticExperiment(val weights: List<Double>) {
+        val lock = ReentrantLock()
+        val weightINDArray = weights.toNDArray()
+        val results = ArrayList<Double>()
+    }
+
+    data class ExperimentStructure(val experiments: List<StochasticExperiment>)
+
+
     fun getMAP(weights: INDArray) = models.pmap { model -> getAP(model, weights) }.average()
 
-    fun getBalls() = covers.map { it.draw() }
-    fun newGeneration(nChildren: Int) = covers.forEach { cover -> cover.newGeneration(children = nChildren) }
+    fun getBalls() = covers.pmap { it.draw() }
+    fun newGeneration(nChildren: Int) = covers.forEachParallelQ { cover -> cover.newGeneration(children = nChildren) }
 
 //    val bestWeights = ArrayList<List<Double>>()
     var highest = -99999.0
@@ -72,54 +99,128 @@ class StochasticMAP(val models: List<L2RModel>) {
 //        val averageFalse = rMap[false]?.let { it.map { hi -> results[hi.key] }.sortedDescending().take(1).sum() } ?: 0.0
 //        return averageTrue - averageFalse
 
-//        val offset = 0.000000001
-//        return (0 until 10).map {
-//            val randBest = rMap[true]!!.map { it.key to (1 / results[it.key]).defaultWhenNotFinite(0.0) + offset }.toMap().weightedPick()
-//            val randWorst = rMap[false]!!.map { it.key to results[it.key] + offset }.toMap().weightedPick()
-//            val best = model.features.getRow(randBest)
-//            val worst = model.features.getRow(randWorst)
-//            best.sub(worst).sumNumber().toDouble()
-//        }.sum()
+        val offset = 0.000000001
+        return (0 until 100).map {
+            val randBest = rMap[true]!!.map { it.key to (1 / results[it.key]).defaultWhenNotFinite(0.0) + offset }.toMap().weightedPick()
+            val randWorst = rMap[false]!!.map { it.key to results[it.key] + offset }.toMap().weightedPick()
+            val best = model.features.getRow(randBest)
+            val worst = model.features.getRow(randWorst)
+            best.sub(worst).sumNumber().toDouble()
+        }.average()
 
 
-        val bestScore = model.relFeatures.mulRowVector(weights).sum(1)
-        val worstScore = model.nonRelFeatures.mulRowVector(weights).sum(1)
-        val best = model.relFeatures.transpose().mmul(bestScore).transpose()
-        val worst = model.nonRelFeatures.transpose().mmul(worstScore).transpose()
-        return best.sub(worst).sumNumber().toDouble()
+//        val bestScore = model.relFeatures.mulRowVector(weights).sum(1)
+//        val worstScore = model.nonRelFeatures.mulRowVector(weights).sum(1)
+//        val best = model.relFeatures.transpose().mmul(bestScore).transpose()
+//        val worst = model.nonRelFeatures.transpose().mmul(worstScore).transpose()
+//        return best.sub(worst).sumNumber().toDouble()
     }
 
     fun getTotalDiff(weights: INDArray): Double = models.pmap { getDiff(it, weights) }.average()
+    var rewarded = false
 
+
+
+    fun getBestParams(balls: List<Ball>): Triple<Double, List<Double>, List<Double>> {
+        var bestResult = Triple(0.0, emptyList<Double>(), emptyList<Double>())
+        val lock = ReentrantLock()
+//        val jobs = ArrayList<() -> Unit>()
+//        val experiments = ArrayList<StochasticExperiment>()
+
+//        (0 until 1).forEach {
+//            val weights = balls.map { it.getParam() }.normalize()
+//            val experiment = StochasticExperiment(weights)
+//            experiments.add(experiment)
+//
+//            models.forEach { model ->
+//                jobs.add {
+//                    val result = getAP(model, experiment.weightINDArray)
+//                    experiment.lock.withLock { experiment.results.add(result) }
+//                }
+//            }
+//            val map =   getMAP(weights.toNDArray())
+//            lock.withLock {
+//                if (bestResult.first < map) {
+//                    bestResult = map to weights
+//                }
+//            }
+//        }
+
+        (0 until 3).forEach {
+            val params = balls.map { it.getParam() }
+            val weights = params.normalize()
+            val map =   getMAP(weights.toNDArray())
+//            lock.withLock {
+                if (bestResult.first < map) {
+                    bestResult = Triple(map, weights, params)
+                }
+//            }
+
+        }
+
+
+//        (0 until jobs.size).forEachParallelQ {
+//            jobs[it].invoke()
+//        }
+
+//        jobs.forEachParallelQ { it() }
+//        experiments.maxBy { it.results.average() }!!.let { best ->
+//            val map = best.results.average()
+//            val weights = best.weights
+//            return map to weights
+//        }
+        return bestResult
+    }
 
     fun runStep() {
         (0 until 80).forEach {
 //            (0 until 80).forEachParallelQ {
-
             val balls=  getBalls()
 
+//            val (map, weights, params) = getBestParams(balls)
             val weights = balls.map { it.getParam() }.normalize()
-//            val weights = balls.map { it.getParam() }
+            val map =    getMAP(weights.toNDArray())
 //            val map =   getTotalDiff(weights.toNDArray())
-            val map =   getMAP(weights.toNDArray())
-
 
             val bestAv = bestMap.average()
-            val margin = bestMap.map { it - bestAv }.average()!!
-            val mapMargin = map - bestAv
+            val margin = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign }}.average()!!
+            val mapMargin = (map - bestAv).let { it.pow(2.0) * it.sign }
 
 //            println("$bestAv : $margin : $mapMargin")
+            var chanceOfGenerating = 0.0
 
-            if (mapMargin > margin || mapCounter < 5   ) {
+//            if (mapCounter >= 10) {
+//                val std = Math.sqrt(bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign  } }.sum().absoluteValue / 100.0)
+//                if (std > 0.0) {
+//                    val averageDeviation = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign } }.average()
+//                    val myDist2 = NormalDistribution(averageDeviation, std)
+//                    val mapDiff = map - bestAv
+//                    chanceOfGenerating = myDist2.probability(mapDiff - std, mapDiff + std)
+//                }
+//            }
+
+
+//            if (mapMargin > margin || mapCounter < 5 || ThreadLocalRandom.current().nextDouble() <= chanceOfGenerating   ) {
+                if (mapMargin > margin || mapCounter < 5    ) {
 //            if (ThreadLocalRandom.current().nextDouble() <= ((map * 1.2) / bestMap.average()).defaultWhenNotFinite(1.0)) {
 
 
 
 
-                balls.forEach { it.reward(4.0) }
+                if (mapCounter >= 5) {
+                    rewarded = true
+//                    balls.zip(params).forEach { (ball, param) -> ball.reward(4.0, rewardParam = param) }
+                        balls.zip(weights).forEach { (ball, param) -> ball.reward(4.0, rewardParam = param) }
+                }
 //                balls.forEachIndexed {index, _ -> covers[index].rewardSpawn() }
-                val lowestIndex = bestMap.withIndex().minBy { it.value }!!.index
-                bestMap[lowestIndex] = map
+//                val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { it.pow(2.0).times(it.sign) } }!!.index
+                    val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { 1.0 / it.pow(2.0).times(it.sign) } }!!.index
+//                    val lowestIndex = bestMap.withIndex().minBy { it.value }!!.index
+//                if (map > bestMap[lowestIndex]) {
+//                    bestMap[lowestIndex] = map
+//                }
+                    bestMap[lowestIndex] = map
+//                    bestMap[ThreadLocalRandom.current().nextInt(bestMap.size)] = map
 
 //                bestMap[mapCounter % 20] = map
                 if (highest < map) {
@@ -139,11 +240,13 @@ class StochasticMAP(val models: List<L2RModel>) {
     fun search() {
         var curHighest = highest
         (0 until 300).forEach {
-            runStep()
+                runStep()
             println("Highest: $highest")
-            if (highest == curHighest) {
-                newGeneration(40)
+//            if (highest == curHighest) {
+            if (!rewarded) {
+                 newGeneration(40)
             }
+            rewarded = false
             curHighest = highest
         }
 

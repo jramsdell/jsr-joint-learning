@@ -4,6 +4,7 @@ import org.apache.commons.math3.distribution.BetaDistribution
 import org.apache.commons.math3.distribution.NormalDistribution
 import utils.misc.sharedRand
 import utils.stats.weightedPick
+import utils.stats.weightedPicks
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.absoluteValue
 import kotlin.math.pow
@@ -38,6 +39,12 @@ class Cover() {
             .apply { curBall = this }
     }
 
+    fun draws(nTimes: Int): List<Ball> {
+        return balls.map { it to  it.vote() }
+            .toMap()
+            .weightedPicks(nTimes)
+    }
+
     fun rewardSpawn() {
         val child = curBall.spawnBall()
         curBall.reward(4.0)
@@ -69,6 +76,8 @@ class Cover() {
         val generation = (0 until children).flatMap {
             val ball = draw().spawnBall()
             listOf(ball)  }
+//        val generation = draws(children).map { it.spawnBall() }
+
 
 
         balls.clear()

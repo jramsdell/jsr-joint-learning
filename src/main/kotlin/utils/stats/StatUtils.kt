@@ -63,6 +63,27 @@ fun<A> Map<A, Double>.weightedPick(): A {
     return cumSum.find { it.second >= rValue }!!.first
 }
 
+fun<A> Map<A, Double>.weightedPicks(nTimes: Int): ArrayList<A> {
+    var total = 0.0
+    val cumSum = map { total += it.value; it.key to total }
+    var picks = (0 until nTimes).map { ThreadLocalRandom.current().nextDouble(0.0, total) }.sorted()
+    val draws = ArrayList<A>()
+    cumSum.forEach { (a, prob) ->
+        if (picks.isEmpty()) {
+            return draws
+        }
+        val lastIndex = picks.withIndex().findLast { pickValue -> prob >= pickValue.value }?.index ?: -1
+
+        if (lastIndex > -1) {
+            (0 until lastIndex + 1).forEach { draws.add(a) }
+            picks = picks.dropLast(lastIndex + 1)
+        }
+
+
+    }
+    return draws
+}
+
 
 fun Double.defaultWhenNotFinite(default: Double = 0.0): Double = if (!isFinite()) default else this
 // Convenience function (turns NaN and infinite values into 0.0)

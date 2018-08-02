@@ -17,6 +17,8 @@ fun<A> printTime(label: String = "Time", f: () -> A): A {
     return result!!
 }
 
+fun Any.println() = println(this)
+
 // I don't know why the hell they don't have an identity function..
 fun <A> identity(it: A): A = it
 
