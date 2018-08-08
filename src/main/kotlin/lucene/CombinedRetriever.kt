@@ -15,6 +15,7 @@ import java.io.BufferedWriter
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import utils.AnalyzerFunctions
+import utils.lucene.flatSectionIntermediatePaths
 import utils.lucene.foldOverSection
 import utils.lucene.getTypedSearcher
 import utils.misc.PID
@@ -90,26 +91,13 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                 val index = indObject.index
                 val page = indObject.value
                 val queryStr = createQueryString(page, emptyList())
-                createQueryContainer(queryStr, page.pageId, index, page)
-            }
+//                createQueryContainer(queryStr, page.pageId, index, page)
+                createSectionQueryContainer(queryStr, page.pageId, index * 100, page)
+            }.flatten()
 
 
 
     private fun createSectionContainers(query: String, qid: Int): List<SectionContainer> {
-//        var tokens = AnalyzerFunctions.createTokenList(query, useFiltering = true,
-//                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-
-//        if (tokens.size == 1) {
-//            val topParagraph = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field, true, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-//                .run { paragraphSearcher.search(this, 1).scoreDocs.firstOrNull()?.let { paragraphSearcher.getIndexDoc(it.doc) } }
-//            if (topParagraph != null) {
-//                tokens = tokens + topParagraph.unigrams().split(" ").countDuplicates().maxBy { it.value }!!.key
-//            }
-//        }
-
-//        val q = FieldQueryFormatter()
-//            .addWeightedQueryTokens(query, IndexFields.FIELD_BIGRAM)
-//            .createBooleanQuery()
 
         val q = AnalyzerFunctions.createQuery(query, field = IndexFields.FIELD_UNIGRAM.field,
                 analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED,
@@ -136,39 +124,6 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
         return sections
     }
 
-    private fun createParagraphContainersFromSections(query: String, qid: Int,
-                                              sections: List<SectionContainer>): List<ParagraphContainer> {
-        val pids = sections.flatMap { sContainer -> sContainer
-            .doc()
-            .paragraphs().split(" ") }
-            .toSet()
-            .toList()
-
-        val seen = HashSet<Int>()
-        val paragraphScoreDocs = pids.mapNotNull { pid ->
-            val q = AnalyzerFunctions.createQuery(pid, IndexFields.FIELD_PID.field)
-            paragraphSearcher.search(q, 1).scoreDocs.firstOrNull()
-        }.filter { seen.add(it.doc) }
-
-        val paragraphs = paragraphScoreDocs
-            .shuffled(sharedRand)
-            .mapIndexed { index, sd ->
-            val doc = paragraphSearcher.getIndexDoc(sd.doc)
-            ParagraphContainer(
-                    query = query,
-                    qid = qid,
-                    name = doc.pid(),
-                    searcher = paragraphSearcher,
-                    docId = doc.docId,
-                    isRelevant = paragraphRelevancies[query]?.get(doc.pid()) ?: 0,
-                    index = index,
-                    score = 0.0,
-                    docType = IndexType.PARAGRAPH::class.java
-            )
-        }
-
-        return paragraphs
-    }
 
     private fun createEntityContainersFromParagraphs(query: String, qid: Int,
                                               paragraphs: List<ParagraphContainer>): List<EntityContainer> {
@@ -202,14 +157,12 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
     }
 
     private fun createOriginParagraphContainers(query: String, qid: Int, page: Data.Page): List<ParagraphContainer> {
-//        val q = AnalyzerFunctions.createQuery(query, IndexFields.FIELD_UNIGRAM.field, useFiltering = true,
-//                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-        //1629
 
         val queries = page.flatSectionPaths()
             .map {  query + " " + it.map { it.heading }.joinToString(" ") }
         val total = queries.joinToString(" ")
         val tQueries = queries + listOf(total)
+
         val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
 
         val scoreDocs = tQueries.flatMap { qString ->
@@ -220,6 +173,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                 .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
                 .createBooleanQuery()
 //            val q = AnalyzerFunctions.createQuery(qString, IndexFields.FIELD_TEXT.field, useFiltering = true)
+//            val q = AnalyzerFunctions.createQuery(qString, IndexFields.FIELD_TEXT_STEMMED.field, useFiltering = true)
             paragraphSearcher.search(q, 30).scoreDocs.toList() }
             .distinctBy { scoreDoc -> scoreDoc.doc  }
 
@@ -240,6 +194,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
         return paragraphs
 
     }
+
 
     private fun createContextEntityContainers(query: String, qid: Int,
                                                      paragraphs: List<ParagraphContainer>): List<ContextEntityContainer> {
@@ -311,6 +266,56 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
             }
         return entities
     }
+    private fun createSectionQueryContainer(query: String, queryId: String, qid: Int, page: Data.Page): List<QueryContainer> {
+        val sectionHeaders = page.flatSectionPaths().map { page.pageId + "/" + it.map { it.headingId }.joinToString("/") }
+
+        val sections: List<SectionContainer> = emptyList()
+        val paragraphs = createOriginParagraphContainers(queryId, qid, page)
+        val entities = createEntityContainersFromParagraphs(queryId, qid, paragraphs)
+
+        val sectionPaths = page.flatSectionPaths()
+            .map { sp ->
+                listOf(query) + sp.map { it.heading}
+            }
+
+
+//        return (listOf(page.pageId) + sectionHeaders).distinct().mapIndexed { offset, q ->
+        return page.flatSectionIntermediatePaths().mapIndexed { offset, q ->
+            val relTest = { id: String -> paragraphRelevancies[q]?.get(id)  ?: 0 }
+            val entRelTest = { id: String -> entityRelevancies[q]?.get(id.toLowerCase())  ?: 0 }
+            val newParas = paragraphs.map { it.cloneSelf(q, relTest, offset + qid) }
+            val newEnts = entities.map { it.cloneSelf(q, entRelTest, offset + qid) }
+
+            val qd = QueryData(
+                    entitySearcher = entitySearcher,
+                    paragraphSearcher = paragraphSearcher,
+                    sectionSearcher = sectionSearcher,
+                    contextEntitySearcher = contextEntitySearcher,
+                    originSearcher = originParagraphSearcher,
+                    originParagraphContainers = emptyList(),
+                    paragraphContainers = newParas,
+                    sectionContainers = emptyList(),
+                    entityContainers = newEnts,
+                    contextEntityContainers = emptyList(),
+                    sectionPaths = sectionPaths,
+                    isJoint = false,
+                    queryString = q )
+
+            QueryContainer(
+                    query = q,
+                    paragraphs = newParas,
+                    originParagraphs = emptyList(),
+                    entities = newEnts,
+                    sections = emptyList(),
+                    contextEntities = emptyList(),
+                    queryData = qd,
+                    jointDistribution = JointDistribution.createEmpty() )
+
+        }
+
+
+    }
+
 
     private fun createQueryContainer(query: String, queryId: String, qid: Int, page: Data.Page): QueryContainer {
         val sections = createSectionContainers(queryId, qid)

@@ -3,6 +3,7 @@ package experiment
 
 import lucene.indexers.IndexFields
 import lucene.indexers.IndexerStream
+import lucene.indexers.QuickAndDirtyAnnotator
 import lucene.indexers.QuickAndDirtyParagraphIndexer
 import lucene.parsers.ExtractorStream
 import lucene.parsers.TrecCarQrelGenerator
@@ -27,9 +28,10 @@ class ExtractorApp(resources: HashMap<String, Any>) {
 //            extractor.addParagraphIndexer()
 //            extractor.run()
 
-            val extractor = QuickAndDirtyParagraphIndexer()
+//            val extractor = QuickAndDirtyAnnotator("/speedy/jsc57/data/unprocessedAllButBenchmark.cbor")
+            val extractor = QuickAndDirtyParagraphIndexer().run()
 //            val extractor = TrecCarQrelGenerator()
-            extractor.run()
+//            extractor.run()
             return
         }
 

@@ -7,6 +7,7 @@ import experiment.NormType
 import experiment.NormType.*
 import features.shared.SharedFeature
 import info.debatty.java.stringsimilarity.NormalizedLevenshtein
+import jdk.nashorn.internal.parser.Token
 import khttp.patch
 import language.GramAnalyzer
 import language.GramStatType
@@ -29,6 +30,7 @@ import lucene.indexers.boostedTermQuery
 import lucene.indexers.termQuery
 import org.apache.lucene.search.BooleanClause
 import org.apache.lucene.search.BooleanQuery
+import org.apache.lucene.search.BoostQuery
 import org.apache.lucene.search.DisjunctionMaxQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
 import org.apache.lucene.util.QueryBuilder
@@ -140,19 +142,62 @@ object EntityRankingFeatures {
 //    }
 
 
-    // 1519 / 2904
-    private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
-
-            val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
-                    analyzerType = ANALYZER_ENGLISH_STOPPED)
-            val fq = FieldQueryFormatter()
-            val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
-
-            entityContainers.forEachIndexed { index, container ->
-                val score = entitySearcher.explainScore(fieldQuery, container.docId)
-                sf.entityScores[index] = score
-            }
+    private fun queryField(qd: QueryData, sf: SharedFeature, field: IndexFields, firstOnly: Boolean = true): Unit = with(qd) {
+        queryFieldCombo(qd, sf, field)
+//        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true,
+//                analyzerType = ANALYZER_ENGLISH_STOPPED)
+//        val fq = FieldQueryFormatter()
+//        val fieldQuery = fq.addWeightedQueryTokens(tokens, field).createBooleanQuery()
+//        val scores = entitySearcher.searchToScoreMap(fieldQuery, 4000)
+//
+//        entityContainers.forEachIndexed { index, container ->
+//            sf.entityScores[index] = scores[container.docId] ?: 0.0
+//        }
     }
+
+
+    private fun queryFieldCombo(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
+        val elements = queryString.split("/")
+        val topLevel = AnalyzerFunctions.createTokenList(elements.last(), useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
+        val builder = BooleanQuery.Builder()
+
+        topLevel.forEach { token ->
+            builder.add(field.boostedTermQuery(token, 1.0), BooleanClause.Occur.MUST)
+        }
+        val fieldQuery1 = builder.build()
+
+//        val scores1 = paragraphSearcher.searchToScoreMap(fieldQuery1, 4000)
+//        paragraphContainers.forEachIndexed { index, container ->
+//            val score = scores1[container.docId] ?: 0.0
+//            sf.paragraphScores[index] += score
+//        }
+
+        val builder2 = BooleanQuery.Builder()
+        val tokens = AnalyzerFunctions.createTokenList(queryString, useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
+        tokens.forEach { token ->
+            builder2.add(field.boostedTermQuery(token, 1.0), BooleanClause.Occur.SHOULD)
+        }
+
+
+        val fieldQuery2 = builder2.build()
+//        val scores2 = paragraphSearcher.searchToScoreMap(fieldQuery2, 4000)
+//        paragraphContainers.forEachIndexed { index, container ->
+//            val score = scores2[container.docId] ?: 0.0
+//            sf.paragraphScores[index] += score
+//        }
+
+        val comboQuery = BooleanQuery.Builder()
+            .add(BoostQuery(fieldQuery1, .25555711777636486f), BooleanClause.Occur.SHOULD)
+            .add(BoostQuery(fieldQuery2, 0.7444428822236351f), BooleanClause.Occur.SHOULD)
+//            .add(fieldQuery2, BooleanClause.Occur.MUST)
+            .build()
+        val scores = entitySearcher.searchToScoreMap(comboQuery, 4000)
+        entityContainers.forEachIndexed { index, container ->
+            val score = scores[container.docId] ?: 0.0
+            sf.entityScores[index] += score
+        }
+    }
+
 
     private fun queryFieldDisjunction(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
         val queries = qd.sectionPaths.map { sp ->
@@ -267,7 +312,7 @@ object EntityRankingFeatures {
             .toMap()
 
         entityContainers.mapIndexed {  index, entityContainer ->
-//            val score = entitySearcher.explainScore(documentQuery, entityContainer.docId )
+            //            val score = entitySearcher.explainScore(documentQuery, entityContainer.docId )
             val score = scores[entityContainer.docId] ?: 0.0
             sf.entityScores[index] = score
         }

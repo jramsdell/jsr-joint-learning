@@ -3,6 +3,7 @@ package utils.lucene
 import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
 import edu.unh.cs.treccar_v2.Data
+import java.util.*
 
 private enum class DecodeDataType{
     UNICODE_ARRAY, BYTE_ARRAY
@@ -44,6 +45,23 @@ private fun foldOverSection(f: (String, Data.Section, List<Data.Paragraph>) -> U
             f(path, cur, content)
         cur.childSections.forEach { child -> foldOverSection(f, child, path + "/" + child.heading, useFilter) }
     }
+}
+
+fun Data.Page.flatSectionIntermediatePaths(): List<String> {
+    val pMap = HashSet<String>()
+    val sections = flatSectionPaths().groupBy { it.first().headingId }
+        .forEach { grouping ->
+            val topLevel = grouping.key
+            grouping.value.forEach { path ->
+                (0 .. path.size).forEach { subIndex ->
+                    pMap += (listOf(pageId) + path.subList(0, subIndex).map { it.headingId }).joinToString("/")
+                }
+            }
+
+
+        }
+    pMap += pageId
+    return pMap.sortedBy { it }
 }
 
 @Suppress("UNCHECKED_CAST")

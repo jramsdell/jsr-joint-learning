@@ -61,9 +61,10 @@ object AnalyzerFunctions {
             AnalyzerType.ANALYZER_STANDARD_STOPPED  -> standardAnalyzerStopped
         }
 
-        val replaceNumbers = """(\d+|enwiki:)""".toRegex()
+        val replaceNumbers = """(\d+|enwiki:|%)""".toRegex()
         val finalQuery =
-                if (useFiltering) query.replace(replaceNumbers, "").replace("/", " ")
+//                if (useFiltering) query.replace(replaceNumbers, "").replace("/", " ")
+                    if (useFiltering) query.replace("enwiki:", "").replace("%20", " ")
                 else query
 
 

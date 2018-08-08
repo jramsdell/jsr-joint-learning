@@ -83,6 +83,7 @@ class QuickAndDirtyParagraphIndexer() {
         FIELD_WINDOWED_BIGRAM.setTextField(doc, windowed)
         val tokens = AnalyzerFunctions.createTokenList(paragraph.textOnly, ANALYZER_ENGLISH_STOPPED)
         FIELD_TRIGRAM.setTextField(doc, getTrigram(tokens))
+        FIELD_TEXT_STEMMED.setTextField(doc, tokens.joinToString(" "))
         FIELD_WINDOWED_BIGRAM_3.setTextField(doc, getWindowed(tokens, 3))
         FIELD_WINDOWED_BIGRAM_4.setTextField(doc, getWindowed(tokens, 4))
         FIELD_WINDOWED_BIGRAM_6.setTextField(doc, getWindowed(tokens, 6))
@@ -123,6 +124,7 @@ class QuickAndDirtyParagraphIndexer() {
 
     fun run() {
         val corpusStream = File("/home/jsc57/data/corpus/paragraphCorpus/dedup.articles-paragraphs.cbor")
+//        val corpusStream = File("/home/jsc57/data/corpus/paragraphCorpus/dedup.articles-paragraphs.cbor")
             .inputStream()
             .buffered()
             DeserializeData.iterableParagraphs(corpusStream)

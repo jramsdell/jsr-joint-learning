@@ -1,5 +1,6 @@
 package learning.deep.stochastic
 
+import kotlinx.coroutines.experimental.channels.actor
 import learning.L2RModel
 import lucene.RanklibReader
 import org.apache.commons.math3.distribution.NormalDistribution
@@ -25,16 +26,25 @@ import kotlin.math.sign
 import kotlin.system.measureTimeMillis
 
 
-class StochasticMAP(val models: List<L2RModel>) {
+class StochasticSplineMAP(val models: List<L2RModel>) {
     val nFeatures = models.first().features.columns()
-    val covers = (0 until nFeatures).map { NormalCover().apply { createBalls() } }
 
-    val nCandidates = 10
+    val actors = (0 until 5).map {
+        (0 until nFeatures).map { NormalCover().apply {
+            val nBalls = (0 until 40).map { Ball(location = ThreadLocalRandom.current().nextDouble(), radius = 0.01) }
+                .sortedBy { it.location }
+            balls.addAll(nBalls)
+            linkBalls()
+        } }
+    }
+
+    val covers = (0 until 5).map { NormalCover().apply { createBalls() } }
+
+    val nCandidates = 5
     val bestMap = (0 until nCandidates).map { -999999.9 }.toArrayList()
     var iterations = 0
     var mapCounter = 0
     val paramHistory = (0 until nFeatures).map { ArrayList<Double>() }.toArrayList()
-    val pHist = ArrayList<List<Double>>()
 
 
     fun getAP(model: L2RModel, weights: INDArray): Double {
@@ -77,7 +87,11 @@ class StochasticMAP(val models: List<L2RModel>) {
 
     fun getBalls() = covers.pmap { it.draw() }
 
-    fun newGeneration(nChildren: Int) = covers.forEachParallelQ { cover -> cover.newGeneration(children = nChildren) }
+    fun newGeneration(nChildren: Int)  {
+        covers.forEachParallelQ { cover -> cover.newGeneration(children = nChildren) }
+        actors.forEachParallelQ { covers -> covers.forEach { cover -> cover.newGeneration(children = nChildren)  } }
+
+    }
 
     var highest = -99999.0
 
@@ -100,65 +114,40 @@ class StochasticMAP(val models: List<L2RModel>) {
     fun runStep() {
         (0 until 80).forEach {
             val balls=  getBalls()
-            val weights = balls.mapIndexed { index, ball ->
-                ball.getParam()
-            }.normalize()
-                .run {
-                    if (mapCounter >= nCandidates + 10) {
-                        zip(pHist[ThreadLocalRandom.current().nextInt(pHist.size)]).map {
-                            (p1, p2) -> (p1 + p2) / 2.0 } }
-                    else
-                        this
-                }
+//            val weights = balls.map { it.getParam() }.normalize()
+            val actorWeights = balls.mapIndexed { index, ball -> ball.getParam() }.normalize()
+            val paramBalls = actors.map { it.map { it.draw() } }
+            val paramWeights = paramBalls.map { it.map { it.getParam() } }
+
+            val weights = actorWeights.zip(paramWeights).map { (aWeight, pList)  ->
+                pList.map { it * aWeight } }
+                .reduce { acc, list -> acc.zip(list).map { (l1, l2) -> l1 + l2 }  }
+                .map { it / actors.size }
+
             val map =    getMAP(weights.toNDArray())
 
             val bestAv = bestMap.average()
             val margin = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign }}.average()!!
             val mapMargin = (map - bestAv).let { it.pow(2.0) * it.sign }
 
-            var chanceOfGenerating = 0.0
-
-            if (mapCounter >= 15 + nCandidates) {
-                val std = Math.sqrt(bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign  } }.sum().absoluteValue / 5.0)
-//                val std = Math.sqrt(bestMap.map { (it - bestAv).let { it.pow(2.0)  } }.sum().absoluteValue / 5.0)
-                if (std > 0.0) {
-//                    val averageDeviation = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign } }.average()
-//                    val averageDeviation = bestMap.map { (it - bestAv).let { it.pow(2.0) * it.sign } }.average()
-                    val myDist2 = NormalDistribution(margin, std)
-//                    val mapDiff = map - bestAv
-//                    chanceOfGenerating = myDist2.probability(mapDiff - std, mapDiff + std)
-                    chanceOfGenerating = myDist2.getInvDist(map)
-                }
-
-            }
-
-            if (mapMargin > margin)
-                chanceOfGenerating = 1.0 - chanceOfGenerating
-            else chanceOfGenerating = 0.0
-
-            if (mapCounter < nCandidates || ThreadLocalRandom.current().nextDouble() <= chanceOfGenerating   ) {
-//            if (mapMargin > margin || mapCounter < nCandidates || ThreadLocalRandom.current().nextDouble() <= chanceOfGenerating   ) {
-//            if (mapMargin > margin || mapCounter < nCandidates    ) {
-//            if (ThreadLocalRandom.current().nextDouble() <= ((map * 1.2) / bestMap.average()).defaultWhenNotFinite(1.0)) {
+            if (mapMargin > margin || mapCounter < nCandidates    ) {
                 if (mapCounter >= nCandidates) {
-                    var rewardAmount = 4.0
-//                    if (mapCounter >= 20) {
-//                        rewardAmount += 4.0 * (1.0 - chanceOfGenerating)
-//                    }
-                    balls.zip(weights).forEach { (ball, param) -> ball.reward(rewardAmount, rewardParam = param) }
-                }
-//                    paramHistory.zip(weights).forEach { (v1, v2) -> v1.add(v2) }
 
-//                balls.forEachIndexed {index, _ -> covers[index].rewardSpawn() }
-//                val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { it.pow(2.0).times(it.sign) } }!!.index
-//                    val lowestIndex = bestMap.withIndex().minBy { (it.value - bestAv).let { 1.0 / it.pow(2.0).times(it.sign) } }!!.index
+                    var rewardAmount = 4.0
+
+                    balls.zip(actorWeights).forEach { (ball, param) -> ball.reward(rewardAmount, rewardParam = param) }
+                    paramBalls.zip(paramWeights).forEach { (pBalls, pWeights) ->
+                        pBalls.zip(pWeights).forEach { (ball, param) -> ball.reward(rewardAmount, rewardParam = param, origin = param) }
+                    }
+//                    balls.zip(weights).forEach { (ball, param) -> ball.reward(rewardAmount, rewardParam = param) }
+
+                }
+
                 val lowestIndex = bestMap.withIndex().minBy { it.value }!!.index
                 bestMap[lowestIndex] = map
 
                 if (highest < map) {
                     println("$map : ${getMAP(weights.toNDArray())}")
-//                    println(balls.map { it.shift })
-                    pHist.add(weights)
                     highest = map
                     println(weights)
                     println()
@@ -166,47 +155,18 @@ class StochasticMAP(val models: List<L2RModel>) {
                 }
                 mapCounter += 1
             } else {
-                balls.forEach { it.penalize(0.1) }
+//                balls.forEach { it.penalize(0.1) }
 
-//                if (it == 70) {
-//                    balls
-//                        .asSequence()
-////                        .map { it.beta.alpha to it.beta.beta }
-//                        .map { it.location to it.radius }
-//                        .map { (alpha, beta) -> "($alpha, $beta)" }
-//                        .joinToString(", ")
-//                        .apply { println(this) }
-//
-//                }
+                balls.forEach { it.penalize(0.1) }
+                paramBalls.zip(paramWeights).forEach { (pBalls, pWeights) ->
+                    pBalls.zip(pWeights).forEach { (ball, param) -> ball.penalize(0.1, origin = param) }
+                }
+
+
             }
         }
     }
 
-    fun cov(v1: Int, v2: Int) {
-    }
-
-    fun getCovariances() {
-
-        val means = paramHistory.map { it.average() }
-        val sds = paramHistory.map { it.sd() }
-
-        val expectations = paramHistory.map { it.sum() }
-        paramHistory.withIndex().flatMap { index ->
-            val index1 = index.index
-            val v1 = index.value
-
-            paramHistory.drop(index1 + 1).mapIndexed { offset, v2 ->
-                val index2 = index1 + offset + 1
-                val total = v1.zip(v2).sumByDouble { (it.first - means[index1]) * (it.second - means[index2]) }
-                val result = total / (sds[index1] * sds[index2])
-                Triple(index1, index2, result)
-            }
-        }.sortedByDescending { it.third }
-            .forEach {
-                println("(${it.first}, ${it.second}) : ${it.third} ")
-            }
-
-    }
 
     fun search() {
         var curHighest = highest
@@ -230,17 +190,13 @@ class StochasticMAP(val models: List<L2RModel>) {
 }
 
 
-fun runStochastic() {
+fun runStochasticSpline() {
     val models = RanklibReader("ptest.txt")
         .createVectors2()
         .filter { it.relevances.any { it.value > 0.0 } }
 
-    val calculator = StochasticMAP(models)
+    val calculator = StochasticSplineMAP(models)
     calculator.search()
 }
 
 
-fun main(args: Array<String>) {
-    runStochastic()
-
-}

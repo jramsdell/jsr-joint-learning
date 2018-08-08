@@ -1,4 +1,5 @@
 import experiment.*
+import lucene.indexers.QuickAndDirtyAnnotator
 import net.sourceforge.argparse4j.ArgumentParsers
 import net.sourceforge.argparse4j.helper.HelpScreenException
 import net.sourceforge.argparse4j.inf.ArgumentParser
@@ -29,6 +30,8 @@ fun run(args: Array<String>) {
 }
 
 fun main(args: Array<String>) {
+//    QuickAndDirtyAnnotator(args[0])
+//        .apply { run() }
     try { run(args) }
     catch (e: HelpScreenException) {  } // Print help without annoying exception
 //    val indexLoc = args[0]

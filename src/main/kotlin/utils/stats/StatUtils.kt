@@ -5,6 +5,8 @@ import utils.nd4j.softMax
 import utils.nd4j.toNDArray
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
+import kotlin.math.absoluteValue
+import kotlin.math.pow
 
 fun <A, B: Number>Map<A, B>.normalize(): Map<A, Double> {
     val total = values.sumByDouble { it.toDouble() }
@@ -14,6 +16,13 @@ fun <A, B: Number>Map<A, B>.normalize(): Map<A, Double> {
 fun Iterable<Double>.normalize(): List<Double> {
     val items = toList()
     val total = items.sum()
+    if (total == 0.0) return items.map { value -> 0.0 }
+    return items.map { value -> value / total }
+}
+
+fun Iterable<Double>.normalize2(): List<Double> {
+    val items = toList()
+    val total = items.map { it.absoluteValue }.sum()
     if (total == 0.0) return items.map { value -> 0.0 }
     return items.map { value -> value / total }
 }
@@ -47,6 +56,11 @@ private fun normZscore(values: List<Double>): List<Double> {
 fun<A> Iterable<A>.countDuplicates(): Map<A, Int> =
         groupingBy(::identity)
             .eachCount()
+
+fun Iterable<Double>.sd(): Double {
+    val mean = average()
+    return Math.sqrt(map { (it - mean).pow(2.0) }.average())
+}
 
 fun<A, B: Comparable<B>> Map<A, B>.takeMostFrequent(n: Int): Map<A, B> =
         entries

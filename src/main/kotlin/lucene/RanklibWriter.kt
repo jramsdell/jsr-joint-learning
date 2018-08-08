@@ -99,7 +99,7 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
             val query = container.query
             container.paragraphs.forEach(ParagraphContainer::rescore)
             container.paragraphs
-                .filter { paragraph -> seen.add(paragraph.name) }
+//                .filter { paragraph -> seen.add(paragraph.name) }
                 .sortedByDescending(ParagraphContainer::score)
                 .forEachIndexed { index, paragraph ->
                     writer.write("${query} Q0 ${paragraph.name} ${index + 1} ${paragraph.score} Paragraph\n")
@@ -296,8 +296,8 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
 
 //        queryContainers.forEach(featureDatabase::writeFeatures)
 //        featureDatabase.writeFeatures(queryContainers)
-        if (!useSavedFeatures)
-            featureDatabase.writeSharedFeatures()
+//        if (!useSavedFeatures)
+//            featureDatabase.writeSharedFeatures()
         file.close()
         onlyEntity.close()
         onlyParagraph.close()

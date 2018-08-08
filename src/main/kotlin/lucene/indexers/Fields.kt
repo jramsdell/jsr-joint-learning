@@ -34,6 +34,7 @@ fun IndexFields.boostedTermQuery(term: String, weight: Double) =
 
 enum class IndexFields(val field: String) {
     FIELD_TEXT("text"),
+    FIELD_TEXT_STEMMED("text_stemmed"),
     FIELD_ABSTRACT("abstract"),
     FIELD_SECTION_TEXT("section_text"),
     FIELD_SECTION_UNIGRAM("section_${GramStatType.TYPE_UNIGRAM.indexField}"),

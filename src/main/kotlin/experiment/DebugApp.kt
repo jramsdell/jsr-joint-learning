@@ -1,8 +1,13 @@
 @file: JvmName("LaunchSparqlDownloader")
 package experiment
 
+import edu.unh.cs.treccar_v2.Data
 import edu.unh.cs.treccar_v2.read_data.DeserializeData
 import learning.deep.stochastic.runStochastic
+import learning.deep.stochastic.runStochasticConditional
+import learning.deep.stochastic.runStochasticPoint
+import learning.deep.stochastic.runStochasticSpline
+import lucene.QuickAndDirtyHierToTree
 import lucene.containers.*
 import lucene.indexers.IndexFields
 import net.sourceforge.argparse4j.inf.Namespace
@@ -66,7 +71,33 @@ class DebugApp(resources: HashMap<String, Any>) {
 //        testNewParData()
 //        testEntityContext()
 //        runTestMap()
-        runStochastic()
+//        runStochastic()
+//        runStochasticConditional()
+//        runStochasticPoint()
+//        runStochasticSpline()
+//        QuickAndDirtyHierToTree("/home/jsc57/data/shared/qrels/hierarchical_entity.qrels")
+//            .run()
+
+        testproblem()
+    }
+
+    fun createQueryString(page: Data.Page, sectionPath: List<Data.Section>): String =
+            page.pageName + sectionPath.joinToString { section -> " " + section.heading  }
+
+    fun testproblem() {
+//        enwiki:Subprime%20mortgage%20crisis/Causes/Governmental%20policies/Policies%20to%20promote%20affordable%20housing
+        DeserializeData.iterableAnnotations(File("/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor-outlines.cbor").inputStream())
+            .withIndex()
+            .forEach { indObject ->
+                val index = indObject.index
+                val page = indObject.value
+                val queryStr = createQueryString(page, emptyList())
+//                createQueryContainer(queryStr, page.pageId, index, page)
+//                val r = page.flatSectionPaths().map { it.map { it.headingId }.joinToString("/") }
+                page.flatSectionIntermediatePaths()
+//                r.forEach { line -> println(line) }
+            }
+
     }
 
     fun testEntityContext() {

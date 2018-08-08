@@ -45,6 +45,19 @@ class DocContainer<out A: IndexType>(var name: String,
         score = features.sumByDouble(FeatureContainer::getAdjustedScore)
     }
 
+    fun cloneSelf(newQuery: String, relevant: (String) -> Int, qidNew: Int): DocContainer<A> =
+            DocContainer(
+                    name = name,
+                    qid = qidNew,
+                    query = newQuery,
+                    searcher = searcher,
+                    index = index,
+                    score = score,
+                    docId = docId,
+                    isRelevant = relevant(name),
+                    docType = docType
+            )
+
 
     override fun toString(): String {
                 return "$isRelevant qid:$qid " +
