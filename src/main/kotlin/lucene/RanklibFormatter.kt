@@ -4,6 +4,7 @@ import browser.BrowserPage
 import browser.BrowserParagraph
 import browser.BrowserSection
 import features.shared.SharedFeature
+import learning.deep.stochastic.GaussianTrie
 import lucene.*
 import lucene.containers.*
 import lucene.indexers.IndexFields
@@ -413,8 +414,69 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //        doPullback(IndexFields.FIELD_UNIGRAM)
         doJointDistribution()
     }
-
     fun finish() {
+        val t = Trie<QueryContainer>(curKey = "")
+        queryContainers.forEach { qc ->
+            val path = qc.query.split("/")
+            t.add(path, qc)
+        }
+        val g = GaussianTrie(t, nFeatures = queryContainers.first().paragraphs.first().features.size)
+        g.descent.search()
+//        println(GaussianTrie(t).getDistances(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights))
+//        println(GaussianTrie(t).getMAP(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights))
+//        println(GaussianTrie(t).getDistances(listOf(1.0, 1.0)))
+//        println(GaussianTrie(t).getMAP(listOf(1.0, 1.0)))
+
+    }
+
+    fun finishQuery() {
+//        val t = Trie<QueryContainer>(curKey = "")
+//        queryContainers.forEach { qc ->
+//            val path = qc.query.split("/")
+//            t.add(path, qc)
+//        }
+//        println(GaussianTrie(t).getMAP(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights))
+
+//        t.traverseBottomUp { path, curNodeKey, d, children ->
+//            d.paragraphs.forEachIndexed { pIndex, p ->
+//                p.rescore()
+//                var score = p.score
+//                var scoreMin = p.score
+//                p.features.clear()
+//                if (children.isNotEmpty()) {
+//                    children.forEach { child ->
+//                        child.data?.let { qc ->
+//                            score = Math.max(score, qc.paragraphs[pIndex].score)
+//                        }
+//                    }
+//                }
+//                p.features.add(FeatureContainer(score, score, 1.0, FeatureEnum.ENTITY_SECTIONS_FIELD))
+//            }
+//        }
+
+//        t.traverseBottomUp { path, curNodeKey, d, children ->
+//            if (children.isNotEmpty())  {
+//                val nParagraphs = d.paragraphs.size
+//                val nFeatures = d.paragraphs.first().features.size
+//
+//                (0 until nFeatures).forEach { fIndex ->
+//                    (0 until nParagraphs).forEach { pIndex ->
+//                        val dFeat = d.paragraphs[pIndex].features[fIndex]
+////                        dFeat.score = 0.0
+////                        dFeat.unnormalizedScore = 0.0
+//                        children.forEach { child ->
+//                            child.data?.let { qc ->
+//                                val cFeat = qc.paragraphs[pIndex].features[fIndex]
+////                                dFeat.score += cFeat.score
+////                                dFeat.unnormalizedScore += cFeat.unnormalizedScore
+//                                dFeat.score = Math.max(dFeat.score, cFeat.score)
+//                                dFeat.unnormalizedScore = Math.max(dFeat.unnormalizedScore, cFeat.unnormalizedScore)
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
     }
 
     fun rebuildSectionQrels(entityQrel: String, paraQrel: String) {

@@ -210,6 +210,12 @@ object DocumentRankingFeatures {
         }
     }
 
+    private fun doIdentity(qd: QueryData, sf: SharedFeature): Unit = with(qd) {
+        paragraphContainers.forEachIndexed { index, pContainer ->
+            sf.paragraphScores[index] = pContainer.isRelevant.toDouble()
+        }
+    }
+
     private fun queryFieldCombo(qd: QueryData, sf: SharedFeature, field: IndexFields): Unit = with(qd) {
         val elements = queryString.split("/")
         val topLevel = AnalyzerFunctions.createTokenList(elements.last(), useFiltering = true, analyzerType = ANALYZER_ENGLISH_STOPPED)
@@ -447,6 +453,9 @@ object DocumentRankingFeatures {
 
     fun addWindowGram(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_BOOSTED_WINDOW, wt, norm)  { qd, sf -> queryField(qd, sf, IndexFields.FIELD_LETTER_3) }
+
+    fun addIdentity(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
+            fmt.addFeature3(DOC_BOOSTED_WINDOW, wt, norm, this::doIdentity)
 
     fun addUnigram2(fmt: KotlinRanklibFormatter, wt: Double = 1.0, norm: NormType = ZSCORE) =
             fmt.addFeature3(DOC_BOOSTED_WINDOW, wt, norm)  { qd, sf -> queryFieldSections(qd, sf, IndexFields.FIELD_UNIGRAM, 2) }

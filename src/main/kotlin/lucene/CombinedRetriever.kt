@@ -165,8 +165,9 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
 
         val weights = listOf(0.9346718895308014 , 0.049745249968994265 , 0.015582860500204451 )
 
-        val scoreDocs = tQueries.flatMap { qString ->
-            val terms = AnalyzerFunctions.createTokenList(qString, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED, useFiltering = true)
+        val scoreDocs = page.flatSectionIntermediatePaths().flatMap { qString ->
+            val comb = qString.split("/").let { it.first() + " " + it.last() }
+            val terms = AnalyzerFunctions.createTokenList(comb, AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED, useFiltering = true)
             val q = FieldQueryFormatter()
                 .addWeightedQueryTokens(terms, IndexFields.FIELD_UNIGRAM, weights[0])
                 .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
@@ -285,6 +286,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
             val entRelTest = { id: String -> entityRelevancies[q]?.get(id.toLowerCase())  ?: 0 }
             val newParas = paragraphs.map { it.cloneSelf(q, relTest, offset + qid) }
             val newEnts = entities.map { it.cloneSelf(q, entRelTest, offset + qid) }
+            val nRel = paragraphRelevancies[q]?.size?.toDouble() ?: 0.0
 
             val qd = QueryData(
                     entitySearcher = entitySearcher,
@@ -309,7 +311,8 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                     sections = emptyList(),
                     contextEntities = emptyList(),
                     queryData = qd,
-                    jointDistribution = JointDistribution.createEmpty() )
+                    jointDistribution = JointDistribution.createEmpty(),
+                    nRel = nRel)
 
         }
 
