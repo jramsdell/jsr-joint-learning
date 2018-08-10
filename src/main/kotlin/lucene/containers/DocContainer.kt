@@ -17,6 +17,7 @@ class DocContainer<out A: IndexType>(var name: String,
                                      var score: Double = 0.0,
                                      val query: String,
                                      var dist: HashMap<String, Double> = HashMap(),
+                                     var dist2: HashMap<Int, Double> = HashMap(),
                                      private val docType: Class<A>) {
     var features = ArrayList<FeatureContainer>()
 
@@ -97,5 +98,6 @@ typealias ParagraphContainer = DocContainer<IndexType.PARAGRAPH>
 typealias EntityContainer = DocContainer<IndexType.ENTITY>
 typealias SectionContainer = DocContainer<IndexType.SECTION>
 typealias ContextEntityContainer = DocContainer<IndexType.CONTEXT_ENTITY>
+typealias ContextSectionContainer = DocContainer<IndexType.CONTEXT_SECTION>
 
 

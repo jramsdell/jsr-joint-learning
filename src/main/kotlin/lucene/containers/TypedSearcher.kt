@@ -43,4 +43,5 @@ typealias EntitySearcher = TypedSearcher<IndexType.ENTITY>
 typealias ParagraphSearcher = TypedSearcher<IndexType.PARAGRAPH>
 typealias SectionSearcher = TypedSearcher<IndexType.SECTION>
 typealias ContextEntitySearcher = TypedSearcher<IndexType.CONTEXT_ENTITY>
+typealias ContextSectionSearcher = TypedSearcher<IndexType.CONTEXT_SECTION>
 

@@ -91,8 +91,9 @@ object AnalyzerFunctions {
                     useFiltering: Boolean = false,
                     analyzerType: AnalyzerType = AnalyzerType.ANALYZER_STANDARD,
                     must: Boolean = false): BooleanQuery {
+        val q2 = query.replace("[ ]+".toRegex(), " ")
 
-        return createTokenList(query, analyzerType, useFiltering)
+        return createTokenList(q2, analyzerType, useFiltering)
             .map { token -> TermQuery(Term(field, token)) }
             .run { buildBooleanQuery(this, must = must) }
     }

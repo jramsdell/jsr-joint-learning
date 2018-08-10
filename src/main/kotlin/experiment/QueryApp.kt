@@ -27,13 +27,15 @@ class QueryApp(val resources: HashMap<String, Any>) {
     val entityIndex: String by resources
     val sectionIndex: String by resources
     val contextEntityIndex: String by resources
+    val contextSectionIndex: String by resources
     val entityQrel: String by resources
     val sectionQrel: String by resources
 
     val out: String by resources
 
     val formatter = KotlinRanklibFormatter(queryPath, indexPath, qrelPath, entityIndex, entityQrel, sectionIndexLoc = sectionIndex,
-            sectionQrelLoc = sectionQrel, contextEntityLoc = contextEntityIndex )
+            sectionQrelLoc = sectionQrel, contextEntityLoc = contextEntityIndex,
+            contextSectionLoc = contextSectionIndex )
         .apply { initialize() }
     val indexer = getIndexSearcher(indexPath)
 
@@ -52,7 +54,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
 
     fun queryEntity(weights: List<Double>? = null) {
-        val norm = NormType.SUM
+        val norm = NormType.ZSCORE
         var i = 0
 
 
@@ -92,7 +94,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 ////
         // 0.1282
 
-        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        EntityRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -292,6 +294,11 @@ class QueryApp(val resources: HashMap<String, Any>) {
                     }
 
                     resource("contextEntityIndex") {
+                        help = "Location to section entity context index."
+                        default = ""
+                    }
+
+                    resource("contextSectionIndex") {
                         help = "Location to section entity context index."
                         default = ""
                     }

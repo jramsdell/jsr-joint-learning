@@ -15,6 +15,7 @@ data class QueryData(
         val sectionSearcher: SectionSearcher,
         val originSearcher: ParagraphSearcher,
         val contextEntitySearcher: ContextEntitySearcher,
+        val contextSectionSearcher: ContextSectionSearcher,
 
         val entityContainers: List<EntityContainer>,
         val paragraphContainers: List<ParagraphContainer>,

@@ -24,6 +24,7 @@ typealias ParagraphDoc = IndexDoc<IndexType.PARAGRAPH>
 typealias EntityDoc = IndexDoc<IndexType.ENTITY>
 typealias SectionDoc = IndexDoc<IndexType.SECTION>
 typealias ContextEntityDoc = IndexDoc<IndexType.CONTEXT_ENTITY>
+typealias ContextSectionDoc = IndexDoc<IndexType.CONTEXT_SECTION>
 
 //val ParagraphDoc.pid: String get() = IndexFields.FIELD_PID.getString(doc)
 fun ParagraphDoc.pid(): String = load(FIELD_PID)
@@ -99,3 +100,18 @@ fun ContextEntityDoc.bigrams() = load(FIELD_BIGRAM)
 fun ContextEntityDoc.windowed() = load(FIELD_WINDOWED_BIGRAM)
 @JvmName("ceName")
 fun ContextEntityDoc.name() = load(FIELD_NAME)
+
+@JvmName("csName")
+fun ContextSectionDoc.name() = load(FIELD_NAME)
+@JvmName("csEntities")
+fun ContextSectionDoc.entities() = load(FIELD_ENTITIES)
+@JvmName("csEntitiesUnigram")
+fun ContextSectionDoc.entitiesUnigram() = load(FIELD_ENTITIES_UNIGRAMS)
+@JvmName("csUnigram")
+fun ContextSectionDoc.unigrams() = load(FIELD_UNIGRAM)
+@JvmName("csBigram")
+fun ContextSectionDoc.bigrams() = load(FIELD_BIGRAM)
+@JvmName("csWindowed")
+fun ContextSectionDoc.windowed() = load(FIELD_WINDOWED_BIGRAM)
+@JvmName("csNeighborSections")
+fun ContextSectionDoc.neighborSections() = load(FIELD_NEIGHBOR_SECTIONS)

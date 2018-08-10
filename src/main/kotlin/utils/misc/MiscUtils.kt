@@ -2,7 +2,26 @@ package utils.misc
 
 import org.apache.commons.math3.random.JDKRandomGenerator
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ThreadLocalRandom
+import kotlin.coroutines.experimental.buildIterator
+import kotlin.coroutines.experimental.buildSequence
 import kotlin.system.measureTimeMillis
+
+fun<A> List<A>.pairwise(): Sequence<Pair<A, A>> {
+    return buildSequence {
+        forEachIndexed { i1, e1 ->
+            (i1 + 1 until size).forEach { i2 ->
+                val e2 = get(i2)
+                yield(e1 to e2)
+            }
+        }
+    }
+}
+
+fun<A> List<A>.sampleRandom(): A {
+    return get(ThreadLocalRandom.current().nextInt(size))
+}
+
 
 fun<A> withTime(f: () -> A): Pair<Long, A> {
     var result: A? = null

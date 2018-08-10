@@ -30,6 +30,7 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createJointDistribution(queryData)
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createExperimental(queryData)
 //    else JointDistribution.createEmpty()
+    var termDist: Map<String, Double> = emptyMap()
 
     fun retrieveFeatures(): Sequence<ExtractedFeature> {
         val nFeatures = paragraphs.firstOrNull()?.features?.size ?: 0

@@ -40,7 +40,8 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                         sectionQrelLoc: String = "",
                         val limit: Int? = null,
                         val isHomogenous: Boolean,
-                        val contextEntitySearcher: ContextEntitySearcher) {
+                        val contextEntitySearcher: ContextEntitySearcher,
+                        val contextSectionSearcher: ContextSectionSearcher) {
 
 
     val originParagraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>("/home/jsc57/projects/jsr-joint-learning/index")
@@ -293,6 +294,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                     paragraphSearcher = paragraphSearcher,
                     sectionSearcher = sectionSearcher,
                     contextEntitySearcher = contextEntitySearcher,
+                    contextSectionSearcher = contextSectionSearcher,
                     originSearcher = originParagraphSearcher,
                     originParagraphContainers = emptyList(),
                     paragraphContainers = newParas,
@@ -337,6 +339,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                 paragraphSearcher = paragraphSearcher,
                 sectionSearcher = sectionSearcher,
                 contextEntitySearcher = contextEntitySearcher,
+                contextSectionSearcher = contextSectionSearcher,
                 originSearcher = originParagraphSearcher,
                 originParagraphContainers = emptyList(),
                 paragraphContainers = paragraphs,

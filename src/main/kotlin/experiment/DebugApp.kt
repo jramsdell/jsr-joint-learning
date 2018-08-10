@@ -78,7 +78,23 @@ class DebugApp(resources: HashMap<String, Any>) {
 //        QuickAndDirtyHierToTree("/home/jsc57/data/shared/qrels/hierarchical_entity.qrels")
 //            .run()
 
-        testproblem()
+        sectionContextTest()
+    }
+
+    fun sectionContextTest() {
+        val searcher = getTypedSearcher<IndexType.CONTEXT_SECTION>("/home/jsc57/speedy/extractions2/section_context/")
+        val testPhrase = AnalyzerFunctions.createQuery("Medicine medical condition", IndexFields.FIELD_UNIGRAM.field, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+        searcher.search(testPhrase, 100).scoreDocs.forEach { sd ->
+            val t = searcher.getIndexDoc(sd.doc)
+            with(t) {
+                println("Name: ${name()}")
+                println("Unigrams: ${unigrams()}")
+                println("Bigrams: ${bigrams()}")
+                println("Neighbors: ${neighborSections()}")
+            }
+
+        }
+
     }
 
     fun createQueryString(page: Data.Page, sectionPath: List<Data.Section>): String =

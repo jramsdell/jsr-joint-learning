@@ -5,6 +5,7 @@ import browser.BrowserParagraph
 import browser.BrowserSection
 import features.shared.SharedFeature
 import learning.deep.stochastic.GaussianTrie
+import learning.deep.stochastic.StochasticUtils
 import lucene.*
 import lucene.containers.*
 import lucene.indexers.IndexFields
@@ -82,7 +83,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                              entityQrelLoc: String = "",
                              sectionIndexLoc: String = "",
                              sectionQrelLoc: String = "",
-                             contextEntityLoc: String = ""
+                             contextEntityLoc: String = "",
+                             contextSectionLoc: String = ""
                              ) {
 
     /**
@@ -100,11 +102,9 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val paragraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>(paragraphIndexLoc)
     val entitySearcher = getTypedSearcher<IndexType.ENTITY>(entityIndexLoc)
     val sectionSearcher  =
-//            if ( sectionIndexLoc == "") paragraphSearcher
              getTypedSearcher<IndexType.SECTION>(sectionIndexLoc)
-
-
     val contextEntitySearcher =  getTypedSearcher<IndexType.CONTEXT_ENTITY>(contextEntityLoc)
+    val contextSectionSearcher = getTypedSearcher<IndexType.CONTEXT_SECTION>(contextSectionLoc)
 
     val ranklibWriter = RanklibWriter(this)
 //        .apply {
@@ -122,6 +122,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val retriever = CombinedRetriever(
                 paragraphSearcher = paragraphSearcher,
                 sectionSearcher = sectionSearcher,
+                contextSectionSearcher = contextSectionSearcher,
                 entitySearcher = entitySearcher,
                 limit = limit,
                 entityQrelLoc = entityQrelLoc,
@@ -421,11 +422,9 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
             t.add(path, qc)
         }
         val g = GaussianTrie(t, nFeatures = queryContainers.first().paragraphs.first().features.size)
-        g.descent.search()
-//        println(GaussianTrie(t).getDistances(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights))
-//        println(GaussianTrie(t).getMAP(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights))
-//        println(GaussianTrie(t).getDistances(listOf(1.0, 1.0)))
-//        println(GaussianTrie(t).getMAP(listOf(1.0, 1.0)))
+//        StochasticUtils.scoreSections(g.tries)
+//        StochasticUtils.filterBySections(g.tries)
+//        g.descent.search()
 
     }
 
