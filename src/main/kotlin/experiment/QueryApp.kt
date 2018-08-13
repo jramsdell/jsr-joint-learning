@@ -76,7 +76,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //        DocumentRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
-//        DocumentRankingFeatures.addBigramExpanded(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addBigramExpanded(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        DocumentRankingFeatures.addWindowGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        DocumentRankingFeatures.addWindowGram2(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        DocumentRankingFeatures.addQuerySpecial(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)

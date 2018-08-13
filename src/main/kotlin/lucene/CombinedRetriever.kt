@@ -148,7 +148,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                     name = doc.name(),
                     searcher = entitySearcher,
                     docId = doc.docId,
-                    isRelevant = entityRelevancies[query]?.get(doc.name().toLowerCase()) ?: 0,
+                    isRelevant = entityRelevancies[query]?.get(doc.name()) ?: 0,
                     index = index,
                     score = 0.0,
                     docType = IndexType.ENTITY::class.java
@@ -288,6 +288,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
             val newParas = paragraphs.map { it.cloneSelf(q, relTest, offset + qid) }
             val newEnts = entities.map { it.cloneSelf(q, entRelTest, offset + qid) }
             val nRel = paragraphRelevancies[q]?.size?.toDouble() ?: 0.0
+            val nRelEntities = entityRelevancies[q]?.size?.toDouble() ?: 0.0
 
             val qd = QueryData(
                     entitySearcher = entitySearcher,
@@ -314,7 +315,8 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                     contextEntities = emptyList(),
                     queryData = qd,
                     jointDistribution = JointDistribution.createEmpty(),
-                    nRel = nRel)
+                    nRel = nRel,
+                    nRelEntities = nRelEntities)
 
         }
 

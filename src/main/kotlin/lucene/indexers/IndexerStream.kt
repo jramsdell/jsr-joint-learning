@@ -76,7 +76,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
     val pageCounter = AtomicInteger()
     val paragraphCounter = AtomicInteger()
 //    val speedy = "/speedy/jsc57/"
-    val speedy = "/home/jsc57/data/backup"
+    val speedy = "/home/jsc57/data/backup/new/"
     val annotationOutput = File(speedy + "/annotations.tsv").bufferedWriter()
     val pageIndex = getIndexWriter("${speedy}extractions/page", mode = IndexWriterConfig.OpenMode.CREATE)
     val sectionIndex = getIndexWriter("${speedy}extractions/section", mode = IndexWriterConfig.OpenMode.CREATE)
@@ -125,26 +125,22 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 
     fun processSectionContext(page: Data.Page) {
         val seenSections = HashMap<String, HashMap<String, ArrayList<String>>>()
-//        val categories = page.pageMetadata.categoryIds.map(::cleanEntity)
-//            .joinToString(" ")
-//            .run { convertToUnigrams(this) }
-//        val inlinks = page.pageMetadata.inlinkIds.map(::cleanEntity)
-//            .joinToString(" ")
-//            .run { convertToUnigrams(this) }
 
         page.foldOverSection { path: String, section: Data.Section, paragraphs: List<Data.Paragraph> ->
-            val heading = section.heading
+            val heading = section.heading.repSpace()
 
             val tokens = AnalyzerFunctions.createTokenList(heading, ANALYZER_ENGLISH_STOPPED)
-                .run {
-                    if (size == 1) this + " " + this
-                    else windowed(2, partialWindows = false).map { bigram ->
-                        bigram.sorted().joinToString(" ")
-                    }
-                }
+//                .run {
+//                    if (size == 1) this + " " + this
+//                    else windowed(2, partialWindows = false).map { bigram ->
+//                        bigram.sorted().joinToString(" ")
+//                    }
+//                }
+
+            val token = tokens.joinToString(" ")
 
 
-            tokens.forEach { token ->
+//            tokens.forEach { token ->
                 val sectionHash = seenSections.computeIfAbsent(token, { HashMap() })
                 sectionHash.computeIfAbsent("inlinks", { ArrayList() }).apply { add(" ") }
                 sectionHash.computeIfAbsent("categories", { ArrayList() }).apply { add(" ") }
@@ -153,7 +149,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     .asSequence()
                     .filter { p -> p.textOnly.length > 100 && !p.textOnly.contains(":") && !p.textOnly.contains("•") }
                     .forEach { paragraph ->
-                    val content = paragraph.textOnly
+                    val content = paragraph.textOnly.repSpace()
                     val entities = paragraph.entitiesOnly.map(::cleanEntity)
 
                     val (unigrams, bigrams, windowed) = getGramsFromContent(content)
@@ -164,7 +160,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     sectionHash.computeIfAbsent("neighbors", { ArrayList() }).apply { addAll(tokens) }
                 }
             }
-        }
+//        }
 
             seenSections.entries.forEach { (section, sectionHash) ->
                 val doc = Document()
@@ -199,22 +195,18 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
             }
     }
 
+    private fun String.repSpace() = this.replace("[ ]+".toRegex(), " ")
+
     fun processEntityContext(page: Data.Page) {
         val seenEntities = HashMap<String, HashMap<String, ArrayList<String>>>()
-//        val categories = page.pageMetadata.categoryIds.map(::cleanEntity)
-//            .joinToString(" ")
-//            .run { convertToUnigrams(this) }
-//        val inlinks = page.pageMetadata.inlinkIds.map(::cleanEntity)
-//            .joinToString(" ")
-//            .run { convertToUnigrams(this) }
 
         page.foldOverSection { path: String, section: Data.Section, paragraphs: List<Data.Paragraph> ->
             paragraphs
                 .asSequence()
                 .filter { p -> p.textOnly.length > 100 && !p.textOnly.contains(":") && !p.textOnly.contains("•") }
                 .forEach { paragraph ->
-                val entities = paragraph.entitiesOnly.map(::cleanEntity)
-                val content = paragraph.textOnly
+                val entities = paragraph.entitiesOnly.map(::cleanEntity).filter { it.length > 3 }
+                val content = paragraph.textOnly.repSpace()
                 val (unigrams, bigrams, windowed) = getGramsFromContent(content)
                 entities.forEach { entity ->
                     val entityHash = seenEntities.computeIfAbsent(entity, { HashMap() })
@@ -223,8 +215,8 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                     entityHash.computeIfAbsent("windowed", { ArrayList() }).apply { add(windowed) }
                     entityHash.computeIfAbsent("sections", { ArrayList() }).apply { addAll(AnalyzerFunctions.createTokenList(section.heading, ANALYZER_ENGLISH_STOPPED)) }
                     entityHash.computeIfAbsent("neighbors", { ArrayList() }).apply { addAll(entities) }
-                    entityHash.computeIfAbsent("inlinks", { ArrayList() }).apply { add(" ") }
-                    entityHash.computeIfAbsent("categories", { ArrayList() }).apply { add(" ") }
+//                    entityHash.computeIfAbsent("inlinks", { ArrayList() }).apply { add(" ") }
+//                    entityHash.computeIfAbsent("categories", { ArrayList() }).apply { add(" ") }
                 }
             }
         }
@@ -337,13 +329,13 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
 
                     val anOutlink = annotations.filter { it in outlinkSet }
                         .joinToString(" ")
-
-                    val anInlink = annotations.filter { it in inlinkSet }
-                        .joinToString(" ")
+//
+//                    val anInlink = annotations.filter { it in inlinkSet }
+//                        .joinToString(" ")
 
                     FIELD_ENTITIES_EXTENDED.setTextField(doc, anOutlink)
-                    FIELD_ENTITIES_INLINKS.setTextField(doc, anInlink)
-
+//                    FIELD_ENTITIES_INLINKS.setTextField(doc, anInlink)
+//
                     annotationOutput.write("${p.pid}\t$anOutlink\n")
 
 
@@ -396,7 +388,7 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
                 .joinToString(" ")
             IndexFields.FIELD_SECTION_HEADING.setTextField(doc, filteredHeading)
             IndexFields.FIELD_SECTION_PATH.setTextField(doc, filteredPath)
-            val text = paragraphs.joinToString("\n") { it.textOnly + "\n" }
+            val text = paragraphs.joinToString("\n") { it.textOnly + "\n" }.replace("[ ]+".toRegex(), " ")
             val (unigrams, bigrams, windowed) = getGramsFromContent(text, 60)
             val childrenIds = paragraphs.joinToString(" "){ it.paraId }
             IndexFields.FIELD_UNIGRAM.setTextField(doc, unigrams)
@@ -416,10 +408,10 @@ class IndexerStream(corpusLocs: List<String>, val chunkSize: Int = 1000) {
         corpusStreams.forEach { corpusStream ->
             DeserializeData.iterableAnnotations(corpusStream)
                 .forEachParallelQ(1000, 120) { page: Data.Page ->
-//                    processSectionContext(page)
+                    processSectionContext(page)
                     processEntityContext(page)
                     processPageIndexers(page)
-                    processSections(page)
+//                    processSections(page)
                     processParagraphs(page)
                     val result = pageCounter.incrementAndGet()
                     println(result)

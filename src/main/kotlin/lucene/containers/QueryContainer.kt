@@ -25,7 +25,7 @@ data class QueryContainer(val query: String, val paragraphs: List<ParagraphConta
                           val entities: List<EntityContainer>, val sections: List<SectionContainer>,
                           var jointDistribution: JointDistribution = JointDistribution.createEmpty(),
                           val originParagraphs: List<ParagraphContainer>,
-                          val nRel: Double = 0.0) {
+                          val nRel: Double = 0.0, val nRelEntities: Double = 0.0) {
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createFromFunctor(queryData)
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createJointDistribution(queryData)
 //    val jointDistribution = if (queryData.isJoint) JointDistribution.createExperimental(queryData)

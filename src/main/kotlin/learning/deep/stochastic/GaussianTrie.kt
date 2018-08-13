@@ -16,7 +16,7 @@ import kotlin.math.pow
 class GaussianTrie(val tries: Trie<QueryContainer>, nFeatures: Int) {
 //    var weights = emptyList<Double>()
 //    val descent = StochasticDescent(nFeatures, (distanceMapper()), onlyPos = true)
-    val descent = StochasticDescent(nFeatures, (normalMapper()), onlyPos = true)
+    val descent = StochasticDescent(nFeatures, (normalMapper()), onlyPos = false)
 //    val descent = StochasticDescent(nFeatures, this::maxMap)
 //    val descent = StochasticDescent(nFeatures, this::getDistances)
 
@@ -262,15 +262,18 @@ class GaussianTrie(val tries: Trie<QueryContainer>, nFeatures: Int) {
         }
     }
 
-    fun runMap(): ArrayList<() -> Double> {
+
+
+    fun runMap(qcAcessor: (QueryContainer) -> List<DocContainer<*>>, nRelAccessor: (QueryContainer) -> Double): ArrayList<() -> Double> {
         val functions = ArrayList<() -> Double>()
 
         tries.traverse { path, curNodeKey, d, children ->
             val f = {
-                val nRel = d.nRel
+                val nRel = nRelAccessor(d)
                 var totalRight = 0.0
                 var apScore = 0.0
-                d.paragraphs.sortedByDescending { it.score }
+                qcAcessor(d)
+                    .sortedByDescending { it.score }
                     .forEachIndexed { rank, p ->
                         totalRight += p.isRelevant
                         if (p.isRelevant > 0.0) {
@@ -335,12 +338,12 @@ class GaussianTrie(val tries: Trie<QueryContainer>, nFeatures: Int) {
         return functions
     }
 
-    fun updateWeights(): ArrayList<(List<Double>) -> Unit> {
+    fun updateWeights(qcAccessor: (QueryContainer) -> List<DocContainer<*>>): ArrayList<(List<Double>) -> Unit> {
         val functions = ArrayList<(List<Double>) -> Unit>()
 
         tries.traverse { path, curNodeKey, d, children ->
             val f = { weights: List<Double> ->
-                d.paragraphs.forEach { paragraph ->
+                qcAccessor(d).forEach { paragraph ->
                     paragraph.score = paragraph.features.zip(weights).sumByDouble { (f, w) -> f.score * w }
                 }
             }
@@ -373,43 +376,34 @@ class GaussianTrie(val tries: Trie<QueryContainer>, nFeatures: Int) {
         return functions
     }
 
-    fun distanceMapper(): (List<Double>) -> Double {
-        val updateFunction = updateWeights()
-//        val addFunction = maxScore()
-        val mapFunction = runMapAtLeaves()
-
-        val f = { weights: List<Double> ->
-            updateFunction.forEachParallel { it(weights) }
-//            assignBest()
-            mapFunction.pmap { it() }.average()
-        }
-
-        return f
-    }
+//    fun distanceMapper(): (List<Double>) -> Double {
+//        val updateFunction = updateWeights()
+////        val addFunction = maxScore()
+//        val mapFunction = runMapAtLeaves()
+//
+//        val f = { weights: List<Double> ->
+//            updateFunction.forEachParallel { it(weights) }
+////            assignBest()
+//            mapFunction.pmap { it() }.average()
+//        }
+//
+//        return f
+//    }
 
     fun normalMapper(): (List<Double>) -> Double {
-        val updateFunction = updateWeights()
-        val mapFunction = getDiscrep()
-        val mapFunction2 = runMap()
+        val accessor = { qc: QueryContainer -> qc.entities }
+        val nRelAccessor = { qc: QueryContainer -> qc.nRelEntities }
+        val updateFunction = updateWeights(accessor)
+        val mapFunction2 = runMap(accessor, nRelAccessor)
+
         return { weights: List<Double> ->
             updateFunction.forEachParallel { it(weights) }
 //            val res2 = Math.log(mapFunction2.pmap { it() }.average())
 //            res1 + res2
-            mapFunction.pmap { it() }.flatten().average()
+            mapFunction2.pmap { it() }.average()
         }
     }
 
-    fun functorMapper(): (List<Double>) -> Double {
-        val updateFunction = updateWeights()
-        val scoreMapper = assignScoreMaps()
-        val mapFunction = runMapAtLeaves()
-        return { weights: List<Double> ->
-            updateFunction.forEachParallel { it(weights) }
-            scoreMapper.forEachParallel { it() }
-            marginalScoreMap()
-            mapFunction.pmap { it() }.average()
-        }
-    }
 
 
     fun getDistances(weights: List<Double>): Double {

@@ -424,7 +424,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val g = GaussianTrie(t, nFeatures = queryContainers.first().paragraphs.first().features.size)
 //        StochasticUtils.scoreSections(g.tries)
 //        StochasticUtils.filterBySections(g.tries)
-//        g.descent.search()
+        g.descent.search()
 
     }
 

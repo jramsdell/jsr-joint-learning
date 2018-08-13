@@ -22,6 +22,10 @@ fun<A> List<A>.sampleRandom(): A {
     return get(ThreadLocalRandom.current().nextInt(size))
 }
 
+fun<A> Iterable<A>.printEach() {
+    forEach { println(it) }
+}
+
 
 fun<A> withTime(f: () -> A): Pair<Long, A> {
     var result: A? = null
