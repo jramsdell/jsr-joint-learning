@@ -174,6 +174,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
                 .addWeightedQueryTokens(terms, IndexFields.FIELD_BIGRAM, weights[1])
                 .addWeightedQueryTokens(terms, IndexFields.FIELD_WINDOWED_BIGRAM, weights[2])
                 .createBooleanQuery()
+
 //            val q = AnalyzerFunctions.createQuery(qString, IndexFields.FIELD_TEXT.field, useFiltering = true)
 //            val q = AnalyzerFunctions.createQuery(qString, IndexFields.FIELD_TEXT_STEMMED.field, useFiltering = true)
             paragraphSearcher.search(q, 30).scoreDocs.toList() }

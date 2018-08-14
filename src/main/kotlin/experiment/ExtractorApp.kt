@@ -23,15 +23,15 @@ class ExtractorApp(resources: HashMap<String, Any>) {
         val doExtract = true
         if (doExtract) {
 
-            val extractor = IndexerStream(corpusFiles)
-            extractor.addPageIndexer()
-            extractor.addParagraphIndexer()
-            extractor.run()
+//            val extractor = IndexerStream(corpusFiles)
+//            extractor.addPageIndexer()
+//            extractor.addParagraphIndexer()
+//            extractor.run()
 
 //            val extractor = QuickAndDirtyAnnotator("/speedy/jsc57/data/unprocessedAllButBenchmark.cbor")
 //            val extractor = QuickAndDirtyParagraphIndexer().run()
-//            val extractor = TrecCarQrelGenerator()
-//            extractor.run()
+            val extractor = TrecCarQrelGenerator()
+            extractor.run()
             return
         }
 

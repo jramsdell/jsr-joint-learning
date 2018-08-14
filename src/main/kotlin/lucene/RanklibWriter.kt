@@ -15,7 +15,7 @@ import utils.misc.sharedRand
 import java.io.File
 
 
-class RanklibWriter(val formatter: KotlinRanklibFormatter) {
+class RanklibWriter(val formatter: KotlinRanklibFormatter, val omitArticleLevel: Boolean) {
 
     fun writeHtml() = with(formatter) {
         queryContainers.forEachIndexed { qIndex, qContainer ->
@@ -76,7 +76,9 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
 
     fun writeEntitiesToFile(queries: List<QueryContainer>) {
         val writer = File("entity_results.run").bufferedWriter()
-        queries.forEach { container ->
+        queries
+            .run { if (omitArticleLevel) filter { it.query.contains("/") } else this }
+            .forEach { container ->
             val seen = HashSet<String>()
             val query = container.query
             container.entities.forEach(EntityContainer::rescore)
@@ -94,7 +96,9 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter) {
 
     fun writeParagraphsToFile(queries: List<QueryContainer>) {
         val writer = File("paragraph_results.run").bufferedWriter()
-        queries.forEach { container ->
+        queries
+            .run { if (omitArticleLevel) filter { it.query.contains("/") } else this }
+            .forEach { container ->
             val seen = HashSet<String>()
             val query = container.query
             container.paragraphs.forEach(ParagraphContainer::rescore)

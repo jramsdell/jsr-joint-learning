@@ -13,7 +13,8 @@ import java.io.File
 
 
 class TrecCarQrelGenerator() {
-    val outlineCbor = "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor"
+//    val outlineCbor = "/home/jsc57/data/benchmark/benchmarkY1/benchmarkY1-train/train.pages.cbor"
+    val outlineCbor = "/home/jsc57/data/benchmark/test/benchmarkY1/benchmarkY1-test/test.pages.cbor"
         .run { File(this).inputStream().buffered() }
 
     val linker = SpotlightEntityLinker("/home/jsc57/projects/jsr-joint-learning/spotlight_server")
@@ -25,15 +26,15 @@ class TrecCarQrelGenerator() {
                 .replace(" ", "_")
 
     fun run() {
-        val qrelOut = File("hierarchical_qrels.qrels").bufferedWriter()
+        val qrelOut = File("test_hierarchical_qrels.qrels").bufferedWriter()
         DeserializeData.iterableAnnotations(outlineCbor)
             .forEach { page: Data.Page ->
                 val qtitle = cleanEntity(page.pageId).replace("enwiki:", "")
-                qrelOut.write("${page.pageId} 0 $qtitle 1\n")
+                qrelOut.write("${page.pageId} 0 enwiki:$qtitle 1\n")
 
                 val outlinks = page.outlinks()
 
-                page.foldOverSection { path, section, paragraphs ->
+                page.foldOverSection(useFilter = false) { path, section, paragraphs ->
                     val entities = paragraphs.pmap { paragraph ->
                         val text = paragraph.textOnly
 
@@ -48,7 +49,7 @@ class TrecCarQrelGenerator() {
 
                     val qrelPath = "enwiki:${path.replace(" ", "%20")}"
                     sectionEntities.forEach { entity ->
-                        qrelOut.write("$qrelPath 0 ${entity.replace("_", "%20")} 1\n")
+                        qrelOut.write("$qrelPath 0 enwiki:${entity.replace("_", "%20")} 1\n")
                     }
                 }
             }

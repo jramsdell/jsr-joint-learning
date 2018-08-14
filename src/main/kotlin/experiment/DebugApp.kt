@@ -75,10 +75,10 @@ class DebugApp(resources: HashMap<String, Any>) {
 //        runStochasticConditional()
 //        runStochasticPoint()
 //        runStochasticSpline()
-//        QuickAndDirtyHierToTree("/home/jsc57/data/shared/qrels/hierarchical_entity.qrels")
-//            .run()
+        QuickAndDirtyHierToTree("/home/jsc57/data/benchmark/test/benchmarkY1/benchmarkY1-test/test.pages.cbor-hierarchical.entity.qrels")
+            .run()
 
-        sectionContextTest()
+//        sectionContextTest()
     }
 
     fun sectionContextTest() {

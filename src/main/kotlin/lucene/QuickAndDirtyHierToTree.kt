@@ -28,7 +28,7 @@ class QuickAndDirtyHierToTree(val qrelLoc: String) {
             }
         }
 
-        val out = File("tree_entity.qrels").bufferedWriter()
+        val out = File("test_tree_entity.qrels").bufferedWriter()
 
         paths.entries
             .filter { it.key.size > 1 }

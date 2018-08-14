@@ -7,18 +7,18 @@ import org.jgrapht.*
 import org.jgrapht.alg.util.UnorderedPair
 import org.jgrapht.graph.*
 import utils.misc.*
-import utils.stats.defaultWhenNotFinite
-import utils.stats.normalize
-import utils.stats.weightedPick
+import utils.stats.*
+import kotlin.math.absoluteValue
 
 
 class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
     val hubs = HashMap<String, Double>()
     val edgeHubs = HashMap<Pair<String, String>, Double>()
-//    val edgeHubs = HashMap<Pair<String, String>, Double>()
     var hubDistances = HashMap<String, HashMap<String, Double>>()
     val nodeDists = HashMap<String, Pair<String, Double>>()
     var otherDists = HashMap<Pair<String, String>, Pair<Pair<String, String>, Double>>()
+    val algorithms = GraphScorerAlgorithms(this)
+    var finalNodeDists: HashMap<StringPair, HashMap<StringPair, Double>> = HashMap()
 
     fun diffusionWalk() {
         val nodes = g.vertexSet().toList()
@@ -126,7 +126,7 @@ class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
                     counter += 1
                     seen.add(it.first.first)
                     seen.add(it.first.second)
-                    if (counter > 40)
+                    if (counter > 200)
                         return
                 }
 
@@ -186,7 +186,7 @@ class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
         counter.normalize()
             .entries
             .sortedByDescending { it.value }
-            .take(50)
+            .take(300)
             .forEach { (hub, weight) ->
                 edgeHubs[hub] = weight
             }
@@ -220,24 +220,24 @@ class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
 //        nodeMaps.entries.sortedBy { it.value.values.first() }
 //            .forEach { println(it) }
 
-        val finalNodeDists: HashMap<String, HashMap<String, Double>> = hubs.keys.map { it to HashMap<String, Double>() }.toHashMap()
-        (0 until 2).forEach {
-            finalNodeDists.keys.forEach { hub ->
-                val targets = finalNodeDists[hub]!!
-                val wee = targets.entries.map { it.key to it.value }.toMap()
-                wee.forEach { (other, dist) ->
-                    val otherDist = finalNodeDists[other]!!
-                    otherDist.entries.forEach { (otherOther, dist2) ->
-                        if (otherOther !in targets)
-                            targets[otherOther] = 999999.0
-                        targets[otherOther] = Math.min(targets[otherOther]!!, dist2 + dist)
-                    }
-                }
-            }
-        }
-
-        finalNodeDists.forEach { node -> node.value[node.key] = 0.0 }
-        hubDistances = finalNodeDists
+//        finalNodeDists = hubs.keys.map { it to HashMap<String, Double>() }.toHashMap()
+//        (0 until 2).forEach {
+//            finalNodeDists.keys.forEach { hub ->
+//                val targets = finalNodeDists[hub]!!
+//                val wee = targets.entries.map { it.key to it.value }.toMap()
+//                wee.forEach { (other, dist) ->
+//                    val otherDist = finalNodeDists[other]!!
+//                    otherDist.entries.forEach { (otherOther, dist2) ->
+//                        if (otherOther !in targets)
+//                            targets[otherOther] = 999999.0
+//                        targets[otherOther] = Math.min(targets[otherOther]!!, dist2 + dist)
+//                    }
+//                }
+//            }
+//        }
+//
+//        finalNodeDists.forEach { node -> node.value[node.key] = 0.0 }
+//        hubDistances = finalNodeDists
 
 //        nodeMaps.entries.filter { it.value.size > 1 }
 //            .forEach { (key, results) ->
@@ -254,6 +254,34 @@ class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
 //            .forEach { println(it) }
     }
 
+    fun computeDistanceFromNodeMap(nodeMaps: HashMap<StringPair, HashMap<StringPair, ArrayList<Double>>>) {
+        finalNodeDists =
+                nodeMaps.map { it.key to it.value.map { it.key to it.value.first() }.toHashMap() }.toHashMap()
+
+
+//        val hDists = edgeHubs.keys.map { it to HashMap<StringPair, ArrayList<Double>>() }.toMap()
+        val hDists = edgeHubs.keys.map { it to HashMap<StringPair, Double>() }.toMap()
+
+        finalNodeDists.forEach { (_, dists) ->
+            dists.entries.toList().pairwise().forEach { (e1, e2) ->
+                val e1Dist = hDists[e1.key]!!
+                val e2Dist = hDists[e2.key]!!
+                val dist = Math.abs(e1.value - e2.value)
+
+//                e1Dist.computeIfAbsent(e2.key) { ArrayList() }.add(dist)
+//                e2Dist.computeIfAbsent(e1.key) { ArrayList() }.add(dist)
+                e1Dist.putMin(e2.key, dist)
+                e2Dist.putMin(e1.key, dist)
+            }
+        }
+
+        hDists.forEach { (k,v) ->
+//            val sorted = v.entries.map { it.key to it.value.average() }
+            val sorted = v.entries.map { it.key to it.value }
+                .sortedBy { it.second }
+            println("$k : $sorted")
+        }
+    }
 
     fun computeBranchingEdgeDistances() {
         val nodeMaps = HashMap<Pair<String, String>, HashMap<Pair<String, String>, ArrayList<Double>>>()
@@ -280,7 +308,6 @@ class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
 //                            val node = nextNode to walker.getShortestPathLength(nextNode)
 //                            if (prev.first != node.first) {
                             if (nextEdge != null) {
-//                                val key = if(isReversed) node.first to prev.first else prev.first to node.first
                                 val key = g.getEdgeSource(nextEdge) to g.getEdgeTarget(nextEdge)
                                 if (key !in nodeMaps)
                                     nodeMaps[key] = HashMap()
@@ -307,43 +334,65 @@ class GraphScorer(val g: Graph<String, DefaultWeightedEdge>) {
                 else if (reverse == 0.0)
                     results.add(forward)
                 else
-                    results.add(Math.min(forward, reverse))
+//                    results.add(Math.min(forward, reverse))
+                results.add(Math.min(forward, reverse))
+//                results.add(forward * reverse)
+//                results.add((forward + reverse) / 2.0)
             }
         }
         nodeMaps.entries.sortedBy { it.value.values.map { it.first() }.min()!! }
             .asSequence()
-//            .filter { it.value.size == 4 && it.value.values.take(2).let { vals -> vals[0] != vals[1] } }
             .take(100)
             .toList()
-//            .map { it.key to it.value.entries.sortedBy { it.value } }
             .map { it.key to it.value.entries.sortedBy { it.value.first() }.map { it.key to it.value.first().toString().take(20) } }
             .printEach()
+
         println(nodeMaps.filter { it.value.size > 1 }.size)
         println(nodeMaps.size)
         println(g.edgeSet().size)
+
         val union = UnionFind<String>(hubs.keys)
         nodeMaps.forEach { (k, nMap) ->
             otherDists[k] = nMap.minBy { it.value.first() }!!.let { result -> result.key to result.value.first() }
         }
-//        nodeMaps.entries.sortedBy { it.value.values.first() }
-//            .forEach { println(it) }
 
-//        val finalNodeDists: HashMap<String, HashMap<String, Double>> = hubs.keys.map { it to HashMap<String, Double>() }.toHashMap()
+        (0 until 10).forEach {
+            println("=========")
+            val test = nodeMaps.keys.toList().sampleRandom()
+            println("Target: $test")
+            val testValues = nodeMaps[test]!!.map { it.key to it.value.first() }.toMap().inverseNormalize()
+            nodeMaps.entries.map { (k, v) ->
+                val vMap = v.map { it.key to it.value.first() }.toMap().inverseNormalize()
+                val r = testValues.entries.sumByDouble { (a, b) ->
+                    //                val bd = b.first()
+                    (b - (vMap[a] ?: 0.0)).absoluteValue
+//                (bd - (v[a]?.first() ?: 0.0)).absoluteValue
+                }
+                k to r
+            }.sortedBy { it.second }
+                .take(10)
+                .printEach()
+        }
+
+//        computeDistanceFromNodeMap(nodeMaps)
+
+//        finalNodeDists =
+//                nodeMaps.map { it.key to it.value.map { it.key to it.value.first() }.toHashMap() }.toHashMap()
+//
+//        val edges = edgeHubs.keys.toList()
 //        (0 until 2).forEach {
-//            finalNodeDists.keys.forEach { hub ->
-//                val targets = finalNodeDists[hub]!!
-//                val wee = targets.entries.map { it.key to it.value }.toMap()
-//                wee.forEach { (other, dist) ->
-//                    val otherDist = finalNodeDists[other]!!
-//                    otherDist.entries.forEach { (otherOther, dist2) ->
-//                        if (otherOther !in targets)
-//                            targets[otherOther] = 999999.0
-//                        targets[otherOther] = Math.min(targets[otherOther]!!, dist2 + dist)
-//                    }
+//            finalNodeDists.keys.forEach { hubKey ->
+//                val hub = finalNodeDists[hubKey]!!
+//                edges.forEach { targetEdge ->
+//                    edges.filter { it in hub && targetEdge in finalNodeDists[it]!! }
+//                        .forEach { neighborEdge ->
+//                            val dist = hub[neighborEdge]!! + finalNodeDists[neighborEdge]!![targetEdge]!!
+//                            hub[targetEdge] = if(targetEdge !in hub) dist else Math.min(dist, hub[targetEdge]!!)
+//                        }
 //                }
 //            }
 //        }
-//
+////
 //        finalNodeDists.forEach { node -> node.value[node.key] = 0.0 }
 //        finalNodeDists.forEach { println("${it.key} : ${it.value}") }
 //        hubDistances = finalNodeDists

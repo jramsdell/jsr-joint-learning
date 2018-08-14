@@ -8,9 +8,22 @@ import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.absoluteValue
 import kotlin.math.pow
 
+fun<K> HashMap<K, Double>.putMin(key: K, v: Double) {
+    put(key, if (!containsKey(key)) v else Math.min(get(key)!!, v))
+}
+
+fun<K> HashMap<K, Double>.putMax(key: K, v: Double) {
+    put(key, if (!containsKey(key)) v else Math.max(get(key)!!, v))
+}
+
 fun <A, B: Number>Map<A, B>.normalize(): Map<A, Double> {
     val total = values.sumByDouble { it.toDouble() }
     return mapValues { (_, value) -> (value.toDouble() / total).defaultWhenNotFinite(0.0) }
+}
+
+fun <A, B: Number>Map<A, B>.inverseNormalize(): Map<A, Double> {
+    val total = values.sumByDouble { it.toDouble() }
+    return mapValues { (_, value) -> (total / value.toDouble()).defaultWhenNotFinite(0.0) }.normalize()
 }
 
 fun Iterable<Double>.normalize(): List<Double> {

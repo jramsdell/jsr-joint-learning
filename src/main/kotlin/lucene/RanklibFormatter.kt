@@ -84,7 +84,8 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
                              sectionIndexLoc: String = "",
                              sectionQrelLoc: String = "",
                              contextEntityLoc: String = "",
-                             contextSectionLoc: String = ""
+                             contextSectionLoc: String = "",
+                             omitArticleLevel: Boolean = false
                              ) {
 
     /**
@@ -106,7 +107,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val contextEntitySearcher =  getTypedSearcher<IndexType.CONTEXT_ENTITY>(contextEntityLoc)
     val contextSectionSearcher = getTypedSearcher<IndexType.CONTEXT_SECTION>(contextSectionLoc)
 
-    val ranklibWriter = RanklibWriter(this)
+    val ranklibWriter = RanklibWriter(this, omitArticleLevel)
 //        .apply {
 //            rebuildSectionQrels(entityQrelLoc, paragraphQrelLoc)
 //            println("GOt it")
@@ -424,7 +425,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         val g = GaussianTrie(t, nFeatures = queryContainers.first().paragraphs.first().features.size)
 //        StochasticUtils.scoreSections(g.tries)
 //        StochasticUtils.filterBySections(g.tries)
-        g.descent.search()
+//        g.descent.search()
 
     }
 

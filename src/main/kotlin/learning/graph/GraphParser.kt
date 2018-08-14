@@ -48,8 +48,8 @@ class GraphParser(val g: Graph<String, DefaultWeightedEdge>) {
     fun build() {
         val loc = "/home/hcgs/Desktop/projects/jsr-joint-learning/resources/paragraphs"
         File(loc).listFiles()
-            .drop(2)
-            .take(1)
+//            .drop(1)
+//            .take(1)
             .forEach { fDir ->
                 println(fDir.name)
                 fDir.listFiles().forEach { file ->
