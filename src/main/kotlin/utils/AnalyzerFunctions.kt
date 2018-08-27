@@ -64,7 +64,9 @@ object AnalyzerFunctions {
         val replaceNumbers = """(\d+|enwiki:|%)""".toRegex()
         val finalQuery =
 //                if (useFiltering) query.replace(replaceNumbers, "").replace("/", " ")
-                    if (useFiltering) query.replace("enwiki:", "").replace("%20", " ")
+                    if (useFiltering) query.replace("enwiki:", "")
+                        .replace("tqa:", "")
+                        .replace("%20", " ")
                         .replace("/", " ")
                 else query
 

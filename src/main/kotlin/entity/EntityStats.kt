@@ -91,17 +91,23 @@ object EntityStats {
     fun doTagMeQuery(content: String, minRho: Double = 0.2): List<Pair<String, Double>> {
         val url = "https://tagme.d4science.org/tagme/tag"
 
-        val json = doIORequest {
-            manager.doPostOrGetRequest(url, data = mapOf("gcube-token" to tok, "text" to content))
-        } ?: return emptyList()
+        try {
+            val json = doIORequest {
+                manager.doPostOrGetRequest(url, data = mapOf("gcube-token" to tok, "text" to content))
+            } ?: return emptyList()
 
-        // Turn results into a JSon array and retrieve linked entities (and their rho values)
-        val results = json.getJSONArray("annotations")
-        return  results
-            .mapNotNull { result -> (result as JSONObject).run {
-                if (getDouble("rho") <= minRho) null
-                else getString("title").replace(" ", "_") to getDouble("rho")
-            } }
+            // Turn results into a JSon array and retrieve linked entities (and their rho values)
+            val results = json.getJSONArray("annotations")
+            return results
+                .mapNotNull { result ->
+                    (result as JSONObject).run {
+                        if (getDouble("rho") <= minRho) null
+                        else getString("title").replace(" ", "_") to getDouble("rho")
+                    }
+                }
+        } catch (e: JSONException) {
+            return emptyList()
+        }
     }
 
     fun doTagMeQuery2(content: String, minRho: Double = 0.2): List<Pair<String, Double>> {

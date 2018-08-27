@@ -67,6 +67,7 @@ class CombinedRetriever(val paragraphSearcher: ParagraphSearcher,
 
     private fun cleanQrelEntry(entry: String) =
             entry.replace("enwiki:", "")
+                .replace("tqa:", "")
                 .replace("%20", "_")
                 .toLowerCase()
 

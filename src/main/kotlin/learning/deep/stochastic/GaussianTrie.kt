@@ -392,15 +392,22 @@ class GaussianTrie(val tries: Trie<QueryContainer>, nFeatures: Int) {
 
     fun normalMapper(): (List<Double>) -> Double {
         val accessor = { qc: QueryContainer -> qc.paragraphs }
+        val accessor2 = { qc: QueryContainer -> qc.entities }
         val nRelAccessor = { qc: QueryContainer -> qc.nRel }
+        val nRelAccessor2 = { qc: QueryContainer -> qc.nRelEntities }
         val updateFunction = updateWeights(accessor)
+        val updateFunction2 = updateWeights(accessor2)
         val mapFunction2 = runMap(accessor, nRelAccessor)
+        val mapFunction3 = runMap(accessor2, nRelAccessor2)
 
         return { weights: List<Double> ->
             updateFunction.forEachParallel { it(weights) }
+            updateFunction2.forEachParallel { it(weights) }
 //            val res2 = Math.log(mapFunction2.pmap { it() }.average())
 //            res1 + res2
-            mapFunction2.pmap { it() }.average()
+            val res1 = mapFunction2.pmap { it() }.average()
+            val res2 = mapFunction3.pmap { it() }.average()
+            (res1 + res2) / 2.0
         }
     }
 

@@ -52,6 +52,36 @@ class QueryApp(val resources: HashMap<String, Any>) {
         DocumentRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(1) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(2) ?: 1.0, norm = norm)
     }
+    fun queryGhettoSDM(weights: List<Double>? = null) {
+        val norm = NormType.ZSCORE
+        var i = 0
+        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+    }
+
+    fun queryKitchenSink(weights: List<Double>? = null) {
+        val norm = NormType.ZSCORE
+        var i = 0
+
+        DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addNormalBM25Combo(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        DocumentRankingFeatures.addBigramExpanded(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addContextUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addContextBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addContextWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+
+
+    }
 
 
     fun queryEntity(weights: List<Double>? = null) {
@@ -65,9 +95,9 @@ class QueryApp(val resources: HashMap<String, Any>) {
         // 0.1633
 
         DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addNormalBM25Combo(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        DocumentRankingFeatures.addBigramExpanded(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addNormalBM25Combo(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addSDMDocument(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        DocumentRankingFeatures.addBigramExpanded(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //        DocumentRankingFeatures.addWindowGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        DocumentRankingFeatures.addWindowGram2(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -86,19 +116,19 @@ class QueryApp(val resources: HashMap<String, Any>) {
 ////
         // 0.1282
 
-        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addContextUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addContextBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addContextWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
-        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addTop25Freq(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addBM25BoostedWindowedBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addCategoriesField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addDisambigField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addInlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addContextUnigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addContextBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addContextWindowed(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addOutlinksField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addRedirectField(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
+//        EntityRankingFeatures.addSections(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 
 //
 //        SectionRankingFeatures.addUnigrams(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -161,30 +191,6 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //        SubObjectFeatures.addPUnigramToContextJointBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
     }
 
-    fun queryScorer(weights: List<Double>? = null) {
-        val norm = NormType.NONE
-//        DocumentRankingFeatures.addDistScore(formatter, norm = norm)
-    }
-
-
-    fun doDb() {
-        val ed = EntityDatabase("index")
-        ed.createEntityDatabase(indexer)
-    }
-
-    fun doEntitySDMDB() {
-        val ed = TagMeSDMIndexer("index")
-        ed.doTagMeIndexing()
-    }
-
-    fun doEntityDebug() {
-//        val ed = TagMeSDMIndexer("index")
-//        ed.debugDocuments()
-//        val ed = EntityDatabase("entity_index_2/")
-//        ed.getEntity("Chocolate")
-    }
-
-
 
     // This part is used to auto-generate required arguments / help for the arg parser.
     companion object {
@@ -241,11 +247,8 @@ class QueryApp(val resources: HashMap<String, Any>) {
                     methods<QueryApp> {
 //                        method("train", "hier_ascent") { trainAscentMethods() }
 
-                        method("query", "do_db") { doDb() }
 
-                        method("query", "index_entity_sdm") { doEntitySDMDB() }
 
-                        method("query", "debug") { doEntityDebug() }
                         method("query", "bm25") { queryBM25() }
                         method("query", "boostPage") { queryBoostPage() }
 
@@ -254,11 +257,14 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         method("query", "entity") { queryEntity(OptimalWeights.ONLY_ENTITY_WITH_NO_SHARED.weights) }
                         method("train", "entity") { queryEntity() }
 
+                        method("query", "ghetto_sdm") { queryGhettoSDM(OptimalWeights.GHETTO_SDM.weights) }
+                        method("query", "kitchen_sink") { queryKitchenSink(OptimalWeights.KITCHEN_SINK.weights) }
+                        method("query", "kitchen_sink_joint") { queryKitchenSink(OptimalWeights.JOINT_KITCHEN_SINK.weights) }
+
                         method("train", "boostPage") { queryBoostPage() }
 
                         method("query", "functor") { queryFunctor(OptimalWeights.PARAGRAPH_FUNCTOR_WEIGHTS.weights) }
                         method("train", "functor") { queryFunctor() }
-                        method("train", "scorer") { queryScorer() }
 
 
                     }

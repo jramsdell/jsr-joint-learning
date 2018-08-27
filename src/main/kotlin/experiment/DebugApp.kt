@@ -75,7 +75,8 @@ class DebugApp(resources: HashMap<String, Any>) {
 //        runStochasticConditional()
 //        runStochasticPoint()
 //        runStochasticSpline()
-        QuickAndDirtyHierToTree("/home/jsc57/data/benchmark/test/benchmarkY1/benchmarkY1-test/test.pages.cbor-hierarchical.entity.qrels")
+//        QuickAndDirtyHierToTree("/home/jsc57/data/benchmark/test/benchmarkY1/benchmarkY1-test/test.pages.cbor-hierarchical.entity.qrels")
+        QuickAndDirtyHierToTree("/home/jsc57/data/shared/qrels/prototype_hierarchical.qrels")
             .run()
 
 //        sectionContextTest()
@@ -224,7 +225,7 @@ class DebugApp(resources: HashMap<String, Any>) {
                 method.getMethod("run", methodName)?.invoke(instance)
             }
 
-            parser.help("Downloads abstracts and pages for topics.")
+            parser.help("Misc commands for debugging purposes.")
             parser.setDefault("func", exec)
             dispatcher.generateArguments(methodType, parser)
         }

@@ -1,16 +1,24 @@
 package learning.graph
 
+import learning.graph.enums.EdgeParseType
+import learning.graph.enums.TextParseType
+import learning.graph.enums.VertexParseType
 import org.jgrapht.Graph
 import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleWeightedGraph
 import utils.AnalyzerFunctions
 import utils.misc.pairwise
 import java.io.File
 
 
-class GraphParser(val g: Graph<String, DefaultWeightedEdge>) {
+class GraphParser(val g: Graph<String, DefaultWeightedEdge>,
+                  val textParseType: TextParseType = TextParseType.TEXT_PARSE_SENTENCE,
+                  val vertexParseType: VertexParseType = VertexParseType.VERTEX_PARSE_UNIGRAM,
+                  val edgeParseType: EdgeParseType = EdgeParseType.EDGE_PARSE_ADJACENT,
+                  val gNum: Int = -1
+) {
 
     fun incrementEdge(v1: String, v2: String) {
+        // No loops
         if (v1 == v2)
             return
         g.addVertex(v1)
@@ -23,50 +31,45 @@ class GraphParser(val g: Graph<String, DefaultWeightedEdge>) {
 
     }
 
-    fun parseUnigram(file: File) {
-        file.readText()
-            .split(".")
-            .forEach { sentence ->
-                val tokens = AnalyzerFunctions.createTokenList(sentence, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-//                tokens.pairwise().forEach { (e1, e2) -> incrementEdge(e1, e2) }
+    fun getTokens(text: String): List<String> {
+        val tokens = AnalyzerFunctions.createTokenList(text,
+                analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
+        return when (vertexParseType) {
+            VertexParseType.VERTEX_PARSE_UNIGRAM -> tokens
+            VertexParseType.VERTEX_PARSE_BIGRAM -> tokens.windowed(2).map { it[0] + "_" + it[1] }
+        }
+    }
+
+    fun assignEdges(tokens: List<String>) {
+        when (edgeParseType) {
+            EdgeParseType.EDGE_PARSE_ADJACENT ->
                 tokens.windowed(2).forEach { t -> incrementEdge(t[0], t[1]) }
-            }
-    }
-
-    fun parseBigram(file: File) {
-        file.readText()
-            .let { sentence ->
-                val tokens = AnalyzerFunctions.createTokenList(sentence, analyzerType = AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED)
-                    .windowed(2, partialWindows = false)
-                    .map { it.joinToString("_") }
-
+            EdgeParseType.EDGE_PARSE_PAIRWISE ->
                 tokens.pairwise().forEach { (e1, e2) -> incrementEdge(e1, e2) }
-//                tokens.windowed(2).forEach { t -> incrementEdge(t[0], t[1]) }
-            }
+        }
     }
+
+    fun parseText(file: File) {
+        val text = file.readText()
+        when (textParseType) {
+            TextParseType.TEXT_PARSE_DOCUMENT -> getTokens(text).run { assignEdges(this) }
+            TextParseType.TEXT_PARSE_SENTENCE -> text.split(".").forEach { sentence ->
+                getTokens(sentence).run { assignEdges(this) } }
+        }
+    }
+
 
     fun build() {
         val loc = "/home/hcgs/Desktop/projects/jsr-joint-learning/resources/paragraphs"
-        File(loc).listFiles()
-//            .drop(1)
-//            .take(1)
+        val fileList = File(loc).listFiles().toList()
+            .run { if (gNum != -1)  drop(gNum).take(1) else this}
+
+        fileList
             .forEach { fDir ->
                 println(fDir.name)
                 fDir.listFiles().forEach { file ->
-                    parseUnigram(file)
+                    parseText(file)
                 }
             }
-
-//        g.edgeSet().toList().map { it to g.getEdgeWeight(it) }
-//            .let { edgeMap ->
-//                edgeMap.sortedByDescending { it.second }
-//                .take(edgeMap.size / 2)
-//                    .let { badEdges -> g.removeAllEdges(badEdges.map { it.first }) }
-//            }
-
-//        val edges = g.edgeSet().toList()
-//        val total = edges.sumByDouble { edge -> g.getEdgeWeight(edge) }
-//        edges.forEach { edge -> g.setEdgeWeight(edge,g.getEdgeWeight(edge) / total) }
     }
-
 }

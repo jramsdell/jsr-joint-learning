@@ -10,13 +10,14 @@ fun buildParser(): ArgumentParser {
     val mainParser: ArgumentParser = ArgumentParsers.newFor("program").build()
     val subparsers: Subparsers = mainParser.addSubparsers()
 
-    ProximityIndexerApp.addExperiments(subparsers)
     LuceneIndexerApp.addExperiments(subparsers)
-    QueryApp.addExperiments(subparsers)
-    DebugApp.addExperiments(subparsers)
-    RanklibReaderApp.addExperiments(subparsers)
-    ExtractorApp.addExperiments(subparsers)
-    GroundTruthApp.addExperiments(subparsers)
+//    QueryApp.addExperiments(subparsers)
+//    DebugApp.addExperiments(subparsers)
+//    RanklibReaderApp.addExperiments(subparsers)
+//    ExtractorApp.addExperiments(subparsers)
+//    GroundTruthApp.addExperiments(subparsers)
+//    AnnotationApp.addExperiments(subparsers)
+    SubmissionQueryApp.addExperiments(subparsers)
 
     return mainParser
 }
