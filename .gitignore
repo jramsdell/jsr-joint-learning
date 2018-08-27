@@ -8,12 +8,13 @@
 *.ctxt
 .gradle
 .idea
+test
+lib
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
 # Package Files #
-*.jar
 *.war
 *.ear
 *.zip
