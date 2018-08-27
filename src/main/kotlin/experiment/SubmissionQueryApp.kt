@@ -25,6 +25,7 @@ class SubmissionQueryApp(val resources: HashMap<String, Any>) {
     val queryPath: String by resources
     val entityIndex: String by resources
     val contextEntityIndex: String by resources
+    val omitArticleLevel: String by resources
 
 
     val formatter = KotlinRanklibFormatter(
@@ -33,7 +34,7 @@ class SubmissionQueryApp(val resources: HashMap<String, Any>) {
             entityIndexLoc = entityIndex,
             paragraphQueryLoc = queryPath,
             contextEntityLoc = contextEntityIndex,
-            omitArticleLevel = false )
+            omitArticleLevel = omitArticleLevel == "true" )
         .apply { initialize() }
 
     fun queryBM25() {
@@ -155,6 +156,10 @@ class SubmissionQueryApp(val resources: HashMap<String, Any>) {
                         help = "Location to query (.cbor) outline file."
                     }
 
+                    resource("omitArticle") {
+                        help = ""
+                        default = "false"
+                    }
 
 
 
