@@ -156,7 +156,7 @@ class SubmissionQueryApp(val resources: HashMap<String, Any>) {
                         help = "Location to query (.cbor) outline file."
                     }
 
-                    resource("omitArticle") {
+                    resource("omitArticleLevel") {
                         help = ""
                         default = "false"
                     }
