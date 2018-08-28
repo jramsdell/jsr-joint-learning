@@ -110,7 +110,7 @@ class SubmissionQueryApp(val resources: HashMap<String, Any>) {
                     instance.formatter
                         .apply {
                             ranklibWriter.writeQueriesToFile("out.txt")
-                            ranklibWriter.writeHtml()
+//                            ranklibWriter.writeHtml()
                         }
                 } else {
                     instance.formatter.finish()
