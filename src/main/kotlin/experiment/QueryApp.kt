@@ -224,7 +224,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
                     instance.formatter
                         .apply {
                             ranklibWriter.writeQueriesToFile(instance.out)
-                            ranklibWriter.writeHtml()
+//                            ranklibWriter.writeHtml()
                         }
                 } else {
                     instance.formatter.finish()
