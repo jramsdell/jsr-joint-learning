@@ -68,6 +68,7 @@ enum class FeatureType {
     SECTION
 }
 
+@Suppress("UNCHECKED_CAST")
 /**
  * Class: lucene.KotlinRanklibFormatter
  * Description: Used to apply scoring functions to queries (from .cbor file) and print results as features.
@@ -103,9 +104,13 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
     val paragraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>(paragraphIndexLoc)
     val entitySearcher = getTypedSearcher<IndexType.ENTITY>(entityIndexLoc)
     val sectionSearcher  =
-             getTypedSearcher<IndexType.SECTION>(sectionIndexLoc)
+            if (sectionIndexLoc == "") paragraphSearcher as SectionSearcher
+            else getTypedSearcher<IndexType.SECTION>(sectionIndexLoc)
     val contextEntitySearcher =  getTypedSearcher<IndexType.CONTEXT_ENTITY>(contextEntityLoc)
-    val contextSectionSearcher = getTypedSearcher<IndexType.CONTEXT_SECTION>(contextSectionLoc)
+
+    val contextSectionSearcher =
+            if (contextSectionLoc == "") paragraphSearcher as TypedSearcher<IndexType.CONTEXT_SECTION> else
+            getTypedSearcher<IndexType.CONTEXT_SECTION>(contextSectionLoc)
 
     val ranklibWriter = RanklibWriter(this, omitArticleLevel)
 //        .apply {
@@ -115,7 +120,7 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     val queryContainers = createQueryContainers( paragraphQueryLoc, paragraphQrelLoc, entityQrelLoc, sectionQrelLoc, isHomogenous)
 
-    val featureDatabase = FeatureDatabase2()
+//    val featureDatabase = FeatureDatabase2()
 
     private fun createQueryContainers(queryLocation: String,
                                       paragraphQrelLoc: String, entityQrelLoc: String, sectionQrelLoc: String,
