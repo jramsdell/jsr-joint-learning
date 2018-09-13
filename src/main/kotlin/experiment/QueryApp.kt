@@ -190,6 +190,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
 //        SubObjectFeatures.addPUnigramToContextEntities(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
 //        SubObjectFeatures.addPUnigramToContextJointBigram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
     }
+    
 
 
     // This part is used to auto-generate required arguments / help for the arg parser.

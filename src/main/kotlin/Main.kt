@@ -11,12 +11,12 @@ fun buildParser(): ArgumentParser {
     val subparsers: Subparsers = mainParser.addSubparsers()
 
     LuceneIndexerApp.addExperiments(subparsers)
-//    QueryApp.addExperiments(subparsers)
-//    DebugApp.addExperiments(subparsers)
-//    RanklibReaderApp.addExperiments(subparsers)
-//    ExtractorApp.addExperiments(subparsers)
-//    GroundTruthApp.addExperiments(subparsers)
-//    AnnotationApp.addExperiments(subparsers)
+    QueryApp.addExperiments(subparsers)
+    DebugApp.addExperiments(subparsers)
+    RanklibReaderApp.addExperiments(subparsers)
+    ExtractorApp.addExperiments(subparsers)
+    GroundTruthApp.addExperiments(subparsers)
+    AnnotationApp.addExperiments(subparsers)
     SubmissionQueryApp.addExperiments(subparsers)
 
     return mainParser
