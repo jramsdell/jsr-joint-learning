@@ -10,6 +10,8 @@ import lucene.FeatureType
 import lucene.NormType
 import features.shared.SharedFeature
 import learning.deep.stochastic.GaussianTrie
+import learning.deep.tensorflow.GraphBuilder
+import learning.deep.tensorflow.GraphElement
 import learning.optimization.SimpleDescent
 import lucene.*
 import lucene.containers.*
@@ -22,6 +24,9 @@ import org.apache.lucene.search.BooleanClause
 import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.TermQuery
 import org.nd4j.linalg.api.ndarray.INDArray
+import org.tensorflow.Graph
+import org.tensorflow.Output
+import org.tensorflow.Shape
 import utils.lucene.getTypedSearcher
 import utils.misc.filledArray
 import utils.misc.toArrayList
@@ -65,6 +70,8 @@ class JointRunner(paragraphQueryLoc: String,
         sectionIndexLoc = sectionIndexLoc,
         contextSectionLoc = contextSectionLoc) {
 
+    val graph = Graph()
+    val builder = GraphBuilder(graph)
 
 
     fun<A: CompatabilityFeatureType> addCompatabilityFeature(f: (QueryData, GramMatrix<A>) -> Unit, compatType: A): List<GramMatrix<A>> {
@@ -133,7 +140,64 @@ class JointRunner(paragraphQueryLoc: String,
 //        EntityRankingFeatures.addRedirectField(this, wt = weights?.get(i++) ?: 1.0, norm = norm)
     }
 
+    fun convertCompatabilityMapsToTensor(compats: List<GramContainer<ENTITY_TO_PARAGRAPH>>, weightOutput: GraphElement<Double>) =
+        compats.map { compat ->
+            val nRows = compat.matrices.first().nRows.toLong()
+            val nCols = compat.matrices.first().nCols.toLong()
+            val nFeatures = compat.matrices.size.toLong()
+
+            val dArray = compat.matrices.flatMap { matrix -> matrix.flatten() }
+                .toDoubleArray()
+
+            val t = builder.constantTensor(builder.getName("tensor"), dArray, longArrayOf(nFeatures, nRows, nCols) )
+                .times(weightOutput)
+                .sum(0)
+            t
+        }
+
+    fun convertEntityFeatures(weightOutput: GraphElement<Double>) =
+        queryContainers.map { qc ->
+            val nFeatures = qc.entities.first().features.size.toLong()
+            val nEntities = qc.entities.size.toLong()
+            val dArray = (0 until nFeatures.toInt())
+                .flatMap { index -> qc.entities.map { it.features[index].score } }
+                .toDoubleArray()
+
+            val t = builder.constantTensor(builder.getName("tensor"), dArray, longArrayOf(nFeatures, nEntities) )
+                .times(weightOutput)
+                .sum(0)
+                .lift()
+            t
+        }
+
+    fun createWeightPlaceholder(name: String, shape: Shape): Output<Double> =
+            builder.placeholder<Double>(name, Double::class.javaObjectType, shape)
+
+
+
     fun doTraining() {
+        val gramFeatures = retrieveCompatabilityMaps()
+        addEntityFeatures()
+        val nGramFeatures = gramFeatures.first().matrices.size.toLong()
+        val nEntityFeatures = queryContainers.first().entities.first().features.size.toLong()
+
+        val entityWeights = createWeightPlaceholder("weightEntity", Shape.make(nEntityFeatures, 1))
+            .run { GraphElement(builder, this) }
+        val compatWeights = createWeightPlaceholder("compatWeights", Shape.make(nGramFeatures, 1, 1))
+            .run { GraphElement(builder, this) }
+
+
+        val compatTensors = convertCompatabilityMapsToTensor(gramFeatures, compatWeights)
+        val entityTensors = convertEntityFeatures(entityWeights)
+
+
+        val pushForward = entityTensors.zip(compatTensors)
+            .map { (entity, compat) -> entity * compat }
+
+    }
+
+
+    fun doTraining2() {
         val gramFeatures = retrieveCompatabilityMaps()
         addEntityFeatures()
         val nGramFeatures = gramFeatures.first().matrices.size

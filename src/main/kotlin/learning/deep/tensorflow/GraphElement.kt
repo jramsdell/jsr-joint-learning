@@ -18,7 +18,7 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
             GraphElement(builder = builder, op = builder.binaryOp("Mul", this.op, other.op))
 
     fun pow(base: Double) =
-            builder.unaryOpBuilder("Pow")
+            builder.opBuilder("Pow")
                 .addInput(this.op)
                 .addInput(builder.constantFloat("pow", base).op)
                 .build()
@@ -32,7 +32,7 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
     }
 
     private fun rollUnaryOperator(type: String) =
-            builder.unaryOpBuilder(type)
+            builder.opBuilder(type)
                 .addInput(this.op)
                 .build()
                 .output<T>(0)
@@ -45,9 +45,9 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
     fun neg() = rollUnaryOperator("Neg")
     fun reciprocal() = rollUnaryOperator("Reciprocal")
 
-    fun addN(): GraphElement<T> {
+    fun addN(array: Array<Output<T>>): GraphElement<T> {
         val newOp = builder.g.opBuilder("AddN", builder.getName("AddN"))
-            .addInput(this.op)
+            .addInputList(array)
             .build()
             .output<T>(0)
         return GraphElement(builder, newOp)
@@ -63,8 +63,8 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
                     GraphElement(builder, newOp)
                 }
 
-    private fun<T> reduce(op: Output<T>, type: String): Output<T> {
-        val t = Tensor.create(intArrayOf(0))
+    private fun<T> reduce(op: Output<T>, type: String, index: Int = 0): Output<T> {
+        val t = Tensor.create(intArrayOf(index))
         val reductionIndices = builder.g.opBuilder("Const", builder.getName("indices"))
             .setAttr("dtype", t.dataType())
             .setAttr("value", t)
@@ -72,7 +72,7 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
             .output<Any>(0)
 
         return builder.g.opBuilder(type, builder.getName(type))
-            .setAttr("T", DataType.FLOAT)
+            .setAttr("T", DataType.DOUBLE)
             .setAttr("Tidx", DataType.INT32)
             .addInput(op)
             .addInput(reductionIndices)
@@ -81,7 +81,14 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
 
     }
 
-    fun sum() = GraphElement(builder, reduce(op, "Sum"))
+    fun sum(index: Int = 0) = GraphElement(builder, reduce(op, "Sum", index))
+
+    fun lift() = builder.opBuilder("Pack")
+        .addInputList(arrayOf(op))
+        .setAttr("axis", 1)
+        .build()
+        .output<Double>(0)
+        .let { newOp -> GraphElement(builder, newOp) }
 
     fun sumElement(): GraphElement<T> {
         val nTimes = this.op.shape().numDimensions()
@@ -94,10 +101,10 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
 
 }
 
-fun Tensor<Float>.toFloatArray(): Array<FloatArray> {
+fun Tensor<Double>.toDoubleArray(): Array<DoubleArray> {
     val dim = this.shape()
-    val a = (0 until 2).map { (0 until 2).map { 0.0f }.toFloatArray()}.toTypedArray()
-    this.expect(Float::class.javaObjectType).copyTo(a)
+    val a = (0 until 2).map { (0 until 2).map { 0.0 }.toDoubleArray()}.toTypedArray()
+    this.expect(Double::class.javaObjectType).copyTo(a)
     return a
 }
 
@@ -110,15 +117,18 @@ fun main(args: Array<String>) {
     val final = (e1 + e2).pow(2.5)
         .sqrt()
 
-    val woo = builder.constantTensor("abc", floatArrayOf(1.0f, 2.0f, 3.0f, 4.0f), longArrayOf(2, 2))
-    val woo2 = builder.constantTensor("abc2", floatArrayOf(1.0f, 2.0f, 3.0f, 4.0f), longArrayOf(2, 2))
-    val woo3 = (woo + woo2).softMax().sum()
-    val woo4 = (woo + woo2).softMax().sumElement()
-
-
-    val sesssion = Session(g)
-//    println(sesssion.runner().fetch(woo.op).run().get(0).floatValue())
-//    println(sesssion.runner().fetch(woo3.op).run().get(0).expect(Float::class.javaObjectType).toFloatArray().toList().map { it.toList() })
-    println(sesssion.runner().fetch(woo4.op).run().get(0).expect(Float::class.javaObjectType).floatValue())
+//    val woo = builder.constantTensor("abc", floatArrayOf(1.0f, 2.0f, 3.0f, 4.0f), longArrayOf(2, 2))
+//    val woo2 = builder.constantTensor("abc2", floatArrayOf(1.0f, 2.0f, 3.0f, 4.0f), longArrayOf(2, 2))
+//    val tensorArray = arrayOf(woo, woo2)
+//
+//    val woo3 = (woo + woo2).softMax().sum()
+//    val woo4 = (woo + woo2).softMax().sumElement()
+//    val tArray = builder.tensorArray(arrayOf(woo.op, woo2.op))
+//
+//
+//    val sesssion = Session(g)
+////    println(sesssion.runner().fetch(woo.op).run().get(0).floatValue())
+////    println(sesssion.runner().fetch(woo3.op).run().get(0).expect(Float::class.javaObjectType).toFloatArray().toList().map { it.toList() })
+//    println(sesssion.runner().fetch(woo4.op).run().get(0).expect(Float::class.javaObjectType).floatValue())
 }
 

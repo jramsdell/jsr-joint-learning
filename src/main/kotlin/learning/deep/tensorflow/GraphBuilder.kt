@@ -1,45 +1,20 @@
 package learning.deep.tensorflow
 
+import learning.deep.tensorflow.components.GraphDataFlowComponent
+import learning.graph.containers.GraphData
 import org.tensorflow.*
+import java.nio.DoubleBuffer
 import java.nio.FloatBuffer
 import java.util.concurrent.atomic.AtomicLong
+
 
 class GraphBuilder(val g: Graph) {
     private val uid = AtomicLong(0)
     fun getName(name: String) = name + uid.incrementAndGet()
 
-
-    fun<T> div(op1: Output<T>, op2: Output<T>) =
-            binaryOp("Div", op1, op2)
-
-    fun<T> mul(op1: Output<T>, op2: Output<T>) =
-            binaryOp("Mul", op1, op2)
-
-    fun<T> sub(op1: Output<T>, op2: Output<T>) =
-            binaryOp("Sub", op1, op2)
-
-    fun<T> add(op1: Output<T>, op2: Output<T>) =
-            binaryOp("Add", op1, op2)
+    val dataflow = GraphDataFlowComponent(this, g)
 
 
-//    val zeroSum =   Tensor.create() {
-//        Output reductionIndices =
-//        g.opBuilder("Const", "ReductionIndices")
-//            .setAttr("dtype", t.dataType())
-//            .setAttr("value", t)
-//            .build()
-//            .output(0);
-
-
-//    fun constant(name: String, value: Double) =
-//            Tensor.create<Float>(value.toFloat(), Float::class.javaObjectType)
-//                .run {
-//                    g.opBuilder("Const", name)
-//                        .setAttr("dtype", DataType.fromClass(Float::class.javaObjectType))
-//                        .setAttr("value", this)
-//                        .build()
-//                        .output<Float>(0)
-//                }
 
     fun constantFloat(name: String, value: Double) =
             Tensor.create<Float>(value.toFloat(), Float::class.javaObjectType)
@@ -52,17 +27,51 @@ class GraphBuilder(val g: Graph) {
                     GraphElement(this, op)
                 }
 
-    fun constantTensor(name: String, values: FloatArray, shape: LongArray) =
-            Tensor.create(shape, FloatBuffer.wrap(values))
+    fun constant(name: String, value: Int) =
+            Tensor.create<Int>(value, Int::class.javaObjectType)
                 .let { t ->
                     val op = g.opBuilder("Const", name)
-                        .setAttr("dtype", DataType.fromClass(Float::class.javaObjectType))
+                        .setAttr("dtype", DataType.fromClass(Int::class.javaObjectType))
+                        .setAttr("value", t)
+                        .build()
+                        .output<Int>(0)
+                    GraphElement(this, op)
+                }
+
+    fun constant(name: String, value: Double) =
+            Tensor.create<Double>(value, Double::class.javaObjectType)
+                .let { t ->
+                    val op = g.opBuilder("Const", name)
+                        .setAttr("dtype", DataType.fromClass(Double::class.javaObjectType))
+                        .setAttr("value", t)
+                        .build()
+                        .output<Double>(0)
+                    GraphElement(this, op)
+                }
+
+
+
+    fun constantTensor(name: String, values: DoubleArray, shape: LongArray) =
+            Tensor.create(shape, DoubleBuffer.wrap(values))
+                .let { t ->
+                    val op = g.opBuilder("Const", name)
+                        .setAttr("dtype", DataType.fromClass(Double::class.javaObjectType))
                         .setAttr("value", t)
 //                        .setAttr("shape", longArrayOf(1, 1))
                         .build()
-                        .output<Float>(0)
+                        .output<Double>(0)
                     GraphElement(this, op)
                 }
+
+    fun constantTensor(name: String, t: Tensor<Double>): Output<Double> {
+        val op = g.opBuilder("Const", name)
+            .setAttr("dtype", DataType.fromClass(Double::class.javaObjectType))
+            .setAttr("value", t)
+//                        .setAttr("shape", longArrayOf(1, 1))
+            .build()
+            .output<Double>(0)
+        return op!!
+    }
 
 
     fun<T> placeholder(name: String, classType: Class<*>) =
@@ -78,8 +87,12 @@ class GraphBuilder(val g: Graph) {
                 .build()
                 .output<T>(0)
 
+
     fun tensor(value: Double) =
-            Tensor.create<Float>(value.toFloat(), Float::class.javaObjectType)
+            Tensor.create<Double>(value, Double::class.javaObjectType)
+
+    fun tensor(value: Int) =
+            Tensor.create<Int>(value, Int::class.javaObjectType)
 
     fun tensor() =
             Tensor.create(floatArrayOf(1.0f, 1.0f))
@@ -92,37 +105,12 @@ class GraphBuilder(val g: Graph) {
                 }
 
 
-    fun tensor(shape: LongArray, values: FloatBuffer) =
+    fun tensor(shape: LongArray, values: DoubleBuffer) =
             Tensor.create(shape, values)
 
 
-    private fun<T> reduce(op: Output<T>, type: String): Output<Any> {
-        val t = Tensor.create(intArrayOf(0))
-        val reductionIndices = g.opBuilder("Const", "ReductionIndices" + uid.incrementAndGet().toString())
-            .setAttr("dtype", t.dataType())
-            .setAttr("value", t)
-            .build()
-            .output<Any>(0)
-
-        return g.opBuilder(type, type + uid.incrementAndGet())
-            .setAttr("T", DataType.FLOAT)
-            .setAttr("Tidx", DataType.INT32)
-            .addInput(op)
-            .addInput(reductionIndices)
-            .build()
-            .output<Any>(0)!!
-
-    }
-
-    fun<T> sum(op: Output<T>): Output<Any> = reduce(op, "Sum")
-
-    fun<T> exp(op: Output<T>) =
-            g.opBuilder("Exp", "exp" + uid.incrementAndGet())
-                .addInput(op)
-                .build()
-                .output<T>(0)
-
-    fun<T> mean(op: Output<T>): Output<Any> = reduce(op, "Mean")
+    fun<T> tensorArray(values: Array<Output<T>>) =
+            Tensor.create(values)
 
 
     fun<T> binaryOp(type: String, op1: Output<T>, op2: Output<T>): Output<T> =
@@ -132,7 +120,9 @@ class GraphBuilder(val g: Graph) {
                 .build()
                 .output<T>(0)
 
-    fun unaryOpBuilder(type: String) =
+    fun opBuilder(type: String) =
             g.opBuilder(type, type + uid.incrementAndGet().toString())
+
+
 }
 

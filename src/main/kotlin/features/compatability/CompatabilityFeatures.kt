@@ -59,6 +59,7 @@ data class GramMatrix<A: CompatabilityFeatureType>(val nRows: Int, val nCols: In
     operator fun get(i1: Int, i2: Int): Double = matrix[i1][i2]
     operator fun set(i1: Int, i2: Int, v: Double) { matrix[i1][i2] = v }
     fun normalizeByRowZscore() = (0 until nRows).forEach { row -> matrix[row].normZscore() }
+    fun flatten() = matrix.flatten()
 }
 
 object CompatabilityFeatures {
