@@ -175,7 +175,7 @@ class JointRunner(paragraphQueryLoc: String,
         }
 
     fun createWeightPlaceholder(name: String, shape: Shape): Output<Double> =
-            builder.placeholder<Double>(name, Double::class.javaObjectType, shape)
+            builder.variableCreate<Double>(name, Double::class.javaObjectType, shape)
 
 
 
@@ -186,10 +186,39 @@ class JointRunner(paragraphQueryLoc: String,
         val nGramFeatures = gramFeatures.first().matrices.size.toLong()
         val nEntityFeatures = queryContainers.first().entities.first().features.size.toLong()
 
-        val entityWeights = createWeightPlaceholder("weightEntity", Shape.make(nEntityFeatures, 1))
+        var entityWeights = createWeightPlaceholder("weightEntity", Shape.make(nEntityFeatures, 1))
             .run { GraphElement(builder, this) }
-        val compatWeights = createWeightPlaceholder("weightCompat", Shape.make(nGramFeatures, 1, 1))
+        var compatWeights = createWeightPlaceholder("weightCompat", Shape.make(nGramFeatures, 1, 1))
             .run { GraphElement(builder, this) }
+
+        val fakeEntityWeights = (0 until nEntityFeatures)
+            .map { 1.0 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val fakeEntityWeights2 = (0 until nEntityFeatures)
+            .map { 0.5 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val fakeCompatWeights = (0 until nGramFeatures)
+            .map { 1.0 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val fakeCompatWeights2 = (0 until nGramFeatures)
+            .map { 0.5 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+
+        val boundEntityWeight = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights)
+            .run { builder.constantTensor("t1", this) }
+
+        val boundEntityWeight2 = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights2)
+        val boundCompatWeight = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights)
+            .run { builder.constantTensor("t2", this) }
+        val boundCompatWeight2 = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights2)
+
+
+        entityWeights = entityWeights.variableAssign(boundEntityWeight)
+        compatWeights = compatWeights.variableAssign(boundCompatWeight)
 
 
         val compatTensors = convertCompatabilityMapsToTensor(gramFeatures, compatWeights)
@@ -203,32 +232,15 @@ class JointRunner(paragraphQueryLoc: String,
 
         val result = builder.addN(pushForward)
 
+
+
+
         val session = Session(graph)
 
-        val fakeEntityWeights = (0 until nEntityFeatures)
-            .map { 1.0 }
-            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
 
-        val fakeCompatWeights = (0 until nGramFeatures)
-            .map { 1.0 }
-            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+        val runner = session.runner()
 
-        val fakeEntityWeights2 = (0 until nEntityFeatures)
-            .map { 0.5 }
-            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
-
-        val fakeCompatWeights2 = (0 until nGramFeatures)
-            .map { 0.5 }
-            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
-
-        val boundEntityWeight = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights)
-        val boundCompatWeight = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights)
-        val boundEntityWeight2 = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights2)
-        val boundCompatWeight2 = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights2)
-
-        var final = session.runner()
-            .feed("weightEntity", boundEntityWeight)
-            .feed("weightCompat", boundCompatWeight)
+        var final = runner
             .fetch(result.op)
             .run()
             .get(0)
@@ -236,15 +248,17 @@ class JointRunner(paragraphQueryLoc: String,
 
         println(final)
 
-         final = session.runner()
-            .feed("weightEntity", boundEntityWeight2)
-            .feed("weightCompat", boundCompatWeight2)
-            .fetch(result.op)
+
+
+
+         final = runner
+             .feed(compatWeights.op, boundCompatWeight2)
             .run()
             .get(0)
             .doubleValue()
 
         println(final)
+
 
     }
 

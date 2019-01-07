@@ -95,6 +95,14 @@ class GraphBuilder(val g: Graph) {
                 .build()
                 .output<T>(0)
 
+    fun<T> variableCreate(name: String, classType: Class<*>, shape: Shape) =
+            g.opBuilder("Variable", name)
+                .setAttr("dtype", DataType.fromClass(classType))
+                .setAttr("shape", shape)
+                .build()
+                .output<T>(0)
+
+
 
     fun tensor(value: Double) =
             Tensor.create<Double>(value, Double::class.javaObjectType)

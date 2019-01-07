@@ -92,6 +92,14 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
         return curElement
     }
 
+    fun variableAssign(value: Output<Double>) =
+                builder.opBuilder("Assign")
+                    .addInput(this.op)
+                    .addInput(value)
+                    .build()
+                    .output<Double>(0)
+                    .run { GraphElement(builder, this) }
+
 }
 
 fun Tensor<Double>.toDoubleArray(): Array<DoubleArray> {
