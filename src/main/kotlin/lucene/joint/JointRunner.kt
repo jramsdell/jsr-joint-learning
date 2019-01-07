@@ -177,6 +177,29 @@ class JointRunner(paragraphQueryLoc: String,
     fun createWeightPlaceholder(name: String, shape: Shape): Output<Double> =
             builder.variableCreate<Double>(name, Double::class.javaObjectType, shape)
 
+    fun createRelevantPassageTensors() =
+            queryContainers.map { qc ->
+                val dArray = qc.paragraphs.map { if (it.isRelevant > 0) 1.0 else 0.0 }
+                    .toDoubleArray()
+
+                val t = builder.constantTensor(builder.getName("tensor"), dArray, longArrayOf(dArray.size.toLong()))
+                t
+            }
+
+
+
+    fun updateEntityWeights(weights: List<Double>, session: Session, op: Output<*>): Session.Runner {
+        val buffer = DoubleBuffer.wrap(weights.toDoubleArray())
+        val t = builder.tensor(longArrayOf(weights.size.toLong(), 1), buffer)
+        return session.runner().feed(op, t)!!
+
+    }
+
+    fun updateCompatWeights(weights: List<Double>, session: Session, op: Output<*>): Session.Runner {
+        val buffer = DoubleBuffer.wrap(weights.toDoubleArray())
+        val t = builder.tensor(longArrayOf(weights.size.toLong(), 1, 1), buffer)
+        return session.runner().feed(op, t)!!
+    }
 
 
 
@@ -191,12 +214,10 @@ class JointRunner(paragraphQueryLoc: String,
         var compatWeights = createWeightPlaceholder("weightCompat", Shape.make(nGramFeatures, 1, 1))
             .run { GraphElement(builder, this) }
 
+        val relevantPassages = createRelevantPassageTensors()
+
         val fakeEntityWeights = (0 until nEntityFeatures)
             .map { 1.0 }
-            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
-
-        val fakeEntityWeights2 = (0 until nEntityFeatures)
-            .map { 0.5 }
             .run { DoubleBuffer.wrap(this.toDoubleArray()) }
 
         val fakeCompatWeights = (0 until nGramFeatures)
@@ -206,15 +227,18 @@ class JointRunner(paragraphQueryLoc: String,
         val fakeCompatWeights2 = (0 until nGramFeatures)
             .map { 0.5 }
             .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+            .run { builder.tensor(longArrayOf(nGramFeatures, 1, 1), this) }
+
+        val fakeCompatWeights3 = (0 until nGramFeatures)
+            .map { 0.2 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+            .run { builder.tensor(longArrayOf(nGramFeatures, 1, 1), this) }
 
 
         val boundEntityWeight = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights)
             .run { builder.constantTensor("t1", this) }
-
-        val boundEntityWeight2 = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights2)
         val boundCompatWeight = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights)
             .run { builder.constantTensor("t2", this) }
-        val boundCompatWeight2 = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights2)
 
 
         entityWeights = entityWeights.variableAssign(boundEntityWeight)
@@ -226,18 +250,15 @@ class JointRunner(paragraphQueryLoc: String,
 
 
         val pushForward = entityTensors.zip(compatTensors)
-            .map { (entity, compat) -> entity * compat }
-            .map { it.sumElement().op }
+            .map { (entity, compat) -> (entity * compat).log().mean(0) }
+            .zip(relevantPassages)
+            .map { (computation, rel) -> (rel * computation).sumElement().op }
+//            .map { it.sumElement().op }
             .toTypedArray()
 
         val result = builder.addN(pushForward)
 
-
-
-
         val session = Session(graph)
-
-
         val runner = session.runner()
 
         var final = runner
@@ -246,20 +267,59 @@ class JointRunner(paragraphQueryLoc: String,
             .get(0)
             .doubleValue()
 
-        println(final)
+//        println(final)
+//
+//        final = runner.feed(compatWeights.op, fakeCompatWeights2)
+//            .run()
+//            .get(0)
+//            .doubleValue()
+//
+//        println(final)
+//
+//
+//        final = session.runner().feed(compatWeights.op, fakeCompatWeights3)
+//            .fetch(result.op)
+//            .run()
+//            .get(0)
+//            .doubleValue()
+//
+//        println(final)
 
 
+        val bE = { weights: List<Double> -> entityLossFun(weights, session, result.op, entityWeights.op)}
+        val bC = { weights: List<Double> -> compatLossFun(weights, session, result.op, compatWeights.op)}
 
+        val entityDescender = SimpleDescent(nFeatures = nEntityFeatures.toInt(), scoreFun = bE, winnow = false)
+        val gramDescender = SimpleDescent(nFeatures = nGramFeatures.toInt(), scoreFun = bC, winnow = false)
 
-         final = runner
-             .feed(compatWeights.op, boundCompatWeight2)
+        (0 until 10).forEach {
+            entityDescender.search(20) { weights -> println(weights)  }
+            println()
+            println(getMAP(matrices = gramFeatures))
+            println()
+
+            gramDescender.search(10) { weights -> println(weights)  }
+            println()
+            println(getMAP(matrices = gramFeatures))
+            println()
+        }
+
+    }
+
+    fun entityLossFun(weights: List<Double>, session: Session, resultOp: Output<Double>, op: Output<*>): Double {
+        return updateEntityWeights(weights, session, op)
+            .fetch(resultOp)
             .run()
             .get(0)
             .doubleValue()
+    }
 
-        println(final)
-
-
+    fun compatLossFun(weights: List<Double>, session: Session, resultOp: Output<Double>, op: Output<*>): Double {
+        return updateCompatWeights(weights, session, op)
+            .fetch(resultOp)
+            .run()
+            .get(0)
+            .doubleValue()
     }
 
 
@@ -302,11 +362,8 @@ class JointRunner(paragraphQueryLoc: String,
             println()
             println(getMAP(matrices = gramFeatures))
             println()
-
-
-
         }
-        ranklibWriter.writeParagraphsToFile(queryContainers, false)
+//        ranklibWriter.writeParagraphsToFile(queryContainers, false)
 
 
 //        SimpleDescent(nFeatures = nEntityFeatures, scoreFun = entityScoreFunction, winnow = false)

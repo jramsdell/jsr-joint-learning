@@ -1,5 +1,6 @@
 package learning.deep.tensorflow
 
+import learning.deep.tensorflow.components.GradientComponent
 import learning.deep.tensorflow.components.GraphDataFlowComponent
 import learning.graph.containers.GraphData
 import org.tensorflow.*
@@ -13,6 +14,7 @@ class GraphBuilder(val g: Graph) {
     fun getName(name: String) = name + uid.incrementAndGet()
 
     val dataflow = GraphDataFlowComponent(this, g)
+    val gradients = GradientComponent(this, g)
 
     fun addN(array: Array<Output<Double>>): GraphElement<Double> {
         val newOp = g.opBuilder("AddN", getName("AddN"))
@@ -34,6 +36,16 @@ class GraphBuilder(val g: Graph) {
                         .output<Float>(0)
                     GraphElement(this, op)
                 }
+
+
+//    fun gradientDescent(ref: Output<*>) =
+//            opBuilder("ApplyGradientDescent")
+//                .addInput(ref)
+//                .addInput(constant(getName("alpha"), 0.01).op)
+//                .addInput(constant(getName("delta"), 0.01).op)
+
+    fun gradientDescent(ref: Output<*>) =
+            opBuilder("ApplyGradientDescent")
 
     fun constant(name: String, value: Int) =
             Tensor.create<Int>(value, Int::class.javaObjectType)

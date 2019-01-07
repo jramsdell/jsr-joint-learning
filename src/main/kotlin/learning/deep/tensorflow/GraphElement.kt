@@ -17,6 +17,21 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
     operator fun times(other: GraphElement<T>) =
             GraphElement(builder = builder, op = builder.binaryOp("Mul", this.op, other.op))
 
+    fun asString() =
+            builder.opBuilder("AsString")
+                .addInput(this.op)
+                .build()
+                .output<String>(0)
+                .run { GraphElement(builder, this) }
+
+    fun print() =
+            builder.opBuilder("Print")
+                .addInput(this.op)
+                .addInputList(arrayOf(this.op))
+                .build()
+                .output<Any>(0)
+                .run { GraphElement(builder, this) }
+
     fun pow(base: Double) =
             builder.opBuilder("Pow")
                 .addInput(this.op)
@@ -75,6 +90,7 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
     }
 
     fun sum(index: Int = 0) = GraphElement(builder, reduce(op, "Sum", index))
+    fun mean(index: Int = 0) = GraphElement(builder, reduce(op, "Mean", index))
 
     fun lift() = builder.opBuilder("Pack")
         .addInputList(arrayOf(op))
