@@ -26,6 +26,7 @@ import org.apache.lucene.search.TermQuery
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.tensorflow.Graph
 import org.tensorflow.Output
+import org.tensorflow.Session
 import org.tensorflow.Shape
 import utils.lucene.getTypedSearcher
 import utils.misc.filledArray
@@ -35,6 +36,7 @@ import utils.nd4j.toNDArray
 import utils.parallel.forEachParallelQ
 import utils.parallel.pmap
 import utils.stats.defaultWhenNotFinite
+import java.nio.DoubleBuffer
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -152,6 +154,7 @@ class JointRunner(paragraphQueryLoc: String,
             val t = builder.constantTensor(builder.getName("tensor"), dArray, longArrayOf(nFeatures, nRows, nCols) )
                 .times(weightOutput)
                 .sum(0)
+                .softMax()
             t
         }
 
@@ -166,12 +169,14 @@ class JointRunner(paragraphQueryLoc: String,
             val t = builder.constantTensor(builder.getName("tensor"), dArray, longArrayOf(nFeatures, nEntities) )
                 .times(weightOutput)
                 .sum(0)
+                .softMax()
                 .lift()
             t
         }
 
     fun createWeightPlaceholder(name: String, shape: Shape): Output<Double> =
             builder.placeholder<Double>(name, Double::class.javaObjectType, shape)
+
 
 
 
@@ -183,7 +188,7 @@ class JointRunner(paragraphQueryLoc: String,
 
         val entityWeights = createWeightPlaceholder("weightEntity", Shape.make(nEntityFeatures, 1))
             .run { GraphElement(builder, this) }
-        val compatWeights = createWeightPlaceholder("compatWeights", Shape.make(nGramFeatures, 1, 1))
+        val compatWeights = createWeightPlaceholder("weightCompat", Shape.make(nGramFeatures, 1, 1))
             .run { GraphElement(builder, this) }
 
 
@@ -193,6 +198,53 @@ class JointRunner(paragraphQueryLoc: String,
 
         val pushForward = entityTensors.zip(compatTensors)
             .map { (entity, compat) -> entity * compat }
+            .map { it.sumElement().op }
+            .toTypedArray()
+
+        val result = builder.addN(pushForward)
+
+        val session = Session(graph)
+
+        val fakeEntityWeights = (0 until nEntityFeatures)
+            .map { 1.0 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val fakeCompatWeights = (0 until nGramFeatures)
+            .map { 1.0 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val fakeEntityWeights2 = (0 until nEntityFeatures)
+            .map { 0.5 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val fakeCompatWeights2 = (0 until nGramFeatures)
+            .map { 0.5 }
+            .run { DoubleBuffer.wrap(this.toDoubleArray()) }
+
+        val boundEntityWeight = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights)
+        val boundCompatWeight = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights)
+        val boundEntityWeight2 = builder.tensor(longArrayOf(nEntityFeatures, 1), fakeEntityWeights2)
+        val boundCompatWeight2 = builder.tensor(longArrayOf(nGramFeatures, 1, 1), fakeCompatWeights2)
+
+        var final = session.runner()
+            .feed("weightEntity", boundEntityWeight)
+            .feed("weightCompat", boundCompatWeight)
+            .fetch(result.op)
+            .run()
+            .get(0)
+            .doubleValue()
+
+        println(final)
+
+         final = session.runner()
+            .feed("weightEntity", boundEntityWeight2)
+            .feed("weightCompat", boundCompatWeight2)
+            .fetch(result.op)
+            .run()
+            .get(0)
+            .doubleValue()
+
+        println(final)
 
     }
 

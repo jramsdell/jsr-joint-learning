@@ -14,6 +14,14 @@ class GraphBuilder(val g: Graph) {
 
     val dataflow = GraphDataFlowComponent(this, g)
 
+    fun addN(array: Array<Output<Double>>): GraphElement<Double> {
+        val newOp = g.opBuilder("AddN", getName("AddN"))
+            .addInputList(array)
+            .build()
+            .output<Double>(0)
+        return GraphElement(this, newOp)
+    }
+
 
 
     fun constantFloat(name: String, value: Double) =

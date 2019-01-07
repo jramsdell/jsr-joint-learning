@@ -45,13 +45,6 @@ data class GraphElement<T>(private val builder: GraphBuilder, val op: Output<T>)
     fun neg() = rollUnaryOperator("Neg")
     fun reciprocal() = rollUnaryOperator("Reciprocal")
 
-    fun addN(array: Array<Output<T>>): GraphElement<T> {
-        val newOp = builder.g.opBuilder("AddN", builder.getName("AddN"))
-            .addInputList(array)
-            .build()
-            .output<T>(0)
-        return GraphElement(builder, newOp)
-    }
 
 
     fun exp() =
