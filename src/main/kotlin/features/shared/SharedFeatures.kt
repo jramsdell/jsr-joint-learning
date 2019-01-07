@@ -1,33 +1,22 @@
 package features.shared
 
-import entity.EntityDatabase
-import experiment.FeatureType
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
-import experiment.NormType.ZSCORE
-import language.GramAnalyzer
+import lucene.NormType
+import lucene.NormType.ZSCORE
 import language.GramStatType
-import language.containers.LanguageStatContainer
 import lucene.FieldQueryFormatter
+import lucene.KotlinRanklibFormatter
 import lucene.containers.QueryData
 import utils.AnalyzerFunctions
-import utils.lucene.explainScore
-import utils.lucene.splitAndCount
 import utils.misc.CONTENT
 import utils.stats.countDuplicates
 import utils.stats.normalize
-import kotlin.math.absoluteValue
-import lucene.containers.FeatureEnum
 import lucene.containers.FeatureEnum.*
 import lucene.containers.IndexDoc
 import lucene.indexers.IndexFields
-import org.apache.lucene.document.Document
 import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
-import utils.misc.PID
 import utils.misc.toArrayList
 import utils.stats.takeMostFrequent
-import kotlin.math.max
 
 
 data class SharedFeature(val paragraphScores: ArrayList<Double>, val entityScores: ArrayList<Double>, val sectionScores: ArrayList<Double>) {

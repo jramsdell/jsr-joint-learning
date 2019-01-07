@@ -1,15 +1,13 @@
 package features.section
 
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
+import lucene.NormType
 import features.shared.SharedFeature
 import lucene.FieldQueryFormatter
+import lucene.KotlinRanklibFormatter
 import lucene.containers.*
 import lucene.indexers.IndexFields
-import org.apache.lucene.index.Term
 import utils.AnalyzerFunctions
 import utils.stats.countDuplicates
-import utils.stats.normalize
 import java.lang.Math.log
 
 

@@ -4,7 +4,6 @@ import learning.L2RModel
 import lucene.RanklibReader
 import org.apache.commons.math3.distribution.NormalDistribution
 import org.nd4j.linalg.api.ndarray.INDArray
-import utils.misc.printTime
 import utils.misc.toArrayList
 import utils.nd4j.*
 import utils.parallel.forEachParallelQ

@@ -46,6 +46,16 @@ fun <A, B: Number>Map<A, B>.normalizeZscore(): Map<A, Double> {
     return mapValues { (_, value) -> (value.toDouble() - mean) / std }
 }
 
+fun <A, B: Number>Map<A, B>.cosine(): Map<A, Double> {
+    val total = values.sumByDouble { it.toDouble().pow(2.0) }
+    return mapValues { (_, value) -> (value.toDouble() / total).defaultWhenNotFinite(0.0) }
+}
+
+fun List<Double>.cosine(): List<Double> {
+    val s1 = this.sumByDouble { it.pow(2.0) }.pow(0.5)
+    return this.map { it / s1 }
+}
+
 fun <A, B: Number>Map<A, B>.normalizeRanked(): Map<A, Double> {
     val items = values.size.toDouble()
     return map { it.key to it.value.toDouble() }
@@ -64,6 +74,12 @@ private fun normZscore(values: List<Double>): List<Double> {
     val mean = values.average()
     val std = Math.sqrt(values.sumByDouble { Math.pow(it - mean, 2.0) })
     return values.map { ((it - mean) / std) }
+}
+
+fun ArrayList<Double>.normZscore() {
+    val mean = average()
+    val std = Math.sqrt(sumByDouble { Math.pow(it - mean, 2.0) })
+    forEachIndexed { index, d ->  this[index] = (d - mean) / std}
 }
 
 fun<A> Iterable<A>.countDuplicates(): Map<A, Int> =

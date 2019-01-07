@@ -1,8 +1,8 @@
 package features.document
 
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
-import experiment.NormType.ZSCORE
+import lucene.KotlinRanklibFormatter
+import lucene.NormType
+import lucene.NormType.ZSCORE
 import features.shared.SharedFeature
 import language.GramAnalyzer
 import language.GramStatType
@@ -20,14 +20,10 @@ import lucene.containers.paragraphs
 import lucene.containers.text
 import lucene.containers.unigrams
 import lucene.indexers.boostedTermQuery
-import lucene.indexers.getList
 import lucene.indexers.termQuery
 import org.apache.lucene.index.Term
-import org.apache.lucene.queries.function.BoostedQuery
-import org.apache.lucene.queryparser.xml.builders.BooleanQueryBuilder
 import org.apache.lucene.search.*
 import utils.stats.*
-import java.lang.Double.sum
 import java.lang.Math.log
 
 

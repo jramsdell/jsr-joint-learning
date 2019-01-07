@@ -1,10 +1,9 @@
 package features.context
 
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
-import experiment.NormType.*
+import lucene.NormType
 import features.shared.SharedFeature
 import lucene.FieldQueryFormatter
+import lucene.KotlinRanklibFormatter
 import lucene.containers.FeatureEnum
 import lucene.containers.QueryData
 import lucene.indexers.IndexFields

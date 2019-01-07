@@ -1,15 +1,16 @@
 package lucene.containers
 
-import experiment.FeatureType
-import experiment.FeatureType.*
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
+import lucene.FeatureType
+import lucene.FeatureType.*
+import lucene.joint.JointRunner
+import lucene.NormType
 import features.context.ContextEntityRankingFeatures
 import features.document.DocumentRankingFeatures
 import features.entity.EntityRankingFeatures
 import features.section.SectionRankingFeatures
 import features.shared.SharedFeatures
 import features.subobject.SubObjectFeatures
+import lucene.KotlinRanklibFormatter
 
 enum class FeatureEnum(val text: String, val type: FeatureType, val func: (KotlinRanklibFormatter, Double, NormType) -> Unit) {
     DOC_BM25(text = "doc_bm25",

@@ -1,18 +1,13 @@
 package experiment
 
-import entity.EntityDatabase
 import features.document.DocumentRankingFeatures
 import features.entity.EntityRankingFeatures
-import features.shared.SharedFeatures
+import lucene.KotlinRanklibFormatter
+import lucene.NormType
 //import features.entity.featEntityCategory
-import lucene.indexers.TagMeSDMIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
-import utils.lucene.getIndexSearcher
-import experiment.OptimalWeights.*
-import features.section.SectionRankingFeatures
-import features.subobject.SubObjectFeatures
 
 @Suppress("UNCHECKED_CAST", "UNUSED_CHANGED_VALUE")
 /**

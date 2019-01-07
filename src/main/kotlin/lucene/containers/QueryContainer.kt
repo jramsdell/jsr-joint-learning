@@ -1,12 +1,7 @@
 package lucene.containers
 
-import experiment.FeatureType
-import kotlinx.coroutines.experimental.yield
-import lucene.PseudoDatabase
-import lucene.PseudoDocumentDatabase
+import lucene.FeatureType
 import lucene.containers.IndexType.ENTITY
-import org.apache.lucene.search.TopDocs
-import kotlin.coroutines.experimental.buildIterator
 import kotlin.coroutines.experimental.buildSequence
 
 data class ExtractedFeature(val name: String,

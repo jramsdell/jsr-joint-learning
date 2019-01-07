@@ -176,6 +176,11 @@ dependencies {
 
     // Database
     compile "org.mapdb:mapdb:3.0.5"
+    compile "org.tensorflow:tensorflow:1.12.0"
+//    compile "org.bytedeco.javacpp-presets:tensorflow:1.12.0-1.4.4-SNAPSHOT"
+//    compile "org.bytedeco.javacpp-presets:tensorflow-platform:0.11.0-1.3"
+//    compile group: 'org.bytedeco.javacpp-presets', name: 'tensorflow' + '-platform', version: '0.11.0' + '-1.3'
+//    compile group: 'org.bytedeco.javacpp-presets', name: 'tensorflow' + '-platform', version: moduleVersion + '-1.3'
 
 
     // learning

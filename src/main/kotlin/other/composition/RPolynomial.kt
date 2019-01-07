@@ -209,7 +209,7 @@ fun findCommutants(generators: List<RPolynomial>) {
 fun generatePolynomialFactors(): HashMap<Int, ArrayList<RPolynomial>> {
     val factors = HashMap<Int, ArrayList<RPolynomial>>()
 
-    (2 until 100).forEach { factor ->
+    (2 until 200).forEach { factor ->
         val list = ArrayList<RPolynomial>()
         factors[factor] = ArrayList()
         (1 .. (factor    ) ).forEach { c ->
@@ -246,8 +246,9 @@ fun findPolyCombos(cur: RPolynomial, remaining: List<ArrayList<RPolynomial>>): L
 fun decomposePolynomial(poly: RPolynomial, polyFactors: HashMap<Int, ArrayList<RPolynomial>>) {
     val target = poly.inverse()
     val factors = getFactors(poly.x.toInt())
-    println(poly.x.toInt())
-    println(factors)
+    println("Target poly: $poly")
+//    println(poly.x.toInt())
+    println("Poly factors: $factors")
 
     val wee = factors.map {
         it.map { factor -> polyFactors[factor]!! }}
@@ -257,10 +258,12 @@ fun decomposePolynomial(poly: RPolynomial, polyFactors: HashMap<Int, ArrayList<R
         .sortedByDescending { it.first().toString() }
 //        .map { it to it.fold(BigFraction(0)) { acc, poly -> acc + poly.root} }
 //        .map { it to it.windowed(2).map { (it[0].root - it[1].root) + (it[0].invariant - it[1].invariant) }.reduce(BigFraction::add) }
-        .map { it to it.windowed(2).map { (it[0].root - it[1].root)  }.reduce(BigFraction::add) }
+//        .map { it to it.windowed(2).map { (it[0].root - it[1].root)  }.reduce(BigFraction::add) }
+        .map { it to it.windowed(2).map { (it[0].root)  }.reduce(BigFraction::add) }
         .sortedByDescending { it.second }
         .onEach { println("${it.second} : ${it.first}") }
 
+    println("===Root Counts===")
     huh.map { it.second }
         .groupBy { it.denominator }
 //        .filter { it.value.size == 1 }
@@ -277,9 +280,10 @@ fun decomposePolynomial(poly: RPolynomial, polyFactors: HashMap<Int, ArrayList<R
 fun BigFraction.s(): String = toString().replace(" ", "")
 
 fun main(args: Array<String>) {
-    val p1 = RPolynomial.intRPoly(3, 1)
-    val p2 = RPolynomial.intRPoly(3, 2)
-    val p3 = RPolynomial.intRPoly(2, 3, symbol = "C")
+    val p1 = RPolynomial.intRPoly(2, 1)
+    val p2 = RPolynomial.intRPoly(6, 4)
+//    val p3 = RPolynomial.intRPoly(5, 1, symbol = "C")
+//    val p4 = RPolynomial.intRPoly(7, 1)
 
     val generators = listOf(
             p1, p2
@@ -290,9 +294,14 @@ fun main(args: Array<String>) {
 //
 //    findCommutants(generators)
     val polyFactors = generatePolynomialFactors()
-    decomposePolynomial(RPolynomial.intRPoly(34,  9), polyFactors)
+//    decomposePolynomial(RPolynomial.intRPoly(34,  9), polyFactors)
 //    println(getFactors(133))
 //    println((p2 o p1).invariant - (p1 o p2).invariant)
+
+    val p5 = p1 o p2
+    decomposePolynomial(p5, polyFactors)
+
+
 
 
 //    pf.add(p1 + p2)

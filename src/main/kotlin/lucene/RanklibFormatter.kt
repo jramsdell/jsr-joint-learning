@@ -1,15 +1,9 @@
-package experiment
+package lucene
 
-import browser.BrowserPage
-import browser.BrowserParagraph
-import browser.BrowserSection
 import features.shared.SharedFeature
 import learning.deep.stochastic.GaussianTrie
-import learning.deep.stochastic.StochasticUtils
-import lucene.*
 import lucene.containers.*
 import lucene.indexers.IndexFields
-import org.apache.lucene.search.TopDocs
 import java.io.File
 import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarStyle
@@ -19,9 +13,7 @@ import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.TermQuery
 import utils.*
 import utils.lucene.getTypedSearcher
-import utils.misc.CONTENT
 import utils.misc.filledArray
-import utils.misc.sharedRand
 import utils.parallel.forEachParallelQ
 import utils.stats.countDuplicates
 import utils.stats.defaultWhenNotFinite
@@ -77,7 +69,7 @@ enum class FeatureType {
  * @param paragraphQrelLoc: Location of the .qrels file (if none is given, then paragraphs won't be marked as relevant)
  * @param indexSearcher: An IndexSearcher for the Lucene index directory we will be querying.
  */
-class KotlinRanklibFormatter(paragraphQueryLoc: String,
+open class KotlinRanklibFormatter(paragraphQueryLoc: String,
                              paragraphIndexLoc: String,
                              paragraphQrelLoc: String,
                              entityIndexLoc: String,
@@ -96,9 +88,9 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
 //            this(queryLocation, qrelLoc, getIndexSearcher(indexLoc))
 
 
-    var useJointDist = true
+    var useJointDist = false
     val useSavedFeatures = false
-    var limit: Int? = null
+    var limit: Int? = 2
     val isHomogenous = false
     val nThreads = 10
     val paragraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>(paragraphIndexLoc)
@@ -422,16 +414,16 @@ class KotlinRanklibFormatter(paragraphQueryLoc: String,
         doJointDistribution()
     }
     fun finish() {
-        val t = Trie<QueryContainer>(curKey = "")
-        queryContainers.forEach { qc ->
-            val path = qc.query.split("/")
-            t.add(path, qc)
-        }
-        val g = GaussianTrie(t, nFeatures = queryContainers.first().paragraphs.first().features.size)
-//        StochasticUtils.scoreSections(g.tries)
-//        StochasticUtils.filterBySections(g.tries)
-        g.descent.search()
-        System.exit(0)
+//        val t = Trie<QueryContainer>(curKey = "")
+//        queryContainers.forEach { qc ->
+//            val path = qc.query.split("/")
+//            t.add(path, qc)
+//        }
+//        val g = GaussianTrie(t, nFeatures = queryContainers.first().paragraphs.first().features.size)
+////        StochasticUtils.scoreSections(g.tries)
+////        StochasticUtils.filterBySections(g.tries)
+//        g.descent.search()
+//        System.exit(0)
 
     }
 

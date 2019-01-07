@@ -1,27 +1,20 @@
 package features.subobject
 
-import edu.unh.cs.treccar_v2.Data
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
-import experiment.NormType.*
+import lucene.NormType
+import lucene.NormType.*
 import features.shared.SharedFeature
 import lucene.FieldQueryFormatter
+import lucene.KotlinRanklibFormatter
 import lucene.containers.*
 import lucene.containers.FeatureEnum
-import lucene.containers.FeatureEnum.*
 import lucene.indexers.IndexFields
 import lucene.indexers.IndexFields.*
-import lucene.indexers.getList
-import lucene.indexers.getString
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import utils.AnalyzerFunctions
-import utils.lucene.explainScore
 import utils.misc.toHashMap
 import utils.stats.*
-import java.lang.Double.max
 import java.lang.Double.sum
-import java.lang.Math.log
 
 
 object SubObjectFeatures {

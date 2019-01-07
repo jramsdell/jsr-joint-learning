@@ -1,18 +1,16 @@
 package experiment
 
-import entity.EntityDatabase
 import features.document.DocumentRankingFeatures
 import features.entity.EntityRankingFeatures
-import features.shared.SharedFeatures
 //import features.entity.featEntityCategory
-import lucene.indexers.TagMeSDMIndexer
 import net.sourceforge.argparse4j.inf.Namespace
 import net.sourceforge.argparse4j.inf.Subparser
 import net.sourceforge.argparse4j.inf.Subparsers
 import utils.lucene.getIndexSearcher
-import experiment.OptimalWeights.*
-import features.section.SectionRankingFeatures
 import features.subobject.SubObjectFeatures
+import lucene.KotlinRanklibFormatter
+import lucene.NormType
+import lucene.joint.JointRunner
 
 @Suppress("UNCHECKED_CAST", "UNUSED_CHANGED_VALUE")
 /**
@@ -34,13 +32,17 @@ class QueryApp(val resources: HashMap<String, Any>) {
 
     val out: String by resources
 
-    val formatter = KotlinRanklibFormatter(queryPath, indexPath, qrelPath, entityIndex, entityQrel, sectionIndexLoc = sectionIndex,
+    val formatter = JointRunner(queryPath, indexPath, qrelPath, entityIndex, entityQrel, sectionIndexLoc = sectionIndex,
             sectionQrelLoc = sectionQrel, contextEntityLoc = contextEntityIndex,
             contextSectionLoc = contextSectionIndex, omitArticleLevel = (omitArticle == "true") )
         .apply { initialize() }
     val indexer = getIndexSearcher(indexPath)
 
 
+    fun trainJoint() {
+        formatter.doTraining()
+
+    }
 
     fun queryBM25() {
         DocumentRankingFeatures.addBM25Document(formatter, 1.0, norm = NormType.NONE)
@@ -61,6 +63,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
     fun queryKitchenSink(weights: List<Double>? = null) {
         val norm = NormType.ZSCORE
         var i = 0
+
 
         DocumentRankingFeatures.addCombinedBoostedGram(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
         DocumentRankingFeatures.addNormalBM25Combo(formatter, wt = weights?.get(i++) ?: 1.0, norm = norm)
@@ -263,6 +266,7 @@ class QueryApp(val resources: HashMap<String, Any>) {
                         method("query", "kitchen_sink_joint") { queryKitchenSink(OptimalWeights.JOINT_KITCHEN_SINK.weights) }
 
                         method("train", "boostPage") { queryBoostPage() }
+                        method("train", "joint") { trainJoint() }
 
                         method("query", "functor") { queryFunctor(OptimalWeights.PARAGRAPH_FUNCTOR_WEIGHTS.weights) }
                         method("train", "functor") { queryFunctor() }

@@ -3,14 +3,12 @@ package lucene
 import browser.BrowserPage
 import browser.BrowserParagraph
 import browser.BrowserSection
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
+import lucene.NormType
 import lucene.containers.ParagraphContainer
 import lucene.containers.SectionContainer
 import lucene.containers.*
 import lucene.indexers.IndexFields
 import utils.AnalyzerFunctions
-import utils.lucene.getTypedSearcher
 import utils.misc.sharedRand
 import java.io.File
 
@@ -94,14 +92,16 @@ class RanklibWriter(val formatter: KotlinRanklibFormatter, val omitArticleLevel:
         writer.close()
     }
 
-    fun writeParagraphsToFile(queries: List<QueryContainer>) {
+    fun writeParagraphsToFile(queries: List<QueryContainer>, rescore: Boolean = true) {
         val writer = File("paragraph_results.run").bufferedWriter()
         queries
             .run { if (omitArticleLevel) filter { it.query.contains("/") } else this }
             .forEach { container ->
             val seen = HashSet<String>()
             val query = container.query
-            container.paragraphs.forEach(ParagraphContainer::rescore)
+                if (rescore) {
+                    container.paragraphs.forEach(ParagraphContainer::rescore)
+                }
             container.paragraphs
 //                .filter { paragraph -> seen.add(paragraph.name) }
                 .sortedByDescending(ParagraphContainer::score)

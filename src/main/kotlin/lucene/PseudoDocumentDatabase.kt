@@ -1,6 +1,5 @@
 package lucene
 
-import experiment.KotlinRanklibFormatter
 import lucene.containers.*
 import lucene.indexers.IndexFields
 import lucene.indexers.getString
@@ -8,11 +7,7 @@ import lucene.indexers.setTextField
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
 import org.apache.lucene.document.TextField
-import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
-import org.apache.lucene.index.Term
-import org.apache.lucene.search.IndexSearcher
-import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap
 import utils.lucene.getIndexWriter
 import utils.lucene.getTypedSearcher
 import java.io.File

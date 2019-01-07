@@ -1,25 +1,15 @@
 package learning.deep.stochastic
 
-import learning.L2RModel
-import lucene.RanklibReader
 import org.apache.commons.math3.distribution.NormalDistribution
-import org.nd4j.linalg.api.ndarray.INDArray
-import utils.misc.printTime
 import utils.misc.toArrayList
-import utils.nd4j.*
 import utils.parallel.forEachParallelQ
 
 import utils.parallel.pmap
 import utils.stats.*
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadLocalRandom
-import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 import kotlin.math.absoluteValue
 import kotlin.math.pow
 import kotlin.math.sign
-import kotlin.system.measureTimeMillis
 
 
 class StochasticDescent(val nFeatures: Int, val scoreFun: (List<Double>) -> Double, val onlyPos: Boolean = false) {

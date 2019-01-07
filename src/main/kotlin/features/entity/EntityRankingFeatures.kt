@@ -1,40 +1,25 @@
 package features.entity
 
-import entity.EntityDatabase
-import experiment.FeatureType
-import experiment.KotlinRanklibFormatter
-import experiment.NormType
-import experiment.NormType.*
+import lucene.NormType
+import lucene.NormType.*
 import features.shared.SharedFeature
-import info.debatty.java.stringsimilarity.NormalizedLevenshtein
-import jdk.nashorn.internal.parser.Token
-import khttp.patch
 import language.GramAnalyzer
 import language.GramStatType
-import language.GramStatType.*
-import language.containers.LanguageStatContainer
 import lucene.FieldQueryFormatter
+import lucene.KotlinRanklibFormatter
 import lucene.containers.*
 import utils.AnalyzerFunctions
 import utils.AnalyzerFunctions.AnalyzerType.ANALYZER_ENGLISH_STOPPED
-import utils.lucene.explainScore
-import utils.misc.identity
 import utils.stats.countDuplicates
-import utils.stats.normalize
 import utils.stats.takeMostFrequent
-import java.lang.Double.sum
-import kotlin.math.absoluteValue
 import lucene.containers.FeatureEnum.*
 import lucene.indexers.IndexFields
 import lucene.indexers.boostedTermQuery
-import lucene.indexers.termQuery
 import org.apache.lucene.search.BooleanClause
 import org.apache.lucene.search.BooleanQuery
 import org.apache.lucene.search.BoostQuery
 import org.apache.lucene.search.DisjunctionMaxQuery
 import org.apache.lucene.search.similarities.LMDirichletSimilarity
-import org.apache.lucene.util.QueryBuilder
-import utils.lucene.docs
 
 
 object EntityRankingFeatures {
