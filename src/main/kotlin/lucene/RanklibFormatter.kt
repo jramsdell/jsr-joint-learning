@@ -90,7 +90,7 @@ open class KotlinRanklibFormatter(paragraphQueryLoc: String,
 
     var useJointDist = false
     val useSavedFeatures = false
-    var limit: Int? = 2
+    var limit: Int? = 5
     val isHomogenous = false
     val nThreads = 10
     val paragraphSearcher = getTypedSearcher<IndexType.PARAGRAPH>(paragraphIndexLoc)

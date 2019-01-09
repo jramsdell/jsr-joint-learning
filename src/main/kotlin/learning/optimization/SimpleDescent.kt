@@ -147,7 +147,7 @@ class SimpleDescent(val nFeatures: Int, val scoreFun: (List<Double>) -> Double, 
             .forEach {
                 if (!converged.get() && priorities.isNotEmpty()) {
 
-                    doStep3()
+                    doStep2()
                     endFun?.invoke(weights)
                     if ((it % 100 == 99 || winnow == false) && debug) {
                         weightUser?.invoke(weights)
